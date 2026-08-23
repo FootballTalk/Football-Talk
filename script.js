@@ -1,18 +1,4 @@
-document.addEventListener("DOMContentLoaded", () => {
-  // Automatically display the current year in the footer
-  const yearElement = document.getElementById("year");
+const menuBtn=document.querySelector('.menu-button');const nav=document.querySelector('.nav');if(menuBtn){menuBtn.addEventListener('click',()=>{nav.classList.toggle('open');menuBtn.setAttribute('aria-expanded',nav.classList.contains('open'))})}const year=document.getElementById('year');if(year)year.textContent=new Date().getFullYear();
 
-  if (yearElement) {
-    yearElement.textContent = new Date().getFullYear();
-  }
-
-  // Mobile navigation
-  const menuButton = document.querySelector(".menu-button");
-  const navigation = document.querySelector("nav");
-
-  if (menuButton && navigation) {
-    menuButton.addEventListener("click", () => {
-      navigation.classList.toggle("open");
-    });
-  }
-});
+async function loadPosts(){const latest=document.getElementById('dynamic-posts');if(!latest)return;const cfg=window.FT_CONFIG||{};if(!cfg.SUPABASE_URL||cfg.SUPABASE_URL.includes('PASTE_')){latest.innerHTML='<div class="empty-state">The site is ready. Connect Supabase to publish live Football Talk stories from /admin.</div>';return;}try{const url=`${cfg.SUPABASE_URL}/rest/v1/posts?select=*&status=eq.published&order=featured.desc,published_at.desc&limit=12`;const r=await fetch(url,{headers:{apikey:cfg.SUPABASE_ANON_KEY,Authorization:`Bearer ${cfg.SUPABASE_ANON_KEY}`}});if(!r.ok)throw new Error('Could not load posts');const posts=await r.json();if(!posts.length){latest.innerHTML='<div class="empty-state">No published stories yet. Add the first one in /admin.</div>';return;}latest.innerHTML=posts.map(p=>`<article class="post-card ${p.featured?'featured':''}">${p.image_url?`<img src="${escapeHtml(p.image_url)}" alt="">`:''}<div class="post-card-body"><span class="tag">${escapeHtml(p.type||'News')}</span><p class="card-meta">${formatDate(p.published_at)}</p><h3>${escapeHtml(p.title)}</h3><p>${escapeHtml(p.summary||'')}</p></div></article>`).join('');}catch(e){latest.innerHTML='<div class="empty-state">Live stories could not be loaded right now.</div>';}}
+function escapeHtml(v=''){return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]))}function formatDate(v){if(!v)return'';return new Date(v).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}loadPosts();
