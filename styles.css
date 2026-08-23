@@ -1,0 +1,125 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background: #111;
+  color: #fff;
+  line-height: 1.6;
+}
+
+header {
+  background: #ffd400;
+  color: #111;
+  padding: 20px;
+  text-align: center;
+  border-bottom: 5px solid #000;
+}
+
+header h1 {
+  font-size: 2.5rem;
+  font-weight: 900;
+}
+
+header p {
+  font-weight: bold;
+}
+
+nav {
+  background: #000;
+  padding: 12px;
+  text-align: center;
+}
+
+nav a {
+  color: #ffd400;
+  text-decoration: none;
+  font-weight: bold;
+  margin: 0 15px;
+}
+
+nav a:hover {
+  color: #fff;
+}
+
+main {
+  width: 90%;
+  max-width: 1100px;
+  margin: 30px auto;
+}
+
+.hero {
+  background: #ffd400;
+  color: #111;
+  padding: 40px 25px;
+  border-radius: 10px;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.hero h2 {
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.card {
+  background: #1d1d1d;
+  border-left: 6px solid #ffd400;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 6px;
+}
+
+.card h2,
+.card h3 {
+  color: #ffd400;
+}
+
+button,
+.button {
+  display: inline-block;
+  background: #ffd400;
+  color: #111;
+  border: none;
+  padding: 12px 20px;
+  margin-top: 15px;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+button:hover,
+.button:hover {
+  background: #fff;
+}
+
+footer {
+  background: #000;
+  color: #aaa;
+  text-align: center;
+  padding: 20px;
+  margin-top: 40px;
+}
+
+@media (max-width: 700px) {
+  header h1 {
+    font-size: 2rem;
+  }
+
+  nav a {
+    display: block;
+    margin: 8px 0;
+  }
+
+  main {
+    width: 94%;
+  }
+
+  .hero {
+    padding: 25px 15px;
+  }
+}
