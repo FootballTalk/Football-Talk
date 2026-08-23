@@ -8,3 +8,4 @@ Starter website for Football Talk — Where Fans Have Their Say.
 - `script.js` — mobile menu and footer year
 
 Designed as a lightweight static site ready for Vercel deployment.
+
