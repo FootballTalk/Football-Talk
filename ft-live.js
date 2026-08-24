@@ -68,7 +68,7 @@
         if(viewport.scrollLeft >= oneCopyWidth){
           viewport.scrollLeft -= oneCopyWidth;
         }
-      }, 10);
+      }, 5);
     }
 
     function render(){
