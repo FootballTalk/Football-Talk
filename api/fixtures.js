@@ -4,7 +4,7 @@ const LEAGUES = [
   { id: 40, name: 'EFL Championship' },
 ];
 
-// Build refresh marker: 2026-08-24 production environment refresh #4.
+// Build refresh marker: 2026-08-24 production environment refresh #5.
 function londonDateString(date) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/London',
@@ -48,6 +48,17 @@ function mapFixture(item) {
     awayLogo: item.teams?.away?.logo,
     homeGoals: item.goals?.home,
     awayGoals: item.goals?.away,
+    events: Array.isArray(item.events)
+      ? item.events.map((event) => ({
+          elapsed: event.time?.elapsed,
+          extra: event.time?.extra,
+          team: event.team?.name,
+          player: event.player?.name,
+          assist: event.assist?.name,
+          type: event.type,
+          detail: event.detail,
+        }))
+      : [],
   };
 }
 
@@ -160,7 +171,7 @@ export default async function handler(req, res) {
     res.setHeader(
       'Cache-Control',
       liveOnly
-        ? 'public, s-maxage=60, stale-while-revalidate=60'
+        ? 'public, s-maxage=30, stale-while-revalidate=30'
         : 'public, s-maxage=900, stale-while-revalidate=1800'
     );
     return res.status(200).json({ from, to, season, live: liveOnly, leagues: results });
