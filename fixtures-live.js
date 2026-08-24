@@ -40,10 +40,7 @@
     const score = scoreReady ? `${fixture.homeGoals}-${fixture.awayGoals}` : '0-0';
     const status = fixture.status || 'NS';
 
-    if (LIVE_STATUSES.has(status)) {
-      const minute = fixture.elapsed ? `${fixture.elapsed}'` : 'LIVE';
-      return { text: `${score} ${minute}`, live: true, finished: false };
-    }
+    if (LIVE_STATUSES.has(status)) return { text: `${score} LIVE`, live: true, finished: false };
     if (status === 'HT') return { text: `${score} HT`, live: true, finished: false };
     if (FINISHED_STATUSES.has(status)) return { text: `${score} FT`, live: false, finished: true };
     if (status === 'PST') return { text: 'POSTPONED', live: false, finished: false };
