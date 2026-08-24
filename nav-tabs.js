@@ -1,0 +1,1 @@
+document.addEventListener('click',function(e){const link=e.target.closest('.nav a[href^="#"],.quick-nav a[href^="#"]');if(!link)return;const id=link.getAttribute('href');if(!id||id==='#')return;e.preventDefault();e.stopImmediatePropagation();const url=new URL(window.location.href);url.hash=id;window.open(url.toString(),'_blank','noopener,noreferrer');},true);
