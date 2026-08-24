@@ -7,27 +7,29 @@
 
     const style = document.createElement('style');
     style.textContent = `
-      .ticker-viewport{overflow:hidden!important;position:relative!important;height:44px!important;display:block!important}
-      .ticker-track.ft-tv-track{position:relative!important;left:auto!important;top:auto!important;display:flex!important;align-items:center!important;width:max-content!important;max-width:none!important;white-space:nowrap!important;animation:ftTvCrawl 38s linear infinite!important;will-change:transform}
-      .ticker-track.ft-tv-track .ft-tv-copy{display:block!important;flex:0 0 auto!important;white-space:nowrap!important;padding:12px 28px!important;font-weight:800!important;line-height:20px!important}
-      @keyframes ftTvCrawl{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
-      @media(max-width:900px){.ticker-track.ft-tv-track{animation-duration:30s!important}}
+      .ticker-viewport{overflow:hidden!important;position:relative!important;height:44px!important;display:block!important;scroll-behavior:auto!important}
+      .ticker-track.ft-scroll-track{position:relative!important;left:auto!important;top:auto!important;display:flex!important;align-items:center!important;width:max-content!important;max-width:none!important;white-space:nowrap!important;transform:none!important;animation:none!important;will-change:auto!important}
+      .ticker-track.ft-scroll-track .ft-scroll-copy{display:block!important;flex:0 0 auto!important;white-space:nowrap!important;padding:12px 28px!important;font-weight:800!important;line-height:20px!important;transform:none!important}
     `;
     document.head.appendChild(style);
 
-    track.className = 'ticker-track ft-tv-track';
+    track.className = 'ticker-track ft-scroll-track';
     const copyA = document.createElement('span');
     const copyB = document.createElement('span');
-    copyA.className = 'ft-tv-copy';
-    copyB.className = 'ft-tv-copy';
+    const copyC = document.createElement('span');
+    copyA.className = 'ft-scroll-copy';
+    copyB.className = 'ft-scroll-copy';
+    copyC.className = 'ft-scroll-copy';
     copyB.setAttribute('aria-hidden','true');
-    track.replaceChildren(copyA, copyB);
+    copyC.setAttribute('aria-hidden','true');
+    track.replaceChildren(copyA, copyB, copyC);
 
     const LIVE_STATUSES = new Set(['1H','2H','ET','BT','P','LIVE','HT']);
     const FINISHED_STATUSES = new Set(['FT','AET','PEN']);
     let liveItems = [];
     let resultItems = [];
     let lastLine = '';
+    let timer = null;
     const clean = (text='') => String(text).replace(/\s+/g,' ').trim();
 
     function latestNewsItems(){
@@ -49,6 +51,18 @@
       return [...new Set(items)].slice(0,2);
     }
 
+    function ensureScrollLoop(){
+      if(timer) return;
+      timer = setInterval(()=>{
+        const oneCopyWidth = copyA.offsetWidth;
+        if(!oneCopyWidth) return;
+        viewport.scrollLeft += 1;
+        if(viewport.scrollLeft >= oneCopyWidth){
+          viewport.scrollLeft -= oneCopyWidth;
+        }
+      }, 24);
+    }
+
     function render(){
       const items=[...liveItems,...resultItems,...latestNewsItems(),...latestTransferItems()];
       const fallback=[
@@ -60,8 +74,15 @@
       const line=`⚽ ${finalItems.join('     •     ')}     •     `;
       if(line===lastLine) return;
       lastLine=line;
+      const previousScroll = viewport.scrollLeft;
       copyA.textContent=line;
       copyB.textContent=line;
+      copyC.textContent=line;
+      requestAnimationFrame(()=>{
+        const width = copyA.offsetWidth;
+        viewport.scrollLeft = width ? previousScroll % width : 0;
+      });
+      ensureScrollLoop();
     }
 
     async function loadLiveScores(){
