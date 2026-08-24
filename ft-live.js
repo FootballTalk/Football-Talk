@@ -1,11 +1,19 @@
 (() => {
   const track = document.querySelector('.ticker-track');
+  const ticker = document.querySelector('.ticker');
   if (!track) return;
 
   const LIVE_STATUSES = new Set(['1H','2H','ET','BT','P','LIVE','HT']);
   const FINISHED_STATUSES = new Set(['FT','AET','PEN']);
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let liveItems = [];
   let resultItems = [];
+  let tickerAnimation = null;
+  let lastLine = '';
+
+  // Disable the old percentage-based CSS animation. This script measures the
+  // exact width of one complete ticker segment and animates by that distance.
+  track.style.animation = 'none';
 
   function clean(text = '') {
     return String(text).replace(/\s+/g, ' ').trim();
@@ -30,12 +38,37 @@
     return [...new Set(items)].slice(0, 4);
   }
 
+  function startTicker() {
+    if (tickerAnimation) {
+      tickerAnimation.cancel();
+      tickerAnimation = null;
+    }
+
+    track.style.transform = 'translate3d(0,0,0)';
+    if (reducedMotion) return;
+
+    const first = track.firstElementChild;
+    if (!first) return;
+
+    requestAnimationFrame(() => {
+      const distance = Math.ceil(first.getBoundingClientRect().width);
+      if (!distance) return;
+
+      // Roughly 55px per second keeps the ticker readable while remaining smooth.
+      const duration = Math.max(18000, Math.round((distance / 55) * 1000));
+      tickerAnimation = track.animate(
+        [
+          { transform: 'translate3d(0,0,0)' },
+          { transform: `translate3d(-${distance}px,0,0)` }
+        ],
+        { duration, iterations: Infinity, easing: 'linear' }
+      );
+    });
+  }
+
   function render() {
     const newsItems = latestNewsItems();
     const transferItems = latestTransferItems();
-
-    // Priority: anything happening live, then the newest completed score,
-    // then a balanced mix of current news and transfer updates.
     const items = [...liveItems, ...resultItems, ...newsItems, ...transferItems];
     const fallback = [
       'NEWS: Latest football updates from Football Talk',
@@ -45,8 +78,10 @@
     const finalItems = items.length ? [...new Set(items)].slice(0, 13) : fallback;
     const line = `⚽ ${finalItems.join('   •   ')}   •   `;
 
-    // Two identical segments make the -50% animation point exact and keep
-    // the ticker seamless when fresh content replaces the previous line.
+    // Do not restart the animation unless the actual ticker content changed.
+    if (line === lastLine && track.children.length === 2) return;
+    lastLine = line;
+
     const first = document.createElement('span');
     const second = document.createElement('span');
     first.textContent = line;
@@ -54,6 +89,7 @@
     first.setAttribute('aria-hidden', 'false');
     second.setAttribute('aria-hidden', 'true');
     track.replaceChildren(first, second);
+    startTicker();
   }
 
   async function loadLiveScores() {
@@ -95,18 +131,21 @@
     } catch (_) {}
   }
 
-  // Published homepage stories are injected dynamically, so rebuild the
-  // ticker immediately whenever the news feed changes.
   const posts = document.getElementById('dynamic-posts');
   if (posts) new MutationObserver(render).observe(posts, { childList: true, subtree: true });
+
+  if (ticker && !reducedMotion) {
+    ticker.addEventListener('mouseenter', () => tickerAnimation?.pause());
+    ticker.addEventListener('mouseleave', () => tickerAnimation?.play());
+  }
+
+  window.addEventListener('resize', () => {
+    if (lastLine) startTicker();
+  });
 
   render();
   loadLiveScores();
   loadLatestResult();
-
-  // Matchday scores stay very fresh; result calls are less frequent because
-  // completed scores do not need second-by-second polling.
   window.setInterval(loadLiveScores, 30 * 1000);
   window.setInterval(loadLatestResult, 2 * 60 * 1000);
-  window.setInterval(render, 30 * 1000);
 })();
