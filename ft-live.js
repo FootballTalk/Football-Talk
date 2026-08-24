@@ -32,6 +32,14 @@
     let timer = null;
     const clean = (text='') => String(text).replace(/\s+/g,' ').trim();
 
+    const editorialItems = [
+      'TRANSFER: Man City agree £34m deal for Palmeiras winger Allan Elias',
+      'TRANSFER: Nico González closes in on a £50m move from Man City to Newcastle',
+      'TRANSFER: Nottingham Forest in advanced talks with Chelsea for Liam Delap',
+      'TRANSFER: Al Hilal continue to pursue Arsenal winger Gabriel Martinelli',
+      'NEWS: Chelsea beat Fulham 3-2 in a five-goal Premier League thriller'
+    ];
+
     function latestNewsItems(){
       const items=[];
       document.querySelectorAll('#dynamic-posts .post-card').forEach(card=>{
@@ -64,13 +72,10 @@
     }
 
     function render(){
-      const items=[...liveItems,...resultItems,...latestNewsItems(),...latestTransferItems()];
-      const fallback=[
-        'NEWS: Latest football updates from Football Talk',
-        'TRANSFER: Latest moves and rumours in the Transfer Centre',
-        'SCORES: Fixtures, live scores and results update automatically'
-      ];
-      const finalItems=items.length?[...new Set(items)].slice(0,7):fallback;
+      const dynamicNews = latestNewsItems();
+      const dynamicTransfers = latestTransferItems();
+      const items=[...liveItems,...resultItems,...dynamicNews,...dynamicTransfers,...editorialItems];
+      const finalItems=[...new Set(items)].slice(0,9);
       const line=`⚽ ${finalItems.join('     •     ')}     •     `;
       if(line===lastLine) return;
       lastLine=line;
