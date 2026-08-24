@@ -99,6 +99,27 @@ async function fetchLive(apiKey) {
   }));
 }
 
+async function fetchResults(apiKey, now, season) {
+  const fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const from = londonDateString(fromDate);
+  const to = londonDateString(now);
+  const finished = new Set(['FT', 'AET', 'PEN']);
+
+  const leagues = await Promise.all(
+    LEAGUES.map(async (league) => {
+      const result = await fetchLeague(league, apiKey, from, to, season);
+      return {
+        ...result,
+        fixtures: result.fixtures
+          .filter((fixture) => finished.has(fixture.status))
+          .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)),
+      };
+    })
+  );
+
+  return { from, to, leagues };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
@@ -116,8 +137,21 @@ export default async function handler(req, res) {
   const to = londonDateString(end);
   const season = seasonFor(now);
   const liveOnly = String(req.query?.live || '') === '1';
+  const resultsOnly = String(req.query?.results || '') === '1';
 
   try {
+    if (resultsOnly) {
+      const resultData = await fetchResults(apiKey.trim(), now, season);
+      res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=120');
+      return res.status(200).json({
+        from: resultData.from,
+        to: resultData.to,
+        season,
+        results: true,
+        leagues: resultData.leagues,
+      });
+    }
+
     const results = liveOnly
       ? await fetchLive(apiKey.trim())
       : await Promise.all(LEAGUES.map((league) => fetchLeague(league, apiKey.trim(), from, to, season)));
