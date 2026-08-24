@@ -27,6 +27,61 @@ function seasonFor(date) {
   return month >= 7 ? year : year - 1;
 }
 
+function apiErrors(data) {
+  if (!data || !data.errors) return [];
+  if (Array.isArray(data.errors)) return data.errors.filter(Boolean).map(String);
+  if (typeof data.errors === 'object') return Object.entries(data.errors).map(([key, value]) => `${key}: ${value}`);
+  return [String(data.errors)];
+}
+
+async function fetchLeague({ id, name }, apiKey, from, to, season) {
+  const url = new URL(`${API_BASE}/fixtures`);
+  url.searchParams.set('league', String(id));
+  url.searchParams.set('season', String(season));
+  url.searchParams.set('from', from);
+  url.searchParams.set('to', to);
+  url.searchParams.set('timezone', 'Europe/London');
+
+  const response = await fetch(url, {
+    headers: {
+      'x-apisports-key': apiKey,
+      accept: 'application/json',
+    },
+  });
+
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    const text = await response.text().catch(() => '');
+    throw new Error(`${name}: API-Football returned HTTP ${response.status}${text ? ` - ${text.slice(0, 200)}` : ''}`);
+  }
+
+  const errors = apiErrors(data);
+  if (!response.ok || errors.length) {
+    const detail = errors.length ? errors.join('; ') : `HTTP ${response.status}`;
+    throw new Error(`${name}: ${detail}`);
+  }
+
+  return {
+    id,
+    name,
+    fixtures: (data.response || []).map((item) => ({
+      id: item.fixture?.id,
+      date: item.fixture?.date,
+      timestamp: item.fixture?.timestamp,
+      status: item.fixture?.status?.short,
+      elapsed: item.fixture?.status?.elapsed,
+      home: item.teams?.home?.name,
+      away: item.teams?.away?.name,
+      homeLogo: item.teams?.home?.logo,
+      awayLogo: item.teams?.away?.logo,
+      homeGoals: item.goals?.home,
+      awayGoals: item.goals?.away,
+    })),
+  };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
@@ -45,46 +100,22 @@ export default async function handler(req, res) {
   const season = seasonFor(now);
 
   try {
-    const results = await Promise.all(LEAGUES.map(async (league) => {
-      const url = new URL(`${API_BASE}/fixtures`);
-      url.searchParams.set('league', String(league.id));
-      url.searchParams.set('season', String(season));
-      url.searchParams.set('from', from);
-      url.searchParams.set('to', to);
-      url.searchParams.set('timezone', 'Europe/London');
+    const results = await Promise.all(
+      LEAGUES.map((league) => fetchLeague(league, apiKey.trim(), from, to, season))
+    );
 
-      const response = await fetch(url, {
-        headers: { 'x-apisports-key': apiKey },
-      });
-
-      const data = await response.json();
-      if (!response.ok || data.errors?.length || (data.errors && Object.keys(data.errors).length)) {
-        throw new Error(`API-Football request failed for ${league.name}`);
-      }
-
-      const fixtures = (data.response || []).map((item) => ({
-        id: item.fixture?.id,
-        date: item.fixture?.date,
-        timestamp: item.fixture?.timestamp,
-        status: item.fixture?.status?.short,
-        elapsed: item.fixture?.status?.elapsed,
-        home: item.teams?.home?.name,
-        away: item.teams?.away?.name,
-        homeLogo: item.teams?.home?.logo,
-        awayLogo: item.teams?.away?.logo,
-        homeGoals: item.goals?.home,
-        awayGoals: item.goals?.away,
-      }));
-
-      return { ...league, fixtures };
-    }));
-
-    // Fixtures change much less often than live scores. Six-hour edge caching
-    // keeps the free API plan practical while still updating the page automatically.
     res.setHeader('Cache-Control', 'public, s-maxage=21600, stale-while-revalidate=43200');
     return res.status(200).json({ from, to, season, leagues: results });
   } catch (error) {
-    console.error(error);
-    return res.status(502).json({ error: 'Unable to load fixtures right now' });
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('API-Football fixtures error:', message);
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(502).json({
+      error: 'Unable to load fixtures right now',
+      detail: message,
+      season,
+      from,
+      to,
+    });
   }
 }
