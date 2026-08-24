@@ -44,13 +44,26 @@
       const minute = fixture.elapsed ? `${fixture.elapsed}'` : 'LIVE';
       return { text: `${score} ${minute}`, live: true, finished: false };
     }
-    if (status === 'HT') return { text: `${score} HT`, live: false, finished: false };
+    if (status === 'HT') return { text: `${score} HT`, live: true, finished: false };
     if (FINISHED_STATUSES.has(status)) return { text: `${score} FT`, live: false, finished: true };
     if (status === 'PST') return { text: 'POSTPONED', live: false, finished: false };
     if (status === 'CANC') return { text: 'CANCELLED', live: false, finished: false };
     if (status === 'SUSP') return { text: `${score} SUSP`, live: false, finished: false };
     if (status === 'ABD') return { text: `${score} ABD`, live: false, finished: false };
     return null;
+  }
+
+  function addLiveStyles() {
+    if (document.getElementById('ft-live-score-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'ft-live-score-styles';
+    style.textContent = `
+      .time.is-live{background:#d80000!important;color:#fff!important;box-shadow:0 0 0 2px rgba(216,0,0,.14);animation:ftLivePulse 1.8s ease-in-out infinite}
+      .time.is-finished{background:#111!important;color:#fff!important}
+      .fixture-live{background:#fff9d9}
+      @keyframes ftLivePulse{0%,100%{opacity:1}50%{opacity:.78}}
+    `;
+    document.head.appendChild(style);
   }
 
   function applyData(data) {
@@ -74,18 +87,23 @@
     });
   }
 
-  async function refreshScores() {
+  async function fetchScores(liveOnly) {
     try {
-      const response = await fetch(`/api/fixtures?live=1&t=${Date.now()}`, { cache: 'no-store' });
+      const liveQuery = liveOnly ? '?live=1' : '';
+      const joiner = liveQuery ? '&' : '?';
+      const response = await fetch(`/api/fixtures${liveQuery}${joiner}t=${Date.now()}`, { cache: 'no-store' });
       if (!response.ok) return;
       applyData(await response.json());
     } catch (error) {
-      console.warn('Football Talk live score refresh failed:', error);
+      console.warn('Football Talk score refresh failed:', error);
     }
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    refreshScores();
-    window.setInterval(refreshScores, REFRESH_MS);
+    addLiveStyles();
+    fetchScores(false);
+    fetchScores(true);
+    window.setInterval(() => fetchScores(true), REFRESH_MS);
+    window.setInterval(() => fetchScores(false), 15 * 60 * 1000);
   });
 })();
