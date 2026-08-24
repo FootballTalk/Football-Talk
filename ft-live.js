@@ -5,9 +5,31 @@
 
   const LIVE_STATUSES = new Set(['1H','2H','ET','BT','P','LIVE','HT']);
   const FINISHED_STATUSES = new Set(['FT','AET','PEN']);
+  const SPEED = 46;
+  const GAP = 56;
+
   let liveItems = [];
   let resultItems = [];
   let lastLine = '';
+  let rafId = null;
+  let lastTime = 0;
+  let stripA = null;
+  let stripB = null;
+  let xA = 0;
+  let xB = 0;
+  let stripWidth = 0;
+
+  track.style.animation = 'none';
+  track.style.transform = 'none';
+  track.style.position = 'relative';
+  track.style.display = 'block';
+  track.style.width = '100%';
+  track.style.height = '42px';
+  track.style.overflow = 'visible';
+  viewport.style.position = 'relative';
+  viewport.style.overflow = 'hidden';
+  viewport.style.height = '42px';
+  viewport.scrollLeft = 0;
 
   function clean(text = '') {
     return String(text).replace(/\s+/g, ' ').trim();
@@ -32,6 +54,66 @@
     return [...new Set(items)].slice(0, 4);
   }
 
+  function makeStrip(text) {
+    const el = document.createElement('span');
+    el.textContent = text;
+    el.style.position = 'absolute';
+    el.style.top = '0';
+    el.style.left = '0';
+    el.style.display = 'block';
+    el.style.width = 'max-content';
+    el.style.maxWidth = 'none';
+    el.style.whiteSpace = 'nowrap';
+    el.style.padding = '11px 0';
+    el.style.fontWeight = '800';
+    el.style.lineHeight = '20px';
+    el.style.willChange = 'left';
+    return el;
+  }
+
+  function stopCrawl() {
+    if (rafId !== null) cancelAnimationFrame(rafId);
+    rafId = null;
+    lastTime = 0;
+  }
+
+  function placeStrips() {
+    if (!stripA || !stripB) return;
+    stripA.style.left = `${Math.round(xA)}px`;
+    stripB.style.left = `${Math.round(xB)}px`;
+  }
+
+  function tick(now) {
+    if (!lastTime) lastTime = now;
+    const delta = Math.min(64, now - lastTime);
+    lastTime = now;
+    const move = SPEED * delta / 1000;
+
+    xA -= move;
+    xB -= move;
+
+    if (xA + stripWidth < 0) xA = xB + stripWidth + GAP;
+    if (xB + stripWidth < 0) xB = xA + stripWidth + GAP;
+
+    placeStrips();
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function startCrawl() {
+    stopCrawl();
+    requestAnimationFrame(() => {
+      if (!stripA || !stripB) return;
+      stripWidth = Math.ceil(stripA.getBoundingClientRect().width);
+      if (!stripWidth) return;
+
+      // Start with the first strip visible and the second following directly behind.
+      xA = 0;
+      xB = stripWidth + GAP;
+      placeStrips();
+      rafId = requestAnimationFrame(tick);
+    });
+  }
+
   function render() {
     const newsItems = latestNewsItems();
     const transferItems = latestTransferItems();
@@ -44,35 +126,15 @@
 
     const finalItems = items.length ? [...new Set(items)].slice(0, 12) : fallback;
     const line = `⚽ ${finalItems.join('     •     ')}     •     `;
-    if (line === lastLine && track.firstElementChild) return;
+    if (line === lastLine && stripA && stripB) return;
     lastLine = line;
 
-    // A native marquee gives the classic TV-news continuous crawl and is
-    // particularly reliable in mobile/in-app browsers where very wide CSS
-    // transformed ticker strips can clip text at the viewport edge.
-    const marquee = document.createElement('marquee');
-    marquee.setAttribute('direction', 'left');
-    marquee.setAttribute('behavior', 'scroll');
-    marquee.setAttribute('scrollamount', '4');
-    marquee.setAttribute('scrolldelay', '20');
-    marquee.setAttribute('truespeed', '');
-    marquee.setAttribute('aria-label', 'Football Talk live updates');
-    marquee.textContent = line;
-    marquee.style.display = 'block';
-    marquee.style.width = '100%';
-    marquee.style.padding = '11px 0';
-    marquee.style.whiteSpace = 'nowrap';
-    marquee.style.fontWeight = '800';
-    marquee.style.lineHeight = '1.35';
-
-    track.style.animation = 'none';
-    track.style.transform = 'none';
-    track.style.width = '100%';
-    track.style.maxWidth = '100%';
-    track.style.display = 'block';
-    viewport.style.overflow = 'hidden';
-    viewport.scrollLeft = 0;
-    track.replaceChildren(marquee);
+    stripA = makeStrip(line);
+    stripB = makeStrip(line);
+    stripA.setAttribute('aria-hidden', 'false');
+    stripB.setAttribute('aria-hidden', 'true');
+    track.replaceChildren(stripA, stripB);
+    startCrawl();
   }
 
   async function loadLiveScores() {
@@ -112,6 +174,10 @@
 
   const posts = document.getElementById('dynamic-posts');
   if (posts) new MutationObserver(render).observe(posts, { childList: true, subtree: true });
+
+  window.addEventListener('resize', () => {
+    if (lastLine) startCrawl();
+  });
 
   render();
   loadLiveScores();
