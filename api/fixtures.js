@@ -4,7 +4,7 @@ const LEAGUES = [
   { id: 40, name: 'EFL Championship' },
 ];
 
-// Build refresh marker: 2026-08-24 production environment refresh.
+// Build refresh marker: 2026-08-24 production environment refresh #2.
 function londonDateString(date) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/London',
