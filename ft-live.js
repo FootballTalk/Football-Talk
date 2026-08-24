@@ -1,35 +1,12 @@
 (() => {
   const track = document.querySelector('.ticker-track');
-  const viewport = document.querySelector('.ticker-viewport');
-  if (!track || !viewport) return;
+  if (!track) return;
 
   const LIVE_STATUSES = new Set(['1H','2H','ET','BT','P','LIVE','HT']);
   const FINISHED_STATUSES = new Set(['FT','AET','PEN']);
-  const SPEED = 2; // pixels per tick
-  const TICK_MS = 40;
-  const GAP = 56;
-
   let liveItems = [];
   let resultItems = [];
   let lastLine = '';
-  let timer = null;
-  let stripA = null;
-  let stripB = null;
-  let xA = 0;
-  let xB = 0;
-  let stripWidth = 0;
-
-  track.style.setProperty('animation','none','important');
-  track.style.setProperty('transform','none','important');
-  track.style.position = 'relative';
-  track.style.display = 'block';
-  track.style.width = '100%';
-  track.style.height = '42px';
-  track.style.overflow = 'visible';
-  viewport.style.position = 'relative';
-  viewport.style.overflow = 'hidden';
-  viewport.style.height = '42px';
-  viewport.scrollLeft = 0;
 
   function clean(text='') { return String(text).replace(/\s+/g,' ').trim(); }
 
@@ -52,46 +29,6 @@
     return [...new Set(items)].slice(0,4);
   }
 
-  function makeStrip(text) {
-    const el=document.createElement('span');
-    el.textContent=text;
-    el.style.position='absolute';
-    el.style.top='0';
-    el.style.left='0';
-    el.style.display='block';
-    el.style.width='max-content';
-    el.style.maxWidth='none';
-    el.style.whiteSpace='nowrap';
-    el.style.padding='11px 0';
-    el.style.fontWeight='800';
-    el.style.lineHeight='20px';
-    return el;
-  }
-
-  function stopCrawl(){ if(timer!==null) clearInterval(timer); timer=null; }
-  function place(){ if(stripA) stripA.style.left=`${Math.round(xA)}px`; if(stripB) stripB.style.left=`${Math.round(xB)}px`; }
-
-  function step(){
-    xA-=SPEED;
-    xB-=SPEED;
-    if(xA+stripWidth<0) xA=xB+stripWidth+GAP;
-    if(xB+stripWidth<0) xB=xA+stripWidth+GAP;
-    place();
-  }
-
-  function startCrawl(){
-    stopCrawl();
-    setTimeout(()=>{
-      if(!stripA||!stripB) return;
-      stripWidth=Math.ceil(stripA.getBoundingClientRect().width);
-      if(!stripWidth) return;
-      xA=viewport.clientWidth;
-      xB=xA+stripWidth+GAP;
-      place();
-      timer=setInterval(step,TICK_MS);
-    },60);
-  }
-
   function render(){
     const newsItems=latestNewsItems();
     const transferItems=latestTransferItems();
@@ -103,14 +40,17 @@
     ];
     const finalItems=items.length?[...new Set(items)].slice(0,12):fallback;
     const line=`⚽ ${finalItems.join('     •     ')}     •     `;
-    if(line===lastLine&&stripA&&stripB) return;
+    if(line===lastLine && track.firstElementChild) return;
     lastLine=line;
-    stripA=makeStrip(line);
-    stripB=makeStrip(line);
-    stripA.setAttribute('aria-hidden','false');
-    stripB.setAttribute('aria-hidden','true');
-    track.replaceChildren(stripA,stripB);
-    startCrawl();
+
+    const span=document.createElement('span');
+    span.textContent=line;
+    track.replaceChildren(span);
+
+    // Restart the CSS crawl whenever the content changes.
+    track.classList.remove('is-crawling');
+    void track.offsetWidth;
+    track.classList.add('is-crawling');
   }
 
   async function loadLiveScores(){
@@ -141,8 +81,8 @@
 
   const posts=document.getElementById('dynamic-posts');
   if(posts) new MutationObserver(render).observe(posts,{childList:true,subtree:true});
-  window.addEventListener('resize',()=>{ if(lastLine) startCrawl(); });
 
+  track.classList.add('is-crawling');
   render();
   loadLiveScores();
   loadLatestResult();
