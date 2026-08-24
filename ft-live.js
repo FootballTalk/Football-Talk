@@ -1,19 +1,25 @@
 (() => {
   const track = document.querySelector('.ticker-track');
+  const viewport = document.querySelector('.ticker-viewport');
   const ticker = document.querySelector('.ticker');
-  if (!track) return;
+  if (!track || !viewport) return;
 
   const LIVE_STATUSES = new Set(['1H','2H','ET','BT','P','LIVE','HT']);
   const FINISHED_STATUSES = new Set(['FT','AET','PEN']);
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let liveItems = [];
   let resultItems = [];
-  let tickerAnimation = null;
   let lastLine = '';
+  let firstSegmentWidth = 0;
+  let rafId = null;
+  let lastFrame = 0;
+  let paused = false;
+  const SPEED = 48; // pixels per second
 
-  // Disable the old percentage-based CSS animation. This script measures the
-  // exact width of one complete ticker segment and animates by that distance.
+  // Never use the old transform/keyframe ticker on mobile browsers.
   track.style.animation = 'none';
+  track.style.transform = 'none';
+  viewport.style.scrollBehavior = 'auto';
 
   function clean(text = '') {
     return String(text).replace(/\s+/g, ' ').trim();
@@ -25,7 +31,7 @@
       const title = clean(card.querySelector('h3')?.textContent);
       if (title) items.push(`NEWS: ${title}`);
     });
-    return [...new Set(items)].slice(0, 4);
+    return [...new Set(items)].slice(0, 3);
   }
 
   function latestTransferItems() {
@@ -35,35 +41,49 @@
       const status = clean(card.querySelector('.transfer-status')?.textContent);
       if (title) items.push(`TRANSFER${status ? ` — ${status}` : ''}: ${title}`);
     });
-    return [...new Set(items)].slice(0, 4);
+    return [...new Set(items)].slice(0, 3);
+  }
+
+  function stopTicker() {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = null;
+    lastFrame = 0;
+  }
+
+  function tick(now) {
+    if (!lastFrame) lastFrame = now;
+    const delta = Math.min(50, now - lastFrame);
+    lastFrame = now;
+
+    if (!paused && firstSegmentWidth > 0) {
+      viewport.scrollLeft += (SPEED * delta) / 1000;
+      if (viewport.scrollLeft >= firstSegmentWidth) {
+        viewport.scrollLeft -= firstSegmentWidth;
+      }
+    }
+    rafId = requestAnimationFrame(tick);
   }
 
   function startTicker() {
-    if (tickerAnimation) {
-      tickerAnimation.cancel();
-      tickerAnimation = null;
-    }
-
-    track.style.transform = 'translate3d(0,0,0)';
+    stopTicker();
+    viewport.scrollLeft = 0;
     if (reducedMotion) return;
 
-    const first = track.firstElementChild;
-    if (!first) return;
-
     requestAnimationFrame(() => {
-      const distance = Math.ceil(first.getBoundingClientRect().width);
-      if (!distance) return;
-
-      // Roughly 55px per second keeps the ticker readable while remaining smooth.
-      const duration = Math.max(18000, Math.round((distance / 55) * 1000));
-      tickerAnimation = track.animate(
-        [
-          { transform: 'translate3d(0,0,0)' },
-          { transform: `translate3d(-${distance}px,0,0)` }
-        ],
-        { duration, iterations: Infinity, easing: 'linear' }
-      );
+      const first = track.firstElementChild;
+      firstSegmentWidth = first ? first.getBoundingClientRect().width : 0;
+      if (firstSegmentWidth > 0) rafId = requestAnimationFrame(tick);
     });
+  }
+
+  function buildSegment(line, hidden) {
+    const segment = document.createElement('span');
+    segment.textContent = line;
+    segment.style.display = 'block';
+    segment.style.flex = '0 0 auto';
+    segment.style.whiteSpace = 'nowrap';
+    segment.setAttribute('aria-hidden', hidden ? 'true' : 'false');
+    return segment;
   }
 
   function render() {
@@ -75,20 +95,15 @@
       'TRANSFER: Latest moves and rumours in the Transfer Centre',
       'SCORES: Fixtures, live scores and results update automatically'
     ];
-    const finalItems = items.length ? [...new Set(items)].slice(0, 13) : fallback;
-    const line = `⚽ ${finalItems.join('   •   ')}   •   `;
 
-    // Do not restart the animation unless the actual ticker content changed.
+    // Keep the moving line compact. Extremely long transformed strips are a
+    // known source of clipping in some iPhone in-app browsers.
+    const finalItems = items.length ? [...new Set(items)].slice(0, 9) : fallback;
+    const line = `⚽ ${finalItems.join('   •   ')}   •   `;
     if (line === lastLine && track.children.length === 2) return;
     lastLine = line;
 
-    const first = document.createElement('span');
-    const second = document.createElement('span');
-    first.textContent = line;
-    second.textContent = line;
-    first.setAttribute('aria-hidden', 'false');
-    second.setAttribute('aria-hidden', 'true');
-    track.replaceChildren(first, second);
+    track.replaceChildren(buildSegment(line, false), buildSegment(line, true));
     startTicker();
   }
 
@@ -101,13 +116,9 @@
         (league.fixtures || []).map((fixture) => ({ ...fixture, leagueName: league.name }))
       ).filter((fixture) => LIVE_STATUSES.has(fixture.status));
 
-      liveItems = matches.slice(0, 6).map((fixture) => {
+      liveItems = matches.slice(0, 4).map((fixture) => {
         const score = `${fixture.homeGoals ?? 0}-${fixture.awayGoals ?? 0}`;
-        const matchStatus = fixture.status === 'HT'
-          ? 'HT'
-          : fixture.elapsed
-            ? `LIVE ${fixture.elapsed}'`
-            : 'LIVE';
+        const matchStatus = fixture.status === 'HT' ? 'HT' : fixture.elapsed ? `LIVE ${fixture.elapsed}'` : 'LIVE';
         return `${matchStatus}: ${fixture.home} ${score} ${fixture.away} (${fixture.leagueName})`;
       });
       render();
@@ -135,8 +146,8 @@
   if (posts) new MutationObserver(render).observe(posts, { childList: true, subtree: true });
 
   if (ticker && !reducedMotion) {
-    ticker.addEventListener('mouseenter', () => tickerAnimation?.pause());
-    ticker.addEventListener('mouseleave', () => tickerAnimation?.play());
+    ticker.addEventListener('mouseenter', () => { paused = true; });
+    ticker.addEventListener('mouseleave', () => { paused = false; lastFrame = performance.now(); });
   }
 
   window.addEventListener('resize', () => {
