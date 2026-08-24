@@ -1,1 +1,1 @@
-document.querySelectorAll('.nav a[href^="#"],.quick-nav a[href^="#"]').forEach(link=>{link.setAttribute('target','_blank');link.setAttribute('rel','noopener noreferrer');});
+document.addEventListener('click',function(e){const link=e.target.closest('.nav a[href*="?view="],.quick-nav a[href*="?view="]');if(!link)return;const url=new URL(link.href,window.location.href);const view=url.searchParams.get('view');if(!view)return;e.preventDefault();e.stopImmediatePropagation();window.location.href=`section.html?view=${encodeURIComponent(view)}`;},true);
