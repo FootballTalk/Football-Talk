@@ -1,1 +1,33 @@
-document.addEventListener('DOMContentLoaded',()=>{const nav=document.querySelector('.nav');const quick=document.querySelector('.quick-nav');if(nav&&!nav.querySelector('a[href="tables.html"]')){const a=document.createElement('a');a.href='tables.html';a.textContent='Tables';const follow=nav.querySelector('.nav-cta');nav.insertBefore(a,follow||null);}if(quick&&!quick.querySelector('a[href="tables.html"]')){const a=document.createElement('a');a.href='tables.html';a.textContent='Tables';const follow=[...quick.querySelectorAll('a')].find(x=>x.textContent.trim()==='Follow FT');quick.insertBefore(a,follow||null);}if(nav&&!nav.querySelector('a[href="lineups.html"]')){const a=document.createElement('a');a.href='lineups.html';a.textContent='Lineups';const results=nav.querySelector('a[href="results.html"]');if(results)results.insertAdjacentElement('afterend',a);else nav.insertBefore(a,nav.querySelector('.nav-cta')||null);}if(quick&&!quick.querySelector('a[href="lineups.html"]')){const a=document.createElement('a');a.href='lineups.html';a.textContent='Lineups';const results=quick.querySelector('a[href="results.html"]');if(results)results.insertAdjacentElement('afterend',a);else{const follow=[...quick.querySelectorAll('a')].find(x=>x.textContent.trim()==='Follow FT');quick.insertBefore(a,follow||null);}}const transferSection=document.querySelector('#transfers');if(transferSection){const liveGrid=transferSection.querySelector('.transfer-live .transfer-update-grid');if(liveGrid&&!liveGrid.querySelector('[data-transfer-id="pinnock-coventry-20260824"]')){const card=document.createElement('article');card.className='transfer-update go-update';card.dataset.transferId='pinnock-coventry-20260824';card.innerHTML='<span class="transfer-status">AGREED</span><h4>Coventry — Ethan Pinnock</h4><p>Coventry are reported to have agreed a deal worth about £5m plus add-ons for Brentford defender Ethan Pinnock. The move is now expected to progress towards completion.</p>';liveGrid.appendChild(card);}const grids=transferSection.querySelectorAll('.transfer-update-grid');const updatesGrid=grids[grids.length-1];if(updatesGrid&&!updatesGrid.querySelector('[data-transfer-id="martinelli-alhilal-20260824"]')){const card=document.createElement('article');card.className='transfer-update';card.dataset.transferId='martinelli-alhilal-20260824';card.innerHTML='<span class="transfer-status neutral">ARSENAL</span><h4>Al Hilal step up Martinelli move</h4><p>Al Hilal are pushing to sign Gabriel Martinelli, with the Arsenal winger reported to be open to the move. Talks are advancing, but no final agreement has been confirmed.</p>';updatesGrid.prepend(card);}const updated=transferSection.querySelector('.transfer-live-head small');if(updated)updated.textContent='Updated 24 Aug 2026, 20:22';}}});document.addEventListener('click',function(e){const link=e.target.closest('.nav a[href*="?view="],.quick-nav a[href*="?view="]');if(!link)return;const url=new URL(link.href,window.location.href);const view=url.searchParams.get('view');if(!view)return;e.preventDefault();e.stopImmediatePropagation();window.location.href=`section.html?view=${encodeURIComponent(view)}`;},true);
+document.addEventListener('DOMContentLoaded',()=>{
+  const quick=document.querySelector('.quick-nav');
+  if(!quick)return;
+
+  const style=document.createElement('style');
+  style.textContent=`
+    .quick-nav{background:#0b0b0e!important;border-bottom:1px solid #2b2b31!important;gap:0!important;padding:0 10px!important;align-items:stretch!important}
+    .quick-nav a{position:relative!important;background:transparent!important;color:#fff!important;border:0!important;border-radius:0!important;padding:14px 16px 16px!important;font-weight:800!important;max-width:none!important}
+    .quick-nav a:hover,.quick-nav a:focus-visible{background:#17171b!important;color:#fff!important}
+    .quick-nav a.active-tab::after{content:'';position:absolute;left:10px;right:10px;bottom:0;height:5px;background:#f7c600}
+    @media(max-width:900px){.quick-nav{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:0!important;padding:0 4px!important}.quick-nav a{min-width:0!important;width:100%!important;padding:11px 3px 13px!important;font-size:11px!important;line-height:1.1!important}.quick-nav a.active-tab::after{left:5px;right:5px;height:4px}}
+  `;
+  document.head.appendChild(style);
+
+  const links=[...quick.querySelectorAll('a')];
+  const setActive=link=>links.forEach(a=>a.classList.toggle('active-tab',a===link));
+  const latest=links.find(a=>a.textContent.trim()==='Latest');
+  if(latest)setActive(latest);
+  links.forEach(link=>{
+    link.addEventListener('pointerdown',()=>setActive(link));
+    link.addEventListener('focus',()=>setActive(link));
+  });
+});
+
+document.addEventListener('click',e=>{
+  const link=e.target.closest('.nav a[href*="?view="],.quick-nav a[href*="?view="]');
+  if(!link)return;
+  const url=new URL(link.href,window.location.href);
+  const view=url.searchParams.get('view');
+  if(!view)return;
+  e.preventDefault();
+  window.location.href=`section.html?view=${encodeURIComponent(view)}`;
+},true);
