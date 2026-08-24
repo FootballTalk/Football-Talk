@@ -9,17 +9,21 @@
   let resultItems = [];
   let currentItems = [];
   let currentIndex = 0;
-  let rotateTimer = null;
+  let activeAnimation = null;
+  let animationToken = 0;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // Use a single rotating headline instead of a continuously scrolling strip.
-  // This avoids clipping in iPhone/Google in-app browsers.
+  // One complete headline moves across the viewport at a time. This keeps the
+  // traditional scrolling ticker look without creating an extremely wide strip.
   track.style.animation = 'none';
   track.style.transform = 'none';
   track.style.width = '100%';
   track.style.maxWidth = '100%';
-  track.style.display = 'flex';
-  track.style.justifyContent = 'center';
+  track.style.display = 'block';
+  track.style.position = 'relative';
+  track.style.overflow = 'visible';
   viewport.style.overflow = 'hidden';
+  viewport.style.position = 'relative';
   viewport.scrollLeft = 0;
 
   function clean(text = '') {
@@ -45,35 +49,82 @@
     return [...new Set(items)].slice(0, 4);
   }
 
-  function showItem(index) {
-    if (!currentItems.length) return;
-    currentIndex = ((index % currentItems.length) + currentItems.length) % currentItems.length;
+  function stopAnimation() {
+    animationToken += 1;
+    if (activeAnimation) {
+      activeAnimation.cancel();
+      activeAnimation = null;
+    }
+  }
 
+  function showStaticItem(text) {
+    stopAnimation();
     const item = document.createElement('span');
-    item.textContent = `⚽ ${currentItems[currentIndex]}`;
+    item.textContent = `⚽ ${text}`;
     item.style.display = 'block';
     item.style.width = '100%';
-    item.style.maxWidth = '100%';
     item.style.padding = '11px 18px';
     item.style.whiteSpace = 'normal';
-    item.style.overflowWrap = 'anywhere';
     item.style.textAlign = 'center';
     item.style.fontWeight = '800';
     item.style.lineHeight = '1.35';
-    item.style.opacity = '0';
-    item.style.transition = 'opacity .25s ease';
-
     track.replaceChildren(item);
-    requestAnimationFrame(() => { item.style.opacity = '1'; });
   }
 
-  function restartRotation() {
-    if (rotateTimer) clearInterval(rotateTimer);
-    rotateTimer = null;
-    showItem(currentIndex);
-    if (currentItems.length > 1) {
-      rotateTimer = window.setInterval(() => showItem(currentIndex + 1), 5000);
+  function scrollCurrentItem() {
+    if (!currentItems.length) return;
+    if (reducedMotion) {
+      showStaticItem(currentItems[currentIndex]);
+      return;
     }
+
+    stopAnimation();
+    const myToken = animationToken;
+    const text = currentItems[currentIndex];
+    const item = document.createElement('span');
+    item.textContent = `⚽ ${text}`;
+    item.style.position = 'absolute';
+    item.style.left = '0';
+    item.style.top = '0';
+    item.style.display = 'block';
+    item.style.width = 'max-content';
+    item.style.maxWidth = 'none';
+    item.style.padding = '11px 24px';
+    item.style.whiteSpace = 'nowrap';
+    item.style.fontWeight = '800';
+    item.style.lineHeight = '1.35';
+    item.style.willChange = 'transform';
+    track.replaceChildren(item);
+
+    requestAnimationFrame(() => {
+      if (myToken !== animationToken) return;
+      const viewportWidth = viewport.clientWidth;
+      const itemWidth = Math.ceil(item.getBoundingClientRect().width);
+      if (!viewportWidth || !itemWidth) return;
+
+      // Start fully beyond the right edge and finish fully beyond the left edge.
+      const startX = viewportWidth + 16;
+      const endX = -(itemWidth + 16);
+      const distance = startX - endX;
+      const speed = 52; // pixels per second
+      const duration = Math.max(7000, Math.round((distance / speed) * 1000));
+
+      item.style.transform = `translate3d(${startX}px,0,0)`;
+      activeAnimation = item.animate(
+        [
+          { transform: `translate3d(${startX}px,0,0)` },
+          { transform: `translate3d(${endX}px,0,0)` }
+        ],
+        { duration, easing: 'linear', fill: 'forwards' }
+      );
+
+      activeAnimation.onfinish = () => {
+        if (myToken !== animationToken) return;
+        activeAnimation = null;
+        currentIndex = (currentIndex + 1) % currentItems.length;
+        scrollCurrentItem();
+      };
+    });
   }
 
   function render() {
@@ -91,7 +142,7 @@
     currentItems = nextItems;
     if (!changed && track.firstElementChild) return;
     currentIndex = 0;
-    restartRotation();
+    scrollCurrentItem();
   }
 
   async function loadLiveScores() {
@@ -131,6 +182,10 @@
 
   const posts = document.getElementById('dynamic-posts');
   if (posts) new MutationObserver(render).observe(posts, { childList: true, subtree: true });
+
+  window.addEventListener('resize', () => {
+    if (currentItems.length) scrollCurrentItem();
+  });
 
   render();
   loadLiveScores();
