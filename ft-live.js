@@ -1,5 +1,5 @@
 (() => {
-  const track = document.querySelector('.ticker-track span');
+  const track = document.querySelector('.ticker-track');
   if (!track) return;
 
   const LIVE_STATUSES = new Set(['1H','2H','ET','BT','P','LIVE','HT']);
@@ -14,14 +14,12 @@
   function latestSiteItems() {
     const items = [];
 
-    // Newest published stories rendered on the homepage.
     document.querySelectorAll('#dynamic-posts .post-card').forEach((card) => {
       const title = clean(card.querySelector('h3')?.textContent);
       const tag = clean(card.querySelector('.tag')?.textContent);
       if (title) items.push(`${tag ? `${tag}: ` : ''}${title}`);
     });
 
-    // Current transfer-centre updates are always useful in FT LIVE.
     document.querySelectorAll('.transfer-live .transfer-update').forEach((card) => {
       const title = clean(card.querySelector('h4')?.textContent);
       const status = clean(card.querySelector('.transfer-status')?.textContent);
@@ -40,8 +38,16 @@
     ];
     const finalItems = items.length ? items : fallback;
     const line = `⚽ ${finalItems.join('   •   ')}   •   `;
-    // Duplicate the line for a seamless ticker loop.
-    track.textContent = `${line}${line}`;
+
+    // Two genuinely identical segments make the -50% animation point exact,
+    // preventing clipping/jumping when the ticker loops on mobile browsers.
+    const first = document.createElement('span');
+    const second = document.createElement('span');
+    first.textContent = line;
+    second.textContent = line;
+    first.setAttribute('aria-hidden', 'false');
+    second.setAttribute('aria-hidden', 'true');
+    track.replaceChildren(first, second);
   }
 
   async function loadLiveScores() {
@@ -79,7 +85,6 @@
     } catch (_) {}
   }
 
-  // Rebuild when homepage stories are injected from the publishing feed.
   const posts = document.getElementById('dynamic-posts');
   if (posts) new MutationObserver(render).observe(posts, { childList: true, subtree: true });
 
