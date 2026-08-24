@@ -34,14 +34,23 @@ function apiErrors(data) {
   return [String(data.errors)];
 }
 
-async function fetchLeague({ id, name }, apiKey, from, to, season) {
-  const url = new URL(`${API_BASE}/fixtures`);
-  url.searchParams.set('league', String(id));
-  url.searchParams.set('season', String(season));
-  url.searchParams.set('from', from);
-  url.searchParams.set('to', to);
-  url.searchParams.set('timezone', 'Europe/London');
+function mapFixture(item) {
+  return {
+    id: item.fixture?.id,
+    date: item.fixture?.date,
+    timestamp: item.fixture?.timestamp,
+    status: item.fixture?.status?.short,
+    elapsed: item.fixture?.status?.elapsed,
+    home: item.teams?.home?.name,
+    away: item.teams?.away?.name,
+    homeLogo: item.teams?.home?.logo,
+    awayLogo: item.teams?.away?.logo,
+    homeGoals: item.goals?.home,
+    awayGoals: item.goals?.away,
+  };
+}
 
+async function readApi(url, apiKey, label) {
   const response = await fetch(url, {
     headers: {
       'x-apisports-key': apiKey,
@@ -54,32 +63,40 @@ async function fetchLeague({ id, name }, apiKey, from, to, season) {
     data = await response.json();
   } catch {
     const text = await response.text().catch(() => '');
-    throw new Error(`${name}: API-Football returned HTTP ${response.status}${text ? ` - ${text.slice(0, 200)}` : ''}`);
+    throw new Error(`${label}: API-Football returned HTTP ${response.status}${text ? ` - ${text.slice(0, 200)}` : ''}`);
   }
 
   const errors = apiErrors(data);
   if (!response.ok || errors.length) {
     const detail = errors.length ? errors.join('; ') : `HTTP ${response.status}`;
-    throw new Error(`${name}: ${detail}`);
+    throw new Error(`${label}: ${detail}`);
   }
+  return data.response || [];
+}
 
-  return {
-    id,
-    name,
-    fixtures: (data.response || []).map((item) => ({
-      id: item.fixture?.id,
-      date: item.fixture?.date,
-      timestamp: item.fixture?.timestamp,
-      status: item.fixture?.status?.short,
-      elapsed: item.fixture?.status?.elapsed,
-      home: item.teams?.home?.name,
-      away: item.teams?.away?.name,
-      homeLogo: item.teams?.home?.logo,
-      awayLogo: item.teams?.away?.logo,
-      homeGoals: item.goals?.home,
-      awayGoals: item.goals?.away,
-    })),
-  };
+async function fetchLeague({ id, name }, apiKey, from, to, season) {
+  const url = new URL(`${API_BASE}/fixtures`);
+  url.searchParams.set('league', String(id));
+  url.searchParams.set('season', String(season));
+  url.searchParams.set('from', from);
+  url.searchParams.set('to', to);
+  url.searchParams.set('timezone', 'Europe/London');
+  const response = await readApi(url, apiKey, name);
+  return { id, name, fixtures: response.map(mapFixture) };
+}
+
+async function fetchLive(apiKey) {
+  const url = new URL(`${API_BASE}/fixtures`);
+  url.searchParams.set('live', 'all');
+  url.searchParams.set('timezone', 'Europe/London');
+  const response = await readApi(url, apiKey, 'Live scores');
+
+  return LEAGUES.map((league) => ({
+    ...league,
+    fixtures: response
+      .filter((item) => Number(item.league?.id) === league.id)
+      .map(mapFixture),
+  }));
 }
 
 export default async function handler(req, res) {
@@ -98,14 +115,20 @@ export default async function handler(req, res) {
   const from = londonDateString(now);
   const to = londonDateString(end);
   const season = seasonFor(now);
+  const liveOnly = String(req.query?.live || '') === '1';
 
   try {
-    const results = await Promise.all(
-      LEAGUES.map((league) => fetchLeague(league, apiKey.trim(), from, to, season))
-    );
+    const results = liveOnly
+      ? await fetchLive(apiKey.trim())
+      : await Promise.all(LEAGUES.map((league) => fetchLeague(league, apiKey.trim(), from, to, season)));
 
-    res.setHeader('Cache-Control', 'public, s-maxage=21600, stale-while-revalidate=43200');
-    return res.status(200).json({ from, to, season, leagues: results });
+    res.setHeader(
+      'Cache-Control',
+      liveOnly
+        ? 'public, s-maxage=60, stale-while-revalidate=60'
+        : 'public, s-maxage=900, stale-while-revalidate=1800'
+    );
+    return res.status(200).json({ from, to, season, live: liveOnly, leagues: results });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('API-Football fixtures error:', message);
