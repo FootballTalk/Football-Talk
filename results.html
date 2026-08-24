@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f7c600">
+<title>Results | Football Talk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--yellow:#f7c600;--black:#0b0b0e}*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f4f4f4;color:#111}.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;background:var(--black);color:#fff;border-bottom:4px solid var(--yellow);padding:14px 18px}.brand{display:flex;align-items:center;gap:12px}.mark{display:flex;align-items:center;justify-content:center;width:46px;height:46px;background:var(--yellow);color:#000;font-family:'Archivo Black';font-size:23px;transform:skew(-8deg)}.brand strong{font-family:'Archivo Black';display:block}.brand small{font-size:10px;letter-spacing:1.2px;color:#ccc}.close{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--yellow);color:#000;font-size:34px;font-weight:900;text-decoration:none}.wrap{max-width:1000px;margin:auto;padding:34px 18px 70px}.eyebrow{font-size:12px;font-weight:900;letter-spacing:2px;color:#8a6e00}.title{font-family:'Archivo Black';font-size:clamp(38px,7vw,70px);margin:4px 0 8px}.sub{color:#666;margin:0 0 26px;line-height:1.5}.status{font-size:13px;font-weight:800;margin-bottom:24px}.result-list{display:grid;gap:14px}.result-card{background:#fff;border-top:5px solid var(--yellow);box-shadow:0 8px 20px rgba(0,0,0,.06);padding:14px 16px}.result-meta{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:#666;font-weight:700;margin-bottom:10px}.result-row{display:grid;grid-template-columns:minmax(0,1fr) 90px minmax(0,1fr);align-items:center;gap:12px}.team{font-weight:900}.home{text-align:right}.away{text-align:left}.score{text-align:center;background:#111;color:#fff;font-family:'Archivo Black';font-size:18px;padding:9px 6px}.empty{background:#fff;border-top:5px solid var(--yellow);padding:18px;box-shadow:0 8px 20px rgba(0,0,0,.06)}@media(max-width:600px){.wrap{padding:24px 10px 60px}.title{font-size:42px}.brand small{display:none}.result-row{grid-template-columns:minmax(0,1fr) 70px minmax(0,1fr);gap:8px}.team{font-size:13px}.score{font-size:16px}}
+</style>
+</head><body>
+<header class="top"><div class="brand"><span class="mark">FT</span><span><strong>FOOTBALL TALK</strong><small>WHERE FANS HAVE THEIR SAY</small></span></div><a class="close" href="./" aria-label="Close results and return to Football Talk">×</a></header>
+<main class="wrap"><p class="eyebrow">LATEST FIRST</p><h1 class="title">Results</h1><p class="sub">Premier League and EFL Championship full-time scores, with the most recently completed matches shown first.</p><div id="results-status" class="status">Loading latest results…</div><section id="results-list" class="result-list"></section></main>
+<script>
+(() => {
+  const FINISHED = new Set(['FT','AET','PEN']);
+  const statusEl = document.getElementById('results-status');
+  const listEl = document.getElementById('results-list');
+  const fmtDate = (iso) => new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(iso));
+  async function loadResults(){
+    try{
+      const response = await fetch(`/api/fixtures?results=1&t=${Date.now()}`,{cache:'no-store'});
+      if(!response.ok) throw new Error('Results feed unavailable');
+      const data = await response.json();
+      const leagueMap = new Map((data.leagues||[]).map(l=>[l.id,l.name]));
+      const results = (data.leagues||[]).flatMap(l=>(l.fixtures||[]).map(f=>({...f,leagueName:leagueMap.get(l.id)||l.name}))).filter(f=>FINISHED.has(f.status)).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+      listEl.replaceChildren();
+      if(!results.length){
+        const empty=document.createElement('div');empty.className='empty';empty.textContent='No full-time results are available yet.';listEl.appendChild(empty);statusEl.textContent='Waiting for the next full-time score.';return;
+      }
+      results.forEach(f=>{
+        const card=document.createElement('article');card.className='result-card';
+        const meta=document.createElement('div');meta.className='result-meta';meta.innerHTML=`<span>${f.leagueName}</span><span>${fmtDate(f.date)}</span>`;
+        const row=document.createElement('div');row.className='result-row';
+        const home=document.createElement('div');home.className='team home';home.textContent=f.home||'';
+        const score=document.createElement('div');score.className='score';score.textContent=`${f.homeGoals ?? '-'}–${f.awayGoals ?? '-'}`;
+        const away=document.createElement('div');away.className='team away';away.textContent=f.away||'';
+        row.append(home,score,away);card.append(meta,row);listEl.appendChild(card);
+      });
+      statusEl.textContent=`Showing ${results.length} full-time result${results.length===1?'':'s'} · latest first`;
+    }catch(error){
+      statusEl.textContent='Results are temporarily unavailable.';
+      const empty=document.createElement('div');empty.className='empty';empty.textContent='Football Talk could not load the results feed right now.';listEl.replaceChildren(empty);
+    }
+  }
+  loadResults();
+  setInterval(loadResults,120000);
+})();
+</script>
+</body></html>
