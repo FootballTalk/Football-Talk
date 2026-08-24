@@ -40,13 +40,16 @@
     const score = scoreReady ? `${fixture.homeGoals}-${fixture.awayGoals}` : '0-0';
     const status = fixture.status || 'NS';
 
-    if (LIVE_STATUSES.has(status)) return { text: `${score} LIVE`, live: true, finished: false };
-    if (status === 'HT') return { text: `${score} HT`, live: true, finished: false };
-    if (FINISHED_STATUSES.has(status)) return { text: `${score} FT`, live: false, finished: true };
-    if (status === 'PST') return { text: 'POSTPONED', live: false, finished: false };
-    if (status === 'CANC') return { text: 'CANCELLED', live: false, finished: false };
-    if (status === 'SUSP') return { text: `${score} SUSP`, live: false, finished: false };
-    if (status === 'ABD') return { text: `${score} ABD`, live: false, finished: false };
+    if (LIVE_STATUSES.has(status)) {
+      const minute = fixture.elapsed ? `${fixture.elapsed}'` : '';
+      return { score, sub: `LIVE${minute ? ` · ${minute}` : ''}`, live: true, finished: false };
+    }
+    if (status === 'HT') return { score, sub: 'HT', live: true, finished: false };
+    if (FINISHED_STATUSES.has(status)) return { score, sub: 'FT', live: false, finished: true };
+    if (status === 'PST') return { score: 'POSTPONED', sub: '', live: false, finished: false };
+    if (status === 'CANC') return { score: 'CANCELLED', sub: '', live: false, finished: false };
+    if (status === 'SUSP') return { score, sub: 'SUSP', live: false, finished: false };
+    if (status === 'ABD') return { score, sub: 'ABD', live: false, finished: false };
     return null;
   }
 
@@ -55,8 +58,10 @@
     const style = document.createElement('style');
     style.id = 'ft-live-score-styles';
     style.textContent = `
-      .time.is-live{background:#d80000!important;color:#fff!important;box-shadow:0 0 0 2px rgba(216,0,0,.14);animation:ftLivePulse 1.8s ease-in-out infinite}
-      .time.is-finished{background:#111!important;color:#fff!important}
+      .time.is-live{background:#d80000!important;color:#fff!important;box-shadow:0 0 0 2px rgba(216,0,0,.14);animation:ftLivePulse 1.8s ease-in-out infinite;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;padding-top:5px;padding-bottom:5px}
+      .time.is-finished{background:#111!important;color:#fff!important;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;padding-top:5px;padding-bottom:5px}
+      .ft-score-main{font-weight:900;font-size:1.08em;white-space:nowrap}
+      .ft-score-sub{display:block;margin-top:3px;font-size:.62em;font-weight:800;letter-spacing:.04em;white-space:nowrap}
       .fixture-live{background:#fff9d9}
       @keyframes ftLivePulse{0%,100%{opacity:1}50%{opacity:.78}}
     `;
@@ -77,7 +82,17 @@
       if (!display) return;
 
       if (!box.dataset.kickoff) box.dataset.kickoff = box.textContent.trim();
-      box.textContent = display.text;
+      box.replaceChildren();
+      const scoreLine = document.createElement('span');
+      scoreLine.className = 'ft-score-main';
+      scoreLine.textContent = display.score;
+      box.appendChild(scoreLine);
+      if (display.sub) {
+        const subLine = document.createElement('span');
+        subLine.className = 'ft-score-sub';
+        subLine.textContent = display.sub;
+        box.appendChild(subLine);
+      }
       box.classList.toggle('is-live', display.live);
       box.classList.toggle('is-finished', display.finished);
       row.classList.toggle('fixture-live', display.live);
