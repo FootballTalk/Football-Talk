@@ -54,6 +54,24 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(copy) copy.textContent='Live coverage for the Premier League, Championship, Carabao Cup and FA Cup, updated automatically throughout matchdays.';
   }
 
+  // Keep the automatic debate feed fresh without disabling manually published polls/debates.
+  const staleDebateTitles=new Set([
+    'Who wins the Premier League this season?',
+    'Poll: Which summer signing will make the biggest impact?',
+    'VAR: improving football or still causing too much frustration?'
+  ]);
+  const removeStaleDebates=()=>{
+    const debatePosts=document.getElementById('debate-posts');
+    if(!debatePosts)return;
+    debatePosts.querySelectorAll('.post-card').forEach(card=>{
+      const title=card.querySelector('h3')?.textContent?.trim();
+      if(staleDebateTitles.has(title)) card.remove();
+    });
+  };
+  removeStaleDebates();
+  const debatePosts=document.getElementById('debate-posts');
+  if(debatePosts) new MutationObserver(removeStaleDebates).observe(debatePosts,{childList:true,subtree:true});
+
   document.querySelectorAll('.ticker-track span').forEach(span=>{
     span.textContent='⚽ FT LIVE — Loading the latest football news, transfers and live match scores…';
   });
