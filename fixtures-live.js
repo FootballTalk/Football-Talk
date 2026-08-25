@@ -133,11 +133,11 @@
     });
   }
 
-  async function fetchScores(liveOnly) {
+  async function fetchScores(mode = 'fixtures') {
     try {
-      const liveQuery = liveOnly ? '?live=1' : '';
-      const joiner = liveQuery ? '&' : '?';
-      const response = await fetch(`/api/fixtures${liveQuery}${joiner}t=${Date.now()}`, { cache: 'no-store' });
+      const query = mode === 'live' ? '?live=1' : mode === 'results' ? '?results=1' : '';
+      const joiner = query ? '&' : '?';
+      const response = await fetch(`/api/fixtures${query}${joiner}t=${Date.now()}`, { cache: 'no-store' });
       if (!response.ok) return;
       applyData(await response.json());
     } catch (error) {
@@ -148,9 +148,11 @@
   document.addEventListener('DOMContentLoaded', () => {
     sortFixtureDays();
     addLiveStyles();
-    fetchScores(false);
-    fetchScores(true);
-    window.setInterval(() => fetchScores(true), REFRESH_MS);
-    window.setInterval(() => fetchScores(false), 15 * 60 * 1000);
+    fetchScores('fixtures');
+    fetchScores('results');
+    fetchScores('live');
+    window.setInterval(() => fetchScores('live'), REFRESH_MS);
+    window.setInterval(() => fetchScores('results'), 2 * 60 * 1000);
+    window.setInterval(() => fetchScores('fixtures'), 15 * 60 * 1000);
   });
 })();
