@@ -22,21 +22,28 @@ document.addEventListener('DOMContentLoaded',()=>{
     const results=[...container.querySelectorAll('a')].find(a=>a.textContent.trim()==='Results');
     if(results) container.insertBefore(link,results); else container.appendChild(link);
   };
+  const addSuperSixLink=(container,label='Super Six')=>{
+    if(!container||container.querySelector('a[href="super-six.html"]'))return;
+    const link=document.createElement('a');
+    link.href='super-six.html';
+    link.textContent=label;
+    const debate=[...container.querySelectorAll('a')].find(a=>['Fan Debate','Debate'].includes(a.textContent.trim()));
+    if(debate) debate.insertAdjacentElement('afterend',link); else container.appendChild(link);
+  };
   const nav=document.querySelector('.nav');
   const quick=document.querySelector('.quick-nav');
   addStatsLink(nav);
   addStatsLink(quick,'Stats');
   addCupsLink(nav);
   addCupsLink(quick);
+  addSuperSixLink(nav);
+  addSuperSixLink(quick,'Super 6');
 
-  // The Automatic Transfer Wire is the single visible source of transfer stories.
-  // Remove legacy seeded lists from the DOM rather than leaving stale cards behind it.
   const transfers=document.getElementById('transfers');
   if(transfers){
     transfers.querySelectorAll('.transfer-update-grid,.transfer-live-head,.latest-transfer-head,#transfer-stories').forEach(el=>el.remove());
   }
 
-  // Keep Matchday focused on the live centre rather than old admin/story wording.
   const matchday=document.getElementById('matchday');
   if(matchday){
     const strong=matchday.querySelector('.scoreboard strong');
@@ -47,7 +54,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(copy) copy.textContent='Live coverage for the Premier League, Championship, Carabao Cup and FA Cup, updated automatically throughout matchdays.';
   }
 
-  // Replace stale hard-coded ticker text immediately while the live ticker loads.
   document.querySelectorAll('.ticker-track span').forEach(span=>{
     span.textContent='⚽ FT LIVE — Loading the latest football news, transfers and live match scores…';
   });
@@ -67,8 +73,13 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   const links=[...quick.querySelectorAll('a')];
   const setActive=link=>links.forEach(a=>a.classList.toggle('active-tab',a===link));
+  const currentPath=(location.pathname.split('/').pop()||'').toLowerCase();
+  const current=links.find(a=>{
+    const href=(a.getAttribute('href')||'').toLowerCase();
+    return currentPath && href.includes(currentPath);
+  });
   const latest=links.find(a=>a.textContent.trim()==='Latest');
-  if(latest)setActive(latest);
+  setActive(current||latest);
   links.forEach(link=>{
     link.addEventListener('pointerdown',()=>setActive(link));
     link.addEventListener('focus',()=>setActive(link));
