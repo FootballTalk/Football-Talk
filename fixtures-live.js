@@ -35,6 +35,40 @@
     return normalise(home) === normalise(apiFixture.home) && normalise(away) === normalise(apiFixture.away);
   }
 
+  function parseFixtureDay(label = '') {
+    const cleaned = String(label).replace(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+/i, '').trim();
+    const now = new Date();
+    const candidates = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1]
+      .map(year => new Date(`${cleaned} ${year} 12:00:00`))
+      .filter(date => !Number.isNaN(date.getTime()));
+    if (!candidates.length) return null;
+    return candidates.sort((a, b) => Math.abs(a - now) - Math.abs(b - now))[0];
+  }
+
+  function sortFixtureDays() {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    document.querySelectorAll('.league-panel').forEach(panel => {
+      const days = [...panel.querySelectorAll(':scope > .day')];
+      if (days.length < 2) return;
+
+      const sorted = days.sort((a, b) => {
+        const dateA = parseFixtureDay(a.querySelector('h3')?.textContent || '');
+        const dateB = parseFixtureDay(b.querySelector('h3')?.textContent || '');
+        if (!dateA || !dateB) return 0;
+
+        const aPast = dateA < today;
+        const bPast = dateB < today;
+        if (aPast !== bPast) return aPast ? 1 : -1;
+
+        return aPast ? dateB - dateA : dateA - dateB;
+      });
+
+      sorted.forEach(day => panel.appendChild(day));
+    });
+  }
+
   function displayStatus(fixture) {
     const scoreReady = fixture.homeGoals != null && fixture.awayGoals != null;
     const score = scoreReady ? `${fixture.homeGoals}-${fixture.awayGoals}` : '0-0';
@@ -112,6 +146,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    sortFixtureDays();
     addLiveStyles();
     fetchScores(false);
     fetchScores(true);
