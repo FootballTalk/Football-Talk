@@ -47,7 +47,7 @@
     const clean = (text='') => String(text).replace(/\s+/g,' ').trim();
     const isFeaturedLeague = (leagueName='') => {
       const name = clean(leagueName).toLowerCase();
-      return name === 'premier league' || name.includes('premier league') || name === 'championship' || name.includes('championship');
+      return name.includes('premier league') || name.includes('championship') || name.includes('carabao cup') || name === 'fa cup' || name.includes('fa cup');
     };
     const isLaunchStory = (title='') => {
       const name=clean(title).toLowerCase();
@@ -58,6 +58,13 @@
       if(!name) return false;
       const blocked=['fans have their say','where fans have their say','football talk'];
       return !blocked.includes(name) && !isLaunchStory(name);
+    };
+    const newsPrefix = item => {
+      if(clean(item.type)!=='TRANSFER') return 'NEWS';
+      if(item.stage==='OFFICIAL') return 'DEAL DONE';
+      if(item.stage==='ITS_A_GO') return "IT'S A GO!";
+      if(item.stage==='DEVELOPING') return 'TRANSFER UPDATE';
+      return 'TRANSFER GOSSIP';
     };
     function removeLaunchStoryFromLatest(){
       const feed=document.getElementById('dynamic-posts');
@@ -109,7 +116,7 @@
         const items=[...resultItems,...automaticNewsItems,...dynamicNews,...dynamicTransfers];
         finalItems=[...new Set(items)].slice(0,10);
       }
-      const fallback=matchMode?'LIVE MATCHES: Updating Premier League and Championship scores':'NEWS: Football Talk live updates are loading';
+      const fallback=matchMode?'LIVE MATCHES: Updating league and cup scores':'NEWS: Football Talk live updates are loading';
       const line=`⚽ ${(finalItems.length?finalItems:[fallback]).join('     •     ')}     •     `;
       if(line===lastLine) return;
       lastLine=line;
@@ -129,10 +136,9 @@
         const response=await fetch(`/api/news?t=${Date.now()}`,{cache:'no-store'});
         if(!response.ok) return;
         const data=await response.json();
-        automaticNewsItems=(data.items||[]).slice(0,6).map(item=>{
-          const type=clean(item.type)==='TRANSFER'?'TRANSFER':'NEWS';
+        automaticNewsItems=(data.items||[]).slice(0,8).map(item=>{
           const title=clean(item.title);
-          return isTickerWorthyTitle(title)?`${type}: ${title} — FT`:'';
+          return isTickerWorthyTitle(title)?`${newsPrefix(item)}: ${title} — FT`:'';
         }).filter(Boolean);
         if(!matchMode) render();
       }catch(_){}
@@ -140,17 +146,24 @@
 
     async function loadLiveScores(){
       try{
-        const response=await fetch(`/api/fixtures?live=1&t=${Date.now()}`,{cache:'no-store'});
-        if(!response.ok) return;
-        const data=await response.json();
-        const matches=(data.leagues||[])
-          .flatMap(league=>(league.fixtures||[]).map(fixture=>({...fixture,leagueName:league.name})))
-          .filter(fixture=>LIVE_STATUSES.has(fixture.status) && isFeaturedLeague(fixture.leagueName));
-        liveItems=matches.map(fixture=>{
-          const score=`${fixture.homeGoals??0}-${fixture.awayGoals??0}`;
-          const matchStatus=fixture.status==='HT'?'HT':fixture.elapsed?`LIVE ${fixture.elapsed}'`:'LIVE';
-          return `${matchStatus}: ${fixture.home} ${score} ${fixture.away} (${fixture.leagueName})`;
-        });
+        const [leagueResult,cupResult]=await Promise.allSettled([
+          fetch(`/api/fixtures?live=1&t=${Date.now()}`,{cache:'no-store'}).then(r=>r.ok?r.json():null),
+          fetch(`/api/cups?live=1&t=${Date.now()}`,{cache:'no-store'}).then(r=>r.ok?r.json():null)
+        ]);
+        const matches=[];
+        if(leagueResult.status==='fulfilled' && leagueResult.value){
+          matches.push(...(leagueResult.value.leagues||[]).flatMap(league=>(league.fixtures||[]).map(fixture=>({...fixture,leagueName:league.name}))));
+        }
+        if(cupResult.status==='fulfilled' && cupResult.value){
+          matches.push(...(cupResult.value.cups||[]).flatMap(cup=>(cup.fixtures||[]).map(fixture=>({...fixture,leagueName:cup.name}))));
+        }
+        liveItems=matches
+          .filter(fixture=>LIVE_STATUSES.has(fixture.status) && isFeaturedLeague(fixture.leagueName))
+          .map(fixture=>{
+            const score=`${fixture.homeGoals??0}-${fixture.awayGoals??0}`;
+            const matchStatus=fixture.status==='HT'?'HT':fixture.elapsed?`LIVE ${fixture.elapsed}'`:'LIVE';
+            return `${matchStatus}: ${fixture.home} ${score} ${fixture.away} (${fixture.leagueName})`;
+          });
         matchMode=liveItems.length>0;
         render();
       }catch(_){}
@@ -158,11 +171,19 @@
 
     async function loadLatestResult(){
       try{
-        const response=await fetch(`/api/fixtures?results=1&t=${Date.now()}`,{cache:'no-store'});
-        if(!response.ok) return;
-        const data=await response.json();
-        const results=(data.leagues||[]).flatMap(league=>(league.fixtures||[]).map(fixture=>({...fixture,leagueName:league.name}))).filter(fixture=>FINISHED_STATUSES.has(fixture.status)).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
-        resultItems=results.length?[`LATEST RESULT: ${results[0].home} ${results[0].homeGoals??'-'}-${results[0].awayGoals??'-'} ${results[0].away} (${results[0].leagueName})`]:[];
+        const [leagueResult,cupResult]=await Promise.allSettled([
+          fetch(`/api/fixtures?results=1&t=${Date.now()}`,{cache:'no-store'}).then(r=>r.ok?r.json():null),
+          fetch(`/api/cups?t=${Date.now()}`,{cache:'no-store'}).then(r=>r.ok?r.json():null)
+        ]);
+        const results=[];
+        if(leagueResult.status==='fulfilled' && leagueResult.value){
+          results.push(...(leagueResult.value.leagues||[]).flatMap(league=>(league.fixtures||[]).map(fixture=>({...fixture,leagueName:league.name}))));
+        }
+        if(cupResult.status==='fulfilled' && cupResult.value){
+          results.push(...(cupResult.value.cups||[]).flatMap(cup=>(cup.fixtures||[]).map(fixture=>({...fixture,leagueName:cup.name}))));
+        }
+        const finished=results.filter(fixture=>FINISHED_STATUSES.has(fixture.status) && isFeaturedLeague(fixture.leagueName)).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+        resultItems=finished.length?[`LATEST RESULT: ${finished[0].home} ${finished[0].homeGoals??'-'}-${finished[0].awayGoals??'-'} ${finished[0].away} (${finished[0].leagueName})`]:[];
         if(!matchMode) render();
       }catch(_){}
     }
