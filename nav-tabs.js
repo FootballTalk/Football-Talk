@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded',()=>{
   if(!document.querySelector('script[data-auto-editorial]')){
     const autoEditorial=document.createElement('script');
-    autoEditorial.src='auto-editorial.js?v=20260825-2';
+    autoEditorial.src='auto-editorial.js?v=20260825-4';
     autoEditorial.dataset.autoEditorial='1';
     document.body.appendChild(autoEditorial);
   }
@@ -29,13 +29,11 @@ document.addEventListener('DOMContentLoaded',()=>{
   addCupsLink(nav);
   addCupsLink(quick);
 
-  // The transfer section is now driven by auto-editorial.js only.
-  // Hide legacy hard-coded transfer cards so stale stories cannot remain visible.
-  const transferLive=document.querySelector('.transfer-live');
-  if(transferLive){
-    transferLive.querySelectorAll('.transfer-update-grid').forEach(grid=>grid.classList.add('auto-hidden'));
-    const head=transferLive.querySelector('.transfer-live-head');
-    if(head) head.classList.add('auto-hidden');
+  // Automatic Transfer Wire is now the primary transfer feed.
+  // Keep the intro panel, but remove all old seeded/hard-coded transfer lists.
+  const transfers=document.getElementById('transfers');
+  if(transfers){
+    transfers.querySelectorAll('.transfer-update-grid,.transfer-live-head,.latest-transfer-head,#transfer-stories').forEach(el=>el.classList.add('auto-hidden'));
   }
 
   if(!quick)return;
