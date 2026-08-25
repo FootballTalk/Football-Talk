@@ -7,6 +7,7 @@
   const esc = (value='') => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
   const clean = (value='') => String(value).replace(/\s+/g,' ').trim();
   const fmt = value => value ? new Date(value).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+  const timeValue = item => new Date(item.publishedAt||0).getTime()||0;
 
   function ensureStyles(){
     if(document.getElementById('auto-editorial-styles')) return;
@@ -69,18 +70,21 @@
 
   function render(data){
     const items=(data.items||[]).filter(item=>item&&item.title);
-    const latest=items.slice(0,MAX_LATEST);
+    const latest=[...items].sort((a,b)=>timeValue(b)-timeValue(a)).slice(0,MAX_LATEST);
     const transfers=items
       .filter(item=>item.type==='TRANSFER')
-      .sort((a,b)=>(b.relevance||0)-(a.relevance||0) || new Date(b.publishedAt||0)-new Date(a.publishedAt||0))
+      .sort((a,b)=>(b.relevance||0)-(a.relevance||0) || timeValue(b)-timeValue(a))
       .slice(0,MAX_TRANSFERS);
-    const debates=items.filter(item=>item.debatePrompt).slice(0,MAX_DEBATES);
+    const debates=items
+      .filter(item=>item.debatePrompt)
+      .sort((a,b)=>(b.relevance||0)-(a.relevance||0) || timeValue(b)-timeValue(a))
+      .slice(0,MAX_DEBATES);
 
     const latestSection=document.getElementById('latest');
     if(latestSection){
       const grid=document.getElementById('dynamic-posts');
       const anchor=grid?.parentElement||latestSection;
-      const block=ensureBlock(anchor,'auto-live-news','Live from the wire','Refreshes automatically');
+      const block=ensureBlock(anchor,'auto-live-news','Live from the wire','Newest stories first · refreshes every 3 minutes');
       block.querySelector('.auto-editorial-grid').innerHTML=latest.map(item=>card(item)).join('');
     }
 
@@ -94,7 +98,7 @@
     const debateSection=document.getElementById('debate');
     if(debateSection){
       const feed=debateSection.querySelector('.debate-feed')||debateSection;
-      const block=ensureBlock(feed,'auto-live-debates','Debates from today’s stories','Generated automatically from live headlines');
+      const block=ensureBlock(feed,'auto-live-debates','Debates from today’s stories','Generated automatically from the strongest live talking points');
       block.querySelector('.auto-editorial-grid').innerHTML=debates.map(item=>debateCard(item)).join('');
     }
   }
