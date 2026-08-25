@@ -3,7 +3,7 @@
     if(!document.querySelector('link[data-home-polish]')){
       const polish=document.createElement('link');
       polish.rel='stylesheet';
-      polish.href='home-polish.css?v=20260825-1';
+      polish.href='home-polish.css?v=20260825-2';
       polish.dataset.homePolish='1';
       document.head.appendChild(polish);
     }
@@ -52,12 +52,18 @@
       const name = clean(leagueName).toLowerCase();
       return name === 'premier league' || name.includes('premier league') || name === 'championship' || name.includes('championship');
     };
+    const isTickerWorthyTitle = (title='') => {
+      const name=clean(title).toLowerCase();
+      if(!name) return false;
+      const blocked=['fans have their say','where fans have their say','football talk'];
+      return !blocked.includes(name);
+    };
 
     function latestNewsItems(){
       const items=[];
       document.querySelectorAll('#dynamic-posts .post-card').forEach(card=>{
         const title=clean(card.querySelector('h3')?.textContent);
-        if(title) items.push(`NEWS: ${title}`);
+        if(isTickerWorthyTitle(title)) items.push(`NEWS: ${title}`);
       });
       return [...new Set(items)].slice(0,2);
     }
@@ -118,7 +124,7 @@
           const type=clean(item.type)==='TRANSFER'?'TRANSFER':'NEWS';
           const source=clean(item.source);
           const title=clean(item.title);
-          return `${type}: ${title}${source?` — ${source}`:''}`;
+          return isTickerWorthyTitle(title)?`${type}: ${title}${source?` — ${source}`:''}`:'';
         }).filter(Boolean);
         if(!matchMode) render();
       }catch(_){}
