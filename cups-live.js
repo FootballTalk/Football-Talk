@@ -57,12 +57,33 @@
     });
   }
 
+  function showError(message) {
+    ['cup-carabao','cup-fa'].forEach(id=>{
+      const panel=document.getElementById(id);
+      if(!panel) return;
+      panel.replaceChildren();
+      const error=document.createElement('div');
+      error.className='fixtures-loading';
+      error.textContent=message || 'Cup fixtures are temporarily unavailable. Please try again shortly.';
+      panel.appendChild(error);
+    });
+  }
+
   async function load() {
     try {
-      const r=await fetch(`/api/cups?t=${Date.now()}`,{cache:'no-store'}); if(!r.ok)return;
+      const r=await fetch(`/api/cups?t=${Date.now()}`,{cache:'no-store'});
+      if(!r.ok) {
+        let detail='';
+        try { const body=await r.json(); detail=body.detail || body.error || ''; } catch(_) {}
+        showError(detail ? `Cup feed error: ${detail}` : `Cup feed error: HTTP ${r.status}`);
+        return;
+      }
       const data=await r.json();
       (data.cups||[]).forEach(c=>{const panel=document.getElementById(panelId(c.name)); if(panel)render(panel,c.fixtures||[]);});
-    } catch(e){ console.warn('Cup fixtures load failed',e); }
+    } catch(e){
+      console.warn('Cup fixtures load failed',e);
+      showError('Cup fixtures are temporarily unavailable. Please try again shortly.');
+    }
   }
 
   async function refreshLive() {
@@ -74,5 +95,12 @@
     } catch(_) {}
   }
 
-  document.addEventListener('DOMContentLoaded',()=>{load(); setInterval(refreshLive,REFRESH_MS); setInterval(load,2*60*1000);});
+  function start() {
+    load();
+    setInterval(refreshLive,REFRESH_MS);
+    setInterval(load,2*60*1000);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once:true });
+  else start();
 })();
