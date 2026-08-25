@@ -33,11 +33,11 @@
     const clean = (text='') => String(text).replace(/\s+/g,' ').trim();
 
     const editorialItems = [
-      'TRANSFER: Man City agree £34m deal for Palmeiras winger Allan Elias',
-      'TRANSFER: Nico González closes in on a £50m move from Man City to Newcastle',
-      'TRANSFER: Nottingham Forest in advanced talks with Chelsea for Liam Delap',
-      'TRANSFER: Al Hilal continue to pursue Arsenal winger Gabriel Martinelli',
-      'NEWS: Chelsea beat Fulham 3-2 in a five-goal Premier League thriller'
+      'TRANSFER: Newcastle close in on a £50m move for Man City midfielder Nico González',
+      'TRANSFER: Nottingham Forest in talks with Chelsea over Liam Delap',
+      'TRANSFER: Man City finalising a £38.5m deal for Palmeiras winger Allan Elias',
+      'TRANSFER: Al Hilal make £50m offer for Arsenal winger Gabriel Martinelli',
+      'TRANSFER: Coventry move for Man City defender Stephen Mfuni falls through'
     ];
 
     function latestNewsItems(){
