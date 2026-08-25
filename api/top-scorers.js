@@ -1,51 +1,38 @@
-const SOURCE='https://www.statbunker.com/competitions/TopGoalScorers?comp_id=791';
+const SOURCE='https://www.fotmob.com/api/data/leagueseasondeepstats?id=47&season=36781&type=players&stat=goals';
 
-function decode(s=''){
-  return String(s)
-    .replace(/<script[\s\S]*?<\/script>/gi,' ')
-    .replace(/<style[\s\S]*?<\/style>/gi,' ')
-    .replace(/<[^>]+>/g,' ')
-    .replace(/&nbsp;/gi,' ')
-    .replace(/&amp;/gi,'&')
-    .replace(/&quot;/gi,'"')
-    .replace(/&#39;|&#039;/gi,"'")
-    .replace(/&lt;/gi,'<')
-    .replace(/&gt;/gi,'>')
-    .replace(/\s+/g,' ')
-    .trim();
-}
-
-function parseTable(html){
-  const tables=String(html).match(/<table\b[\s\S]*?<\/table>/gi)||[];
-  for(const table of tables){
-    const rows=(table.match(/<tr\b[\s\S]*?<\/tr>/gi)||[]).map(row=>(row.match(/<(?:th|td)\b[\s\S]*?<\/(?:th|td)>/gi)||[]).map(decode));
-    const headerIndex=rows.findIndex(r=>r.some(c=>/^players?$/i.test(c))&&r.some(c=>/^goals?$/i.test(c)));
-    if(headerIndex<0) continue;
-    const headers=rows[headerIndex].map(h=>h.toLowerCase());
-    const ix={name:headers.findIndex(h=>h==='players'||h==='player'),team:headers.findIndex(h=>h==='clubs'||h==='club'),goals:headers.findIndex(h=>h==='goals'||h==='goal'),played:headers.findIndex(h=>h==='pld'||h==='p'||h.includes('played'))};
-    return rows.slice(headerIndex+1).map(r=>({
-      name:r[ix.name]||'',
-      team:ix.team>=0?r[ix.team]||'':'',
-      goals:Number(String(r[ix.goals]||'0').replace(/[^0-9.-]/g,''))||0,
-      appearances:ix.played>=0?(Number(String(r[ix.played]||'0').replace(/[^0-9.-]/g,''))||0):0
-    })).filter(p=>p.name&&p.goals>=0);
+function findStatList(node){
+  if(Array.isArray(node)){
+    if(node.length && node.every(x=>x&&typeof x==='object') && node.some(x=>('ParticipantName'in x)||('participantName'in x)||('playerName'in x))) return node;
+    for(const item of node){const hit=findStatList(item);if(hit) return hit;}
+  }else if(node&&typeof node==='object'){
+    for(const value of Object.values(node)){const hit=findStatList(value);if(hit) return hit;}
   }
-  return [];
+  return null;
 }
+
+const val=(o,...keys)=>{for(const k of keys){if(o?.[k]!=null)return o[k];}return'';};
 
 export default async function handler(req,res){
   if(req.method!=='GET') return res.status(405).json({error:'Method not allowed'});
   try{
-    const r=await fetch(SOURCE,{headers:{'user-agent':'Mozilla/5.0 FootballTalk/1.0',accept:'text/html,application/xhtml+xml'}});
-    const html=await r.text();
-    if(!r.ok) throw new Error(`StatBunker returned ${r.status}`);
-    const players=parseTable(html)
-      .sort((a,b)=>b.goals-a.goals||a.name.localeCompare(b.name))
-      .slice(0,20)
-      .map((p,index)=>({...p,rank:index+1,photo:'',teamLogo:''}));
-    if(!players.length) throw new Error('No scorer rows found');
+    const r=await fetch(SOURCE,{headers:{accept:'application/json','user-agent':'Mozilla/5.0 FootballTalk/1.0'}});
+    const text=await r.text();
+    if(!r.ok) throw new Error(`FotMob returned ${r.status}`);
+    const data=JSON.parse(text);
+    const list=findStatList(data)||[];
+    const players=list.map((item,index)=>({
+      rank:Number(val(item,'Rank','rank'))||index+1,
+      id:val(item,'ParticipantId','participantId','playerId'),
+      name:val(item,'ParticipantName','participantName','playerName','name')||'Unknown player',
+      team:val(item,'TeamName','teamName','team')||'',
+      photo:'',
+      teamLogo:'',
+      goals:Number(val(item,'StatValue','statValue','value'))||0,
+      appearances:Number(val(item,'MatchesPlayed','matchesPlayed','played'))||0
+    })).filter(p=>p.name).sort((a,b)=>b.goals-a.goals||a.rank-b.rank).slice(0,20).map((p,i)=>({...p,rank:i+1}));
+    if(!players.length) throw new Error('No scorer data returned');
     res.setHeader('Cache-Control','public, s-maxage=1800, stale-while-revalidate=1800');
-    return res.status(200).json({season:'2026/27',updatedAt:new Date().toISOString(),source:'StatBunker',players});
+    return res.status(200).json({season:'2026/27',updatedAt:new Date().toISOString(),source:'FotMob',players});
   }catch(error){
     res.setHeader('Cache-Control','no-store');
     return res.status(502).json({error:'Unable to load top scorers',detail:String(error)});
