@@ -53,6 +53,7 @@
     let automaticNewsItems = [];
     let lastLine = '';
     let timer = null;
+    let reorderingLatest = false;
     const clean = (text='') => String(text).replace(/\s+/g,' ').trim();
     const isFeaturedLeague = (leagueName='') => {
       const name = clean(leagueName).toLowerCase();
@@ -64,12 +65,30 @@
       const blocked=['fans have their say','where fans have their say','football talk'];
       return !blocked.includes(name);
     };
+    const isLaunchStory = (title='') => {
+      const name=clean(title).toLowerCase();
+      return name.includes('welcome to football talk') || name.includes('football talk has a new home');
+    };
+
+    function prioritiseLatestFootballStories(){
+      const feed=document.getElementById('dynamic-posts');
+      if(!feed || reorderingLatest) return;
+      const cards=[...feed.querySelectorAll(':scope > .post-card')];
+      if(cards.length<2) return;
+      const launchCards=cards.filter(card=>isLaunchStory(card.querySelector('h3')?.textContent));
+      if(!launchCards.length) return;
+      const lastCards=cards.slice(-launchCards.length);
+      if(launchCards.every((card,i)=>lastCards[i]===card)) return;
+      reorderingLatest=true;
+      launchCards.forEach(card=>feed.appendChild(card));
+      requestAnimationFrame(()=>{ reorderingLatest=false; });
+    }
 
     function latestNewsItems(){
       const items=[];
       document.querySelectorAll('#dynamic-posts .post-card').forEach(card=>{
         const title=clean(card.querySelector('h3')?.textContent);
-        if(isTickerWorthyTitle(title)) items.push(`NEWS: ${title}`);
+        if(isTickerWorthyTitle(title) && !isLaunchStory(title)) items.push(`NEWS: ${title}`);
       });
       return [...new Set(items)].slice(0,2);
     }
@@ -166,7 +185,11 @@
     }
 
     const posts=document.getElementById('dynamic-posts');
-    if(posts) new MutationObserver(()=>{ if(!matchMode) render(); }).observe(posts,{childList:true,subtree:true});
+    if(posts) new MutationObserver(()=>{
+      prioritiseLatestFootballStories();
+      if(!matchMode) render();
+    }).observe(posts,{childList:true,subtree:true});
+    prioritiseLatestFootballStories();
     render();
     loadAutomaticNews();
     loadLiveScores();
