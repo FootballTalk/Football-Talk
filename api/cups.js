@@ -1,113 +1,153 @@
+const API_BASE = 'https://v3.football.api-sports.io';
 const CUPS = [
-  { id: 133, name: 'Carabao Cup' },
-  { id: 132, name: 'FA Cup' },
+  { id: 48, name: 'Carabao Cup' },
+  { id: 45, name: 'FA Cup' },
 ];
 
-function seasonLabel(now) {
-  const year = Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric'}).format(now));
-  const month = Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',month:'numeric'}).format(now));
-  const startYear = month >= 7 ? year : year - 1;
-  return { season: startYear, label: `${startYear}/${startYear + 1}` };
+function londonDateString(date) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/London',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const map = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${map.year}-${map.month}-${map.day}`;
 }
 
-function num(value) {
-  if (value === null || value === undefined || value === '') return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
+function seasonFor(date) {
+  const year = Number(new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London',
+    year: 'numeric',
+  }).format(date));
+  const month = Number(new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London',
+    month: 'numeric',
+  }).format(date));
+  return month >= 7 ? year : year - 1;
 }
 
-function scoreFromString(value) {
-  const m = String(value || '').match(/(\d+)\s*[-–]\s*(\d+)/);
-  return m ? [Number(m[1]), Number(m[2])] : [null, null];
+function apiErrors(data) {
+  if (!data || !data.errors) return [];
+  if (Array.isArray(data.errors)) return data.errors.filter(Boolean).map(String);
+  if (typeof data.errors === 'object') return Object.entries(data.errors).map(([key, value]) => `${key}: ${value}`);
+  return [String(data.errors)];
 }
 
-function statusOf(match) {
-  const s = match?.status || {};
-  const reason = String(s.reason?.short || s.reason?.long || s.reason || '').toUpperCase();
-  if (s.cancelled === true || reason.includes('CANCEL')) return 'CANC';
-  if (reason.includes('POSTPON')) return 'PST';
-  if (s.finished === true) {
-    if (reason.includes('PEN')) return 'PEN';
-    if (reason.includes('EXTRA') || reason.includes('AET')) return 'AET';
-    return 'FT';
-  }
-  if (s.started === true) {
-    if (reason === 'HT' || reason.includes('HALF')) return 'HT';
-    return 'LIVE';
-  }
-  return 'NS';
-}
-
-function mapMatch(match) {
-  const s = match?.status || {};
-  const date = s.utcTime || match?.utcTime || match?.date || match?.time || null;
-  const scoreStr = s.scoreStr || match?.scoreStr || '';
-  const [scoreHome, scoreAway] = scoreFromString(scoreStr);
-  const homeGoals = num(match?.home?.score ?? match?.home?.goals ?? scoreHome);
-  const awayGoals = num(match?.away?.score ?? match?.away?.goals ?? scoreAway);
-  const minuteText = String(s.liveTime?.short || s.liveTime?.long || s.liveTime || s.reason?.short || '');
-  const minute = minuteText.match(/(\d+)/);
+function mapFixture(item) {
   return {
-    id: match?.id || match?.matchId || match?.pageUrl || `${date}-${match?.home?.name}-${match?.away?.name}`,
-    date,
-    timestamp: date ? Math.floor(new Date(date).getTime()/1000) : 0,
-    status: statusOf(match),
-    elapsed: minute ? Number(minute[1]) : null,
-    round: match?.roundName || match?.round || match?.stage || '',
-    home: match?.home?.name || match?.home?.longName || '',
-    away: match?.away?.name || match?.away?.longName || '',
-    homeLogo: match?.home?.id ? `https://images.fotmob.com/image_resources/logo/teamlogo/${match.home.id}.png` : '',
-    awayLogo: match?.away?.id ? `https://images.fotmob.com/image_resources/logo/teamlogo/${match.away.id}.png` : '',
-    homeGoals,
-    awayGoals,
+    id: item.fixture?.id,
+    date: item.fixture?.date,
+    timestamp: item.fixture?.timestamp,
+    status: item.fixture?.status?.short || 'NS',
+    elapsed: item.fixture?.status?.elapsed ?? null,
+    round: item.league?.round || '',
+    home: item.teams?.home?.name || '',
+    away: item.teams?.away?.name || '',
+    homeLogo: item.teams?.home?.logo || '',
+    awayLogo: item.teams?.away?.logo || '',
+    homeGoals: item.goals?.home ?? null,
+    awayGoals: item.goals?.away ?? null,
   };
 }
 
-function extractMatches(data) {
-  const candidates = [
-    data?.fixtures?.allMatches,
-    data?.matches?.allMatches,
-    data?.fixtures?.matches,
-    data?.matches?.matches,
-    data?.allMatches,
-  ];
-  return candidates.find(Array.isArray) || [];
-}
-
-async function fetchCup(cup, season) {
-  const url = new URL('https://www.fotmob.com/api/data/leagues');
-  url.searchParams.set('id', String(cup.id));
-  url.searchParams.set('season', season);
-  url.searchParams.set('ccode3', 'GBR');
+async function readApi(url, apiKey, label) {
   const response = await fetch(url, {
     headers: {
+      'x-apisports-key': apiKey,
       accept: 'application/json',
-      'user-agent': 'Mozilla/5.0 FootballTalk/1.0',
-      referer: `https://www.fotmob.com/leagues/${cup.id}/overview`,
     },
   });
-  if (!response.ok) throw new Error(`${cup.name}: FotMob returned HTTP ${response.status}`);
-  const data = await response.json();
-  const fixtures = extractMatches(data).map(mapMatch).filter(f => f.date && f.home && f.away);
-  return { id: cup.id, name: cup.name, fixtures };
+
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    const text = await response.text().catch(() => '');
+    throw new Error(`${label}: API-Football returned HTTP ${response.status}${text ? ` - ${text.slice(0, 160)}` : ''}`);
+  }
+
+  const errors = apiErrors(data);
+  if (!response.ok || errors.length) {
+    const detail = errors.length ? errors.join('; ') : `HTTP ${response.status}`;
+    throw new Error(`${label}: ${detail}`);
+  }
+  return data.response || [];
+}
+
+async function fetchCup(cup, apiKey, season, from, to) {
+  const url = new URL(`${API_BASE}/fixtures`);
+  url.searchParams.set('league', String(cup.id));
+  url.searchParams.set('season', String(season));
+  url.searchParams.set('from', from);
+  url.searchParams.set('to', to);
+  url.searchParams.set('timezone', 'Europe/London');
+  const rows = await readApi(url, apiKey, cup.name);
+  return {
+    id: cup.id,
+    name: cup.name,
+    fixtures: rows
+      .map(mapFixture)
+      .filter(f => f.date && f.home && f.away)
+      .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0)),
+  };
+}
+
+async function fetchLive(apiKey) {
+  const url = new URL(`${API_BASE}/fixtures`);
+  url.searchParams.set('live', 'all');
+  url.searchParams.set('timezone', 'Europe/London');
+  const rows = await readApi(url, apiKey, 'Live cup scores');
+  return CUPS.map(cup => ({
+    ...cup,
+    fixtures: rows
+      .filter(item => Number(item.league?.id) === cup.id)
+      .map(mapFixture),
+  }));
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET');
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const apiKey = process.env.API_FOOTBALL_KEY;
+  if (!apiKey) {
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(500).json({ error: 'API_FOOTBALL_KEY is not configured' });
+  }
+
   const now = new Date();
-  const { season, label } = seasonLabel(now);
+  const fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const toDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const from = londonDateString(fromDate);
+  const to = londonDateString(toDate);
+  const season = seasonFor(now);
   const liveOnly = String(req.query?.live || '') === '1';
+
   try {
-    const cups = await Promise.all(CUPS.map(cup => fetchCup(cup, label)));
-    const filtered = liveOnly
-      ? cups.map(cup => ({ ...cup, fixtures: cup.fixtures.filter(f => ['LIVE','HT'].includes(f.status)) }))
-      : cups;
-    res.setHeader('Cache-Control', liveOnly ? 'public, s-maxage=30, stale-while-revalidate=30' : 'public, s-maxage=900, stale-while-revalidate=1800');
-    return res.status(200).json({ season, live: liveOnly, provider: 'FotMob', cups: filtered });
+    const cups = liveOnly
+      ? await fetchLive(apiKey.trim())
+      : await Promise.all(CUPS.map(cup => fetchCup(cup, apiKey.trim(), season, from, to)));
+
+    res.setHeader(
+      'Cache-Control',
+      liveOnly
+        ? 'public, s-maxage=30, stale-while-revalidate=30'
+        : 'public, s-maxage=900, stale-while-revalidate=1800'
+    );
+    return res.status(200).json({ from, to, season, live: liveOnly, provider: 'API-Football', cups });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Cup fixtures feed error:', message);
-    res.setHeader('Cache-Control','no-store');
-    return res.status(502).json({ error: 'Unable to load cup fixtures right now', detail: message });
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(502).json({
+      error: 'Unable to load cup fixtures right now',
+      detail: message,
+      season,
+      from,
+      to,
+    });
   }
 }
