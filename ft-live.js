@@ -1,5 +1,20 @@
 (() => {
   function initFtLive(){
+    if(!document.querySelector('link[data-home-polish]')){
+      const polish=document.createElement('link');
+      polish.rel='stylesheet';
+      polish.href='home-polish.css?v=20260825-1';
+      polish.dataset.homePolish='1';
+      document.head.appendChild(polish);
+    }
+    const heroContent=document.querySelector('.hero-content');
+    if(heroContent && !heroContent.querySelector('.hero-kickers')){
+      const kickers=document.createElement('div');
+      kickers.className='hero-kickers';
+      kickers.innerHTML='<span class="live-chip">LIVE UPDATES</span><span>TRANSFERS</span><span>FAN DEBATE</span>';
+      heroContent.prepend(kickers);
+    }
+
     const track = document.querySelector('.ticker-track');
     const viewport = document.querySelector('.ticker-viewport');
     if (!track || !viewport || track.dataset.ftLiveReady === '1') return;
