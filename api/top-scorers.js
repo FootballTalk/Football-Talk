@@ -1,38 +1,50 @@
 const SOURCE='https://www.fotmob.com/api/data/leagueseasondeepstats?id=47&season=36781&type=players&stat=goals';
+const LEAGUE_SOURCE='https://www.fotmob.com/api/leagues?id=47&ccode3=GBR&season=36781';
+const HEADERS={accept:'application/json','user-agent':'Mozilla/5.0 FootballTalk/1.0'};
 
-function findStatList(node){
+function collectTeamNames(node,targetIds,map=new Map()){
   if(Array.isArray(node)){
-    if(node.length && node.every(x=>x&&typeof x==='object') && node.some(x=>('ParticipantName'in x)||('participantName'in x)||('playerName'in x))) return node;
-    for(const item of node){const hit=findStatList(item);if(hit) return hit;}
+    node.forEach(item=>collectTeamNames(item,targetIds,map));
   }else if(node&&typeof node==='object'){
-    for(const value of Object.values(node)){const hit=findStatList(value);if(hit) return hit;}
+    const id=Number(node.id??node.teamId??node.team?.id);
+    const name=node.name??node.teamName??node.team?.name??node.shortName;
+    if(targetIds.has(id)&&typeof name==='string'&&name.trim()) map.set(id,name.trim());
+    Object.values(node).forEach(value=>collectTeamNames(value,targetIds,map));
   }
-  return null;
+  return map;
 }
 
-const val=(o,...keys)=>{for(const k of keys){if(o?.[k]!=null)return o[k];}return'';};
+async function getTeamNames(teamIds){
+  try{
+    const r=await fetch(LEAGUE_SOURCE,{headers:HEADERS});
+    if(!r.ok) return new Map();
+    return collectTeamNames(await r.json(),teamIds);
+  }catch{return new Map();}
+}
 
 export default async function handler(req,res){
   if(req.method!=='GET') return res.status(405).json({error:'Method not allowed'});
   try{
-    const r=await fetch(SOURCE,{headers:{accept:'application/json','user-agent':'Mozilla/5.0 FootballTalk/1.0'}});
-    const text=await r.text();
+    const r=await fetch(SOURCE,{headers:HEADERS});
     if(!r.ok) throw new Error(`FotMob returned ${r.status}`);
-    const data=JSON.parse(text);
-    const list=findStatList(data)||[];
+    const data=await r.json();
+    const list=Array.isArray(data.statsData)?data.statsData:[];
+    const teamIds=new Set(list.map(item=>Number(item.teamId)).filter(Boolean));
+    const teamNames=await getTeamNames(teamIds);
     const players=list.map((item,index)=>({
-      rank:Number(val(item,'Rank','rank'))||index+1,
-      id:val(item,'ParticipantId','participantId','playerId'),
-      name:val(item,'ParticipantName','participantName','playerName','name')||'Unknown player',
-      team:val(item,'TeamName','teamName','team')||'',
+      rank:Number(item.rank)||index+1,
+      id:item.id||'',
+      name:item.name||'Unknown player',
+      team:teamNames.get(Number(item.teamId))||'',
+      teamId:Number(item.teamId)||null,
       photo:'',
       teamLogo:'',
-      goals:Number(val(item,'StatValue','statValue','value'))||0,
-      appearances:Number(val(item,'MatchesPlayed','matchesPlayed','played'))||0
-    })).filter(p=>p.name).sort((a,b)=>b.goals-a.goals||a.rank-b.rank).slice(0,20).map((p,i)=>({...p,rank:i+1}));
+      goals:Number(item.statValue?.value)||0,
+      appearances:0
+    })).filter(p=>p.name).sort((a,b)=>b.goals-a.goals||a.rank-b.rank||a.name.localeCompare(b.name)).slice(0,20).map((p,i)=>({...p,rank:i+1}));
     if(!players.length) throw new Error('No scorer data returned');
     res.setHeader('Cache-Control','public, s-maxage=1800, stale-while-revalidate=1800');
-    return res.status(200).json({season:'2026/27',updatedAt:new Date().toISOString(),source:'FotMob',players});
+    return res.status(200).json({season:data.seasons?.find(s=>String(s.id)===String(data.currentSeasonId))?.name||'2026/2027',updatedAt:new Date().toISOString(),source:'FotMob',players});
   }catch(error){
     res.setHeader('Cache-Control','no-store');
     return res.status(502).json({error:'Unable to load top scorers',detail:String(error)});
