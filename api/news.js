@@ -3,6 +3,13 @@ const FEEDS = [
   { url: 'https://feeds.bbci.co.uk/sport/football/premier-league/rss.xml', source: 'BBC Sport' }
 ];
 
+const PRIORITY_TERMS = [
+  'premier league','championship','arsenal','aston villa','bournemouth','brentford','brighton','burnley','chelsea','crystal palace','everton','fulham','leeds','liverpool','manchester city','man city','manchester united','man utd','newcastle','nottingham forest','nottingham','sunderland','tottenham','west ham','wolves','wolverhampton',
+  'birmingham','blackburn','bristol city','charlton','coventry','derby','hull','ipswich','leicester','middlesbrough','millwall','norwich','oxford united','portsmouth','preston','qpr','queens park rangers','sheffield united','sheffield wednesday','southampton','stoke','swansea','watford','west brom','wrexham'
+];
+
+const STOP_WORDS = new Set(['the','a','an','and','or','to','of','for','in','on','at','is','are','was','were','be','been','with','from','as','by','after','before','still','your','club','clubs','what','does','do','why','how','this','that','their','its','it']);
+
 function decodeXml(text = '') {
   return String(text)
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
@@ -27,23 +34,33 @@ function classify(title = '', description = '') {
   const transferWords = [
     'transfer', 'sign', 'signing', 'joins', 'join ', 'deal', 'bid', 'move',
     'medical', 'talks', 'fee', 'target', 'loan', 'agrees', 'agreed', 'set to leave',
-    'interest', 'linked', 'offer', 'approach', 'wanted'
+    'interest', 'linked', 'offer', 'approach', 'wanted', 'window'
   ];
   return transferWords.some(word => lower.includes(word)) ? 'TRANSFER' : 'NEWS';
 }
 
 function transferStage(title = '', description = '') {
   const text = `${title} ${description}`.toLowerCase();
-  const personalTermsOnly = text.includes('personal terms') && !text.includes('deal agreed') && !text.includes('agreement reached');
+
+  const official = [
+    'has signed', 'have signed', 'signs for', 'signs from', 'completes the signing',
+    'completed the signing', 'complete the signing', 'signing confirmed', 'officially joins',
+    'officially signed', 'announces signing', 'announce signing'
+  ];
+  if (official.some(phrase => text.includes(phrase))) return 'OFFICIAL';
+
+  const personalTermsOnly = text.includes('personal terms') && !text.includes('deal agreed') && !text.includes('agreement reached') && !text.includes('clubs agreed');
   if (!personalTermsOnly && [
-    'has signed', 'have signed', 'signs for', 'signs from', 'completes signing', 'complete signing',
-    'joins ', 'deal agreed', 'agree deal', 'agreed deal', 'agreement reached', 'club agreement reached',
-    'set to sign after agreeing', 'medical completed and deal agreed'
+    'deal agreed', 'agree deal', 'agreed deal', 'agreement reached', 'club agreement reached',
+    'clubs agreed', 'fee agreed', 'set to sign after agreeing', 'medical completed and deal agreed'
   ].some(phrase => text.includes(phrase))) return 'ITS_A_GO';
+
   if ([
     'advanced talks', 'talks advanced', 'close to', 'closing in', 'set to', 'medical', 'finalising',
-    'finalizing', 'bid accepted', 'offer accepted', 'verbal agreement'
+    'finalizing', 'bid accepted', 'offer accepted', 'verbal agreement', 'in negotiations',
+    'negotiations', 'talks continue', 'talks progressing'
   ].some(phrase => text.includes(phrase))) return 'DEVELOPING';
+
   return 'GOSSIP';
 }
 
@@ -52,6 +69,44 @@ function debatePrompt(title = '', type = 'NEWS') {
   if (!cleanTitle) return '';
   if (type === 'TRANSFER') return `Would this be a good move? ${cleanTitle} — have your say.`;
   return `${cleanTitle} — what’s your verdict?`;
+}
+
+function normaliseTokens(value = '') {
+  return String(value)
+    .toLowerCase()
+    .replace(/£|€|\$|\d+(?:\.\d+)?m?/g, ' ')
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .split(/\s+/)
+    .filter(token => token.length > 2 && !STOP_WORDS.has(token));
+}
+
+function similarity(a = '', b = '') {
+  const A = new Set(normaliseTokens(a));
+  const B = new Set(normaliseTokens(b));
+  if (!A.size || !B.size) return 0;
+  let intersection = 0;
+  for (const token of A) if (B.has(token)) intersection++;
+  const union = new Set([...A, ...B]).size;
+  return union ? intersection / union : 0;
+}
+
+function sameStory(a, b) {
+  if (a.link && b.link && a.link === b.link) return true;
+  if (a.title.toLowerCase() === b.title.toLowerCase()) return true;
+  const titleScore = similarity(a.title, b.title);
+  if (titleScore >= 0.58) return true;
+  const combinedScore = similarity(`${a.title} ${a.description}`, `${b.title} ${b.description}`);
+  return combinedScore >= 0.68;
+}
+
+function relevanceScore(item) {
+  const text = `${item.title} ${item.description}`.toLowerCase();
+  let score = PRIORITY_TERMS.reduce((sum, term) => sum + (text.includes(term) ? 1 : 0), 0);
+  if (item.type === 'TRANSFER') score += 2;
+  if (item.stage === 'OFFICIAL') score += 4;
+  else if (item.stage === 'ITS_A_GO') score += 3;
+  else if (item.stage === 'DEVELOPING') score += 1;
+  return score;
 }
 
 function parseFeed(xml, source) {
@@ -72,7 +127,7 @@ module.exports = async function handler(req, res) {
   try {
     const settled = await Promise.allSettled(FEEDS.map(async feed => {
       const response = await fetch(feed.url, {
-        headers: { 'User-Agent': 'FootballTalk/1.0 (+https://vercel.app)' }
+        headers: { 'User-Agent': 'FootballTalk/1.0 (+https://footballtalk.uk)' }
       });
       if (!response.ok) throw new Error(`Feed ${response.status}`);
       const xml = await response.text();
@@ -84,19 +139,27 @@ module.exports = async function handler(req, res) {
       .flatMap(result => result.value)
       .sort((a, b) => b.published - a.published);
 
-    const seen = new Set();
-    const items = [];
+    const deduped = [];
     for (const item of combined) {
-      const key = item.title.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      items.push({
-        ...item,
-        publishedAt: item.published ? new Date(item.published).toISOString() : null,
-        debatePrompt: debatePrompt(item.title, item.type)
-      });
-      if (items.length >= 20) break;
+      if (deduped.some(existing => sameStory(item, existing))) continue;
+      deduped.push(item);
     }
+
+    const now = Date.now();
+    deduped.sort((a, b) => {
+      const ageAHours = Math.max(0, (now - a.published) / 3600000);
+      const ageBHours = Math.max(0, (now - b.published) / 3600000);
+      const rankA = relevanceScore(a) * 2.5 - Math.min(ageAHours, 24) * 0.12;
+      const rankB = relevanceScore(b) * 2.5 - Math.min(ageBHours, 24) * 0.12;
+      return rankB - rankA || b.published - a.published;
+    });
+
+    const items = deduped.slice(0, 30).map(item => ({
+      ...item,
+      relevance: relevanceScore(item),
+      publishedAt: item.published ? new Date(item.published).toISOString() : null,
+      debatePrompt: debatePrompt(item.title, item.type)
+    }));
 
     res.setHeader('Cache-Control', 's-maxage=180, stale-while-revalidate=300');
     res.status(200).json({ updatedAt: new Date().toISOString(), items });
