@@ -1,0 +1,2 @@
+Football Talk Cups deployment trigger — 25 August 2026.
+This file is intentionally harmless and exists only to trigger Vercel from the latest main branch snapshot.
