@@ -7,10 +7,21 @@ document.addEventListener('DOMContentLoaded',()=>{
     const tables=[...container.querySelectorAll('a')].find(a=>a.textContent.trim()==='Tables');
     if(tables) container.insertBefore(link,tables); else container.appendChild(link);
   };
-  addStatsLink(document.querySelector('.nav'));
-  addStatsLink(document.querySelector('.quick-nav'),'Stats');
-
+  const addCupsLink=(container,label='Cups')=>{
+    if(!container||container.querySelector('a[href="cups.html"]'))return;
+    const link=document.createElement('a');
+    link.href='cups.html';
+    link.textContent=label;
+    const results=[...container.querySelectorAll('a')].find(a=>a.textContent.trim()==='Results');
+    if(results) container.insertBefore(link,results); else container.appendChild(link);
+  };
+  const nav=document.querySelector('.nav');
   const quick=document.querySelector('.quick-nav');
+  addStatsLink(nav);
+  addStatsLink(quick,'Stats');
+  addCupsLink(nav);
+  addCupsLink(quick,'Cups');
+
   if(!quick)return;
 
   const style=document.createElement('style');
