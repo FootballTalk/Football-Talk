@@ -13,19 +13,21 @@
     const style=document.createElement('style');
     style.id='auto-editorial-styles';
     style.textContent=`
-      .auto-editorial-wrap{margin:0 0 26px}.auto-editorial-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:0 0 12px}.auto-editorial-head h3{margin:0;font-size:20px}.auto-editorial-head small{opacity:.7}.auto-editorial-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.auto-card{background:#fff;color:#111;border-top:4px solid #f7c600;padding:16px;box-shadow:0 6px 18px rgba(0,0,0,.08)}.dark-section .auto-card{background:#17171b;color:#fff;border:1px solid #2a2a30;border-top:4px solid #f7c600}.auto-card h4{margin:8px 0;font-size:17px;line-height:1.25}.auto-card p{margin:0 0 10px;line-height:1.45;font-size:14px}.auto-meta{font-size:11px;opacity:.7}.auto-tag{display:inline-block;background:#111;color:#fff;font-size:10px;font-weight:900;letter-spacing:.08em;padding:5px 7px}.dark-section .auto-tag{background:#f7c600;color:#000}.auto-tag.go{background:#f7c600;color:#000}.auto-tag.developing{background:#fff1a8;color:#111}.auto-tag.gossip{background:#ddd;color:#111}.auto-link{font-weight:900;color:inherit;text-decoration:none;border-bottom:2px solid #f7c600}.auto-debate{background:#fff8cf}.dark-section .auto-debate{background:#242014}.auto-note{font-size:12px;opacity:.72;margin:8px 0 0}.auto-hidden{display:none!important}@media(max-width:700px){.auto-editorial-grid{grid-template-columns:1fr}.auto-editorial-head{align-items:start;flex-direction:column}}
+      .auto-editorial-wrap{margin:0 0 26px}.auto-editorial-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:0 0 12px}.auto-editorial-head h3{margin:0;font-size:20px}.auto-editorial-head small{opacity:.7}.auto-editorial-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.auto-card{background:#fff;color:#111;border-top:4px solid #f7c600;padding:16px;box-shadow:0 6px 18px rgba(0,0,0,.08)}.dark-section .auto-card{background:#17171b;color:#fff;border:1px solid #2a2a30;border-top:4px solid #f7c600}.auto-card h4{margin:8px 0;font-size:17px;line-height:1.25}.auto-card p{margin:0 0 10px;line-height:1.45;font-size:14px}.auto-meta{font-size:11px;opacity:.7}.auto-tag{display:inline-block;background:#111;color:#fff;font-size:10px;font-weight:900;letter-spacing:.08em;padding:5px 7px}.dark-section .auto-tag{background:#f7c600;color:#000}.auto-tag.official{background:#15b86a;color:#fff}.auto-tag.go{background:#f7c600;color:#000}.auto-tag.developing{background:#fff1a8;color:#111}.auto-tag.gossip{background:#ddd;color:#111}.auto-link{font-weight:900;color:inherit;text-decoration:none;border-bottom:2px solid #f7c600}.auto-debate{background:#fff8cf}.dark-section .auto-debate{background:#242014}.auto-note{font-size:12px;opacity:.72;margin:8px 0 0}.auto-hidden{display:none!important}@media(max-width:700px){.auto-editorial-grid{grid-template-columns:1fr}.auto-editorial-head{align-items:start;flex-direction:column}}
     `;
     document.head.appendChild(style);
   }
 
   function labelFor(item){
     if(item.type!=='TRANSFER') return 'HOT NEWS';
+    if(item.stage==='OFFICIAL') return 'OFFICIAL / DEAL DONE';
     if(item.stage==='ITS_A_GO') return "IT'S A GO!";
     if(item.stage==='DEVELOPING') return 'TRANSFER UPDATE';
     return 'TRANSFER GOSSIP';
   }
 
   function classFor(item){
+    if(item.stage==='OFFICIAL') return 'official';
     if(item.stage==='ITS_A_GO') return 'go';
     if(item.stage==='DEVELOPING') return 'developing';
     if(item.stage==='GOSSIP') return 'gossip';
@@ -36,7 +38,8 @@
     const desc=clean(item.description);
     if(desc) return desc;
     if(item.type==='TRANSFER'){
-      if(item.stage==='ITS_A_GO') return 'A significant transfer development has been reported, with the move appearing agreed or completed.';
+      if(item.stage==='OFFICIAL') return 'The transfer has been officially confirmed.';
+      if(item.stage==='ITS_A_GO') return 'A significant transfer development has been reported, with the move appearing agreed and awaiting final confirmation.';
       if(item.stage==='DEVELOPING') return 'This transfer story is developing. Talks or negotiations are reported to be progressing, but the deal is not yet confirmed.';
       return 'Transfer gossip from the live football news feed. No agreement is being claimed by Football Talk at this stage.';
     }
@@ -67,7 +70,10 @@
   function render(data){
     const items=(data.items||[]).filter(item=>item&&item.title);
     const latest=items.slice(0,MAX_LATEST);
-    const transfers=items.filter(item=>item.type==='TRANSFER').slice(0,MAX_TRANSFERS);
+    const transfers=items
+      .filter(item=>item.type==='TRANSFER')
+      .sort((a,b)=>(b.relevance||0)-(a.relevance||0) || new Date(b.publishedAt||0)-new Date(a.publishedAt||0))
+      .slice(0,MAX_TRANSFERS);
     const debates=items.filter(item=>item.debatePrompt).slice(0,MAX_DEBATES);
 
     const latestSection=document.getElementById('latest');
