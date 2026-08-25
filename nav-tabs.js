@@ -22,6 +22,14 @@ document.addEventListener('DOMContentLoaded',()=>{
     const results=[...container.querySelectorAll('a')].find(a=>a.textContent.trim()==='Results');
     if(results) container.insertBefore(link,results); else container.appendChild(link);
   };
+  const addEuropeLink=(container,label='European Football')=>{
+    if(!container||container.querySelector('a[href="european.html"]'))return;
+    const link=document.createElement('a');
+    link.href='european.html';
+    link.textContent=label;
+    const cups=[...container.querySelectorAll('a')].find(a=>a.textContent.trim()==='Cups');
+    if(cups) cups.insertAdjacentElement('afterend',link); else container.appendChild(link);
+  };
   const addSuperSixLink=(container,label='Super Six')=>{
     if(!container||container.querySelector('a[href="super-six.html"]'))return;
     const link=document.createElement('a');
@@ -36,6 +44,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   addStatsLink(quick,'Stats');
   addCupsLink(nav);
   addCupsLink(quick);
+  addEuropeLink(nav,'Europe');
+  addEuropeLink(quick,'Europe');
   addSuperSixLink(nav);
   addSuperSixLink(quick,'Super 6');
 
@@ -54,7 +64,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(copy) copy.textContent='Live coverage for the Premier League, Championship, Carabao Cup and FA Cup, updated automatically throughout matchdays.';
   }
 
-  // Keep the automatic debate feed fresh without disabling manually published polls/debates.
   const staleDebateTitles=new Set([
     'Who wins the Premier League this season?',
     'Poll: Which summer signing will make the biggest impact?',
