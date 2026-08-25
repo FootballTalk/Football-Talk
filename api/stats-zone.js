@@ -1,3 +1,4 @@
+// Football Talk Stats Zone — server-rendered production page
 const BASE='https://www.fotmob.com/api/data/leagueseasondeepstats';
 const LEAGUE='47';
 const SEASON='36781';
