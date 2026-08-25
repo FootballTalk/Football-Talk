@@ -1,4 +1,11 @@
 document.addEventListener('DOMContentLoaded',()=>{
+  if(!document.querySelector('script[data-auto-editorial]')){
+    const autoEditorial=document.createElement('script');
+    autoEditorial.src='auto-editorial.js?v=20260825-1';
+    autoEditorial.dataset.autoEditorial='1';
+    document.body.appendChild(autoEditorial);
+  }
+
   const addStatsLink=(container,label='Stats Zone')=>{
     if(!container||container.querySelector('a[href="/api/stats-zone"]'))return;
     const link=document.createElement('a');
