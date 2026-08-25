@@ -1,8 +1,8 @@
 document.addEventListener('DOMContentLoaded',()=>{
   const addStatsLink=(container,label='Stats Zone')=>{
-    if(!container||container.querySelector('a[href="stats.html"]'))return;
+    if(!container||container.querySelector('a[href="/api/stats-zone"]'))return;
     const link=document.createElement('a');
-    link.href='stats.html';
+    link.href='/api/stats-zone';
     link.textContent=label;
     const tables=[...container.querySelectorAll('a')].find(a=>a.textContent.trim()==='Tables');
     if(tables) container.insertBefore(link,tables); else container.appendChild(link);
