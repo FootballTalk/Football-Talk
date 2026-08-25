@@ -2,90 +2,6 @@
   const REFRESH_MS = 60000;
   const LIVE_STATUSES = new Set(['1H','2H','ET','BT','P','LIVE']);
   const FINISHED_STATUSES = new Set(['FT','AET','PEN']);
-  const aliases = {
-    'brighton hove albion': 'brighton',
-    'brighton': 'brighton',
-    'tottenham hotspur': 'tottenham',
-    'tottenham': 'tottenham',
-    'wolverhampton wanderers': 'wolves',
-    'wolves': 'wolves',
-    'queens park rangers': 'qpr',
-    'qpr': 'qpr',
-    'west bromwich albion': 'west brom',
-    'west brom': 'west brom',
-    'manchester city': 'man city',
-    'man city': 'man city',
-    'manchester united': 'man utd',
-    'man utd': 'man utd',
-    'nottingham forest': 'nottingham forest',
-    'nottm forest': 'nottingham forest'
-  };
-
-  function normalise(name = '') {
-    const cleaned = String(name)
-      .toLowerCase()
-      .replace(/&/g, 'and')
-      .replace(/football club|\bfc\b|\bafc\b/g, '')
-      .replace(/[^a-z0-9]+/g, ' ')
-      .trim();
-    return aliases[cleaned] || cleaned;
-  }
-
-  function matchFixture(home, away, apiFixture) {
-    return normalise(home) === normalise(apiFixture.home) && normalise(away) === normalise(apiFixture.away);
-  }
-
-  function parseFixtureDay(label = '') {
-    const cleaned = String(label).replace(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+/i, '').trim();
-    const now = new Date();
-    const candidates = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1]
-      .map(year => new Date(`${cleaned} ${year} 12:00:00`))
-      .filter(date => !Number.isNaN(date.getTime()));
-    if (!candidates.length) return null;
-    return candidates.sort((a, b) => Math.abs(a - now) - Math.abs(b - now))[0];
-  }
-
-  function sortFixtureDays() {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    document.querySelectorAll('.league-panel').forEach(panel => {
-      const days = [...panel.querySelectorAll(':scope > .day')];
-      if (days.length < 2) return;
-
-      const sorted = days.sort((a, b) => {
-        const dateA = parseFixtureDay(a.querySelector('h3')?.textContent || '');
-        const dateB = parseFixtureDay(b.querySelector('h3')?.textContent || '');
-        if (!dateA || !dateB) return 0;
-
-        const aPast = dateA < today;
-        const bPast = dateB < today;
-        if (aPast !== bPast) return aPast ? 1 : -1;
-
-        return aPast ? dateB - dateA : dateA - dateB;
-      });
-
-      sorted.forEach(day => panel.appendChild(day));
-    });
-  }
-
-  function displayStatus(fixture) {
-    const scoreReady = fixture.homeGoals != null && fixture.awayGoals != null;
-    const score = scoreReady ? `${fixture.homeGoals}-${fixture.awayGoals}` : '0-0';
-    const status = fixture.status || 'NS';
-
-    if (LIVE_STATUSES.has(status)) {
-      const minute = fixture.elapsed ? `${fixture.elapsed}'` : '';
-      return { score, sub: `LIVE${minute ? ` · ${minute}` : ''}`, live: true, finished: false };
-    }
-    if (status === 'HT') return { score, sub: 'HT', live: true, finished: false };
-    if (FINISHED_STATUSES.has(status)) return { score, sub: 'FT', live: false, finished: true };
-    if (status === 'PST') return { score: 'POSTPONED', sub: '', live: false, finished: false };
-    if (status === 'CANC') return { score: 'CANCELLED', sub: '', live: false, finished: false };
-    if (status === 'SUSP') return { score, sub: 'SUSP', live: false, finished: false };
-    if (status === 'ABD') return { score, sub: 'ABD', live: false, finished: false };
-    return null;
-  }
 
   function addLiveStyles() {
     if (document.getElementById('ft-live-score-styles')) return;
@@ -97,62 +13,195 @@
       .ft-score-main{font-weight:900;font-size:1.08em;white-space:nowrap}
       .ft-score-sub{display:block;margin-top:3px;font-size:.62em;font-weight:800;letter-spacing:.04em;white-space:nowrap}
       .fixture-live{background:#fff9d9}
+      .fixtures-loading{padding:20px;background:#fff;border-top:5px solid #f7c600;font-weight:800}
       @keyframes ftLivePulse{0%,100%{opacity:1}50%{opacity:.78}}
     `;
     document.head.appendChild(style);
   }
 
-  function applyData(data) {
-    const apiFixtures = (data.leagues || []).flatMap((league) => league.fixtures || []);
-    document.querySelectorAll('.fixture').forEach((row) => {
-      const home = row.querySelector('.team.home')?.textContent?.trim();
-      const away = row.querySelector('.team.away')?.textContent?.trim();
-      const box = row.querySelector('.time');
-      if (!home || !away || !box) return;
+  function leaguePanelId(name='') {
+    return String(name).toLowerCase().includes('championship') ? 'fixtures-ch' : 'fixtures-pl';
+  }
 
-      const match = apiFixtures.find((fixture) => matchFixture(home, away, fixture));
-      if (!match) return;
-      const display = displayStatus(match);
-      if (!display) return;
+  function londonDateKey(value) {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date(value));
+  }
 
-      if (!box.dataset.kickoff) box.dataset.kickoff = box.textContent.trim();
-      box.replaceChildren();
-      const scoreLine = document.createElement('span');
-      scoreLine.className = 'ft-score-main';
-      scoreLine.textContent = display.score;
-      box.appendChild(scoreLine);
-      if (display.sub) {
-        const subLine = document.createElement('span');
-        subLine.className = 'ft-score-sub';
-        subLine.textContent = display.sub;
-        box.appendChild(subLine);
-      }
-      box.classList.toggle('is-live', display.live);
-      box.classList.toggle('is-finished', display.finished);
-      row.classList.toggle('fixture-live', display.live);
+  function dayLabel(value) {
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/London', weekday: 'long', day: 'numeric', month: 'long'
+    }).format(new Date(value));
+  }
+
+  function kickOff(value) {
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false
+    }).format(new Date(value));
+  }
+
+  function previousFridayStart() {
+    const now = new Date();
+    const london = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+    const day = london.getDay();
+    const daysBack = (day + 2) % 7 || 7;
+    london.setHours(0,0,0,0);
+    london.setDate(london.getDate() - daysBack);
+    return london.getTime();
+  }
+
+  function displayStatus(fixture) {
+    const scoreReady = fixture.homeGoals != null && fixture.awayGoals != null;
+    const score = scoreReady ? `${fixture.homeGoals}-${fixture.awayGoals}` : '0-0';
+    const status = fixture.status || 'NS';
+    if (LIVE_STATUSES.has(status)) {
+      const minute = fixture.elapsed ? `${fixture.elapsed}'` : '';
+      return { main: score, sub: `LIVE${minute ? ` · ${minute}` : ''}`, live: true, finished: false };
+    }
+    if (status === 'HT') return { main: score, sub: 'HT', live: true, finished: false };
+    if (FINISHED_STATUSES.has(status)) return { main: score, sub: 'FT', live: false, finished: true };
+    if (status === 'PST') return { main: 'POSTPONED', sub: '', live: false, finished: false };
+    if (status === 'CANC') return { main: 'CANCELLED', sub: '', live: false, finished: false };
+    if (status === 'SUSP') return { main: score, sub: 'SUSP', live: false, finished: false };
+    if (status === 'ABD') return { main: score, sub: 'ABD', live: false, finished: false };
+    return { main: kickOff(fixture.date), sub: '', live: false, finished: false };
+  }
+
+  function fixtureRow(fixture) {
+    const display = displayStatus(fixture);
+    const row = document.createElement('div');
+    row.className = `fixture${display.live ? ' fixture-live' : ''}`;
+    row.dataset.fixtureId = fixture.id || '';
+
+    const home = document.createElement('div');
+    home.className = 'team home';
+    home.textContent = fixture.home || '';
+
+    const box = document.createElement('div');
+    box.className = `time${display.live ? ' is-live' : ''}${display.finished ? ' is-finished' : ''}`;
+    const main = document.createElement('span');
+    main.className = 'ft-score-main';
+    main.textContent = display.main;
+    box.appendChild(main);
+    if (display.sub) {
+      const sub = document.createElement('span');
+      sub.className = 'ft-score-sub';
+      sub.textContent = display.sub;
+      box.appendChild(sub);
+    }
+
+    const away = document.createElement('div');
+    away.className = 'team away';
+    away.textContent = fixture.away || '';
+    row.append(home, box, away);
+    return row;
+  }
+
+  function renderLeague(panel, fixtures) {
+    panel.replaceChildren();
+    if (!fixtures.length) {
+      const empty = document.createElement('div');
+      empty.className = 'fixtures-loading';
+      empty.textContent = 'No fixtures found for this period.';
+      panel.appendChild(empty);
+      return;
+    }
+
+    const groups = new Map();
+    fixtures.forEach(fixture => {
+      const key = londonDateKey(fixture.date);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(fixture);
+    });
+
+    groups.forEach((games) => {
+      games.sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));
+      const day = document.createElement('div');
+      day.className = 'day';
+      const heading = document.createElement('h3');
+      heading.textContent = dayLabel(games[0].date);
+      day.appendChild(heading);
+      games.forEach(game => day.appendChild(fixtureRow(game)));
+      panel.appendChild(day);
     });
   }
 
-  async function fetchScores(mode = 'fixtures') {
+  function mergeLeagueData(fixturesData, resultsData) {
+    const cutoff = previousFridayStart();
+    const nowTs = Date.now();
+    const output = {};
+
+    (fixturesData.leagues || []).forEach(league => {
+      output[league.name] = [...(league.fixtures || [])];
+    });
+
+    (resultsData.leagues || []).forEach(league => {
+      const recent = (league.fixtures || []).filter(f => (f.timestamp || 0) * 1000 >= cutoff && (f.timestamp || 0) * 1000 <= nowTs);
+      const current = output[league.name] || [];
+      const ids = new Set(current.map(f => f.id));
+      recent.forEach(f => { if (!ids.has(f.id)) current.push(f); });
+      output[league.name] = current;
+    });
+
+    Object.keys(output).forEach(name => {
+      const now = Date.now() / 1000;
+      output[name].sort((a,b) => {
+        const aPast = (a.timestamp || 0) < now && FINISHED_STATUSES.has(a.status);
+        const bPast = (b.timestamp || 0) < now && FINISHED_STATUSES.has(b.status);
+        if (aPast !== bPast) return aPast ? 1 : -1;
+        return aPast ? (b.timestamp||0)-(a.timestamp||0) : (a.timestamp||0)-(b.timestamp||0);
+      });
+    });
+    return output;
+  }
+
+  async function loadFullSchedule() {
     try {
-      const query = mode === 'live' ? '?live=1' : mode === 'results' ? '?results=1' : '';
-      const joiner = query ? '&' : '?';
-      const response = await fetch(`/api/fixtures${query}${joiner}t=${Date.now()}`, { cache: 'no-store' });
-      if (!response.ok) return;
-      applyData(await response.json());
+      const stamp = Date.now();
+      const [fixturesRes, resultsRes] = await Promise.all([
+        fetch(`/api/fixtures?t=${stamp}`, { cache: 'no-store' }),
+        fetch(`/api/fixtures?results=1&t=${stamp}`, { cache: 'no-store' })
+      ]);
+      if (!fixturesRes.ok || !resultsRes.ok) return;
+      const fixturesData = await fixturesRes.json();
+      const resultsData = await resultsRes.json();
+      const merged = mergeLeagueData(fixturesData, resultsData);
+      Object.entries(merged).forEach(([name, fixtures]) => {
+        const panel = document.getElementById(leaguePanelId(name));
+        if (panel) renderLeague(panel, fixtures);
+      });
     } catch (error) {
-      console.warn('Football Talk score refresh failed:', error);
+      console.warn('Football Talk fixtures load failed:', error);
     }
   }
 
+  async function refreshLive() {
+    try {
+      const response = await fetch(`/api/fixtures?live=1&t=${Date.now()}`, { cache: 'no-store' });
+      if (!response.ok) return;
+      const data = await response.json();
+      const byId = new Map((data.leagues || []).flatMap(l => l.fixtures || []).map(f => [String(f.id), f]));
+      document.querySelectorAll('.fixture[data-fixture-id]').forEach(row => {
+        const fixture = byId.get(row.dataset.fixtureId);
+        if (!fixture) return;
+        const replacement = fixtureRow(fixture);
+        row.replaceWith(replacement);
+      });
+    } catch (_) {}
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
-    sortFixtureDays();
     addLiveStyles();
-    fetchScores('fixtures');
-    fetchScores('results');
-    fetchScores('live');
-    window.setInterval(() => fetchScores('live'), REFRESH_MS);
-    window.setInterval(() => fetchScores('results'), 2 * 60 * 1000);
-    window.setInterval(() => fetchScores('fixtures'), 15 * 60 * 1000);
+    const eyebrow = document.querySelector('.eyebrow');
+    if (eyebrow) eyebrow.textContent = 'NEXT 14 DAYS';
+    const sub = document.querySelector('.sub');
+    if (sub) sub.textContent = 'Premier League and EFL Championship fixtures for the next 14 days, plus recent completed matches. All kick-off times shown in UK time.';
+    document.querySelectorAll('.league-panel').forEach(panel => {
+      panel.innerHTML = '<div class="fixtures-loading">Loading fixtures…</div>';
+    });
+    loadFullSchedule();
+    window.setInterval(refreshLive, REFRESH_MS);
+    window.setInterval(loadFullSchedule, 2 * 60 * 1000);
   });
 })();
