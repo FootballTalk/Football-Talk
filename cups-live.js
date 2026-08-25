@@ -1,6 +1,7 @@
 (() => {
-  const REFRESH_MS = 60000;
-  const LIVE = new Set(['1H','2H','ET','BT','P','LIVE','HT']);
+  const LIVE_REFRESH_MS = 30000;
+  const FULL_REFRESH_MS = 60000;
+  const LIVE = new Set(['1H','2H','ET','BT','P','LIVE','HT','INT']);
   const FINISHED = new Set(['FT','AET','PEN']);
 
   const panelId = name => String(name).toLowerCase().includes('carabao') ? 'cup-carabao' : 'cup-fa';
@@ -11,14 +12,27 @@
   function display(f) {
     const hasScore = f.homeGoals != null && f.awayGoals != null;
     const score = hasScore ? `${f.homeGoals}-${f.awayGoals}` : '0-0';
+
     if (LIVE.has(f.status)) {
+      if (f.status === 'HT') return { main: score, sub: 'HT', live: true, finished: false };
+      if (f.status === 'INT') return { main: score, sub: 'INTERVAL', live: true, finished: false };
+      if (f.status === 'ET') {
+        const minute = f.elapsed ? `${f.elapsed}'` : '';
+        return { main: score, sub: `ET${minute ? ` · ${minute}` : ''}`, live: true, finished: false };
+      }
+      if (f.status === 'P') return { main: score, sub: 'PENALTIES', live: true, finished: false };
       const minute = f.elapsed ? `${f.elapsed}'` : '';
-      const label = f.status === 'HT' ? 'HT' : `LIVE${minute ? ` · ${minute}` : ''}`;
-      return { main: score, sub: label, live: true, finished: false };
+      return { main: score, sub: `LIVE${minute ? ` · ${minute}` : ''}`, live: true, finished: false };
     }
-    if (FINISHED.has(f.status)) return { main: score, sub: f.status === 'FT' ? 'FT' : f.status, live: false, finished: true };
+
+    if (FINISHED.has(f.status)) {
+      const label = f.status === 'FT' ? 'FT' : f.status;
+      return { main: score, sub: label, live: false, finished: true };
+    }
     if (f.status === 'PST') return { main: 'POSTPONED', sub: '', live: false, finished: false };
     if (f.status === 'CANC') return { main: 'CANCELLED', sub: '', live: false, finished: false };
+    if (f.status === 'ABD') return { main: 'ABANDONED', sub: '', live: false, finished: false };
+    if (f.status === 'SUSP') return { main: score, sub: 'SUSPENDED', live: false, finished: false };
     return { main: kickOff(f.date), sub: '', live: false, finished: false };
   }
 
@@ -97,8 +111,8 @@
 
   function start() {
     load();
-    setInterval(refreshLive,REFRESH_MS);
-    setInterval(load,2*60*1000);
+    setInterval(refreshLive,LIVE_REFRESH_MS);
+    setInterval(load,FULL_REFRESH_MS);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once:true });
