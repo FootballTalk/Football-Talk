@@ -1,37 +1,51 @@
-function seasonFor(date){
-  const year=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric'}).format(date));
-  const month=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',month:'numeric'}).format(date));
-  return month>=7?year:year-1;
+const SOURCE='https://www.statbunker.com/competitions/TopGoalScorers?comp_id=791';
+
+function decode(s=''){
+  return String(s)
+    .replace(/<script[\s\S]*?<\/script>/gi,' ')
+    .replace(/<style[\s\S]*?<\/style>/gi,' ')
+    .replace(/<[^>]+>/g,' ')
+    .replace(/&nbsp;/gi,' ')
+    .replace(/&amp;/gi,'&')
+    .replace(/&quot;/gi,'"')
+    .replace(/&#39;|&#039;/gi,"'")
+    .replace(/&lt;/gi,'<')
+    .replace(/&gt;/gi,'>')
+    .replace(/\s+/g,' ')
+    .trim();
 }
 
-function findCategory(data,names){
-  const cats=data?.leaders?.categories||data?.categories||[];
-  return cats.find(c=>names.includes(String(c.name||'').toLowerCase())||names.includes(String(c.displayName||'').toLowerCase()));
+function parseTable(html){
+  const tables=String(html).match(/<table\b[\s\S]*?<\/table>/gi)||[];
+  for(const table of tables){
+    const rows=(table.match(/<tr\b[\s\S]*?<\/tr>/gi)||[]).map(row=>(row.match(/<(?:th|td)\b[\s\S]*?<\/(?:th|td)>/gi)||[]).map(decode));
+    const headerIndex=rows.findIndex(r=>r.some(c=>/^players?$/i.test(c))&&r.some(c=>/^goals?$/i.test(c)));
+    if(headerIndex<0) continue;
+    const headers=rows[headerIndex].map(h=>h.toLowerCase());
+    const ix={name:headers.findIndex(h=>h==='players'||h==='player'),team:headers.findIndex(h=>h==='clubs'||h==='club'),goals:headers.findIndex(h=>h==='goals'||h==='goal'),played:headers.findIndex(h=>h==='pld'||h==='p'||h.includes('played'))};
+    return rows.slice(headerIndex+1).map(r=>({
+      name:r[ix.name]||'',
+      team:ix.team>=0?r[ix.team]||'':'',
+      goals:Number(String(r[ix.goals]||'0').replace(/[^0-9.-]/g,''))||0,
+      appearances:ix.played>=0?(Number(String(r[ix.played]||'0').replace(/[^0-9.-]/g,''))||0):0
+    })).filter(p=>p.name&&p.goals>=0);
+  }
+  return [];
 }
 
 export default async function handler(req,res){
   if(req.method!=='GET') return res.status(405).json({error:'Method not allowed'});
-  const season=seasonFor(new Date());
   try{
-    const url=`https://site.api.espn.com/apis/site/v3/sports/soccer/eng.1/leaders?season=${season}`;
-    const r=await fetch(url,{headers:{accept:'application/json','user-agent':'FootballTalk/1.0'}});
-    const data=await r.json();
-    if(!r.ok) throw new Error(`ESPN returned ${r.status}`);
-    const category=findCategory(data,['goals','goals scored','goalsscored','totalgoals','scoring']);
-    const leaders=category?.leaders||[];
-    const players=leaders.slice(0,20).map((item,index)=>({
-      rank:index+1,
-      id:item.athlete?.id||'',
-      name:item.athlete?.displayName||item.athlete?.fullName||'Unknown player',
-      photo:item.athlete?.headshot?.href||'',
-      team:item.team?.displayName||item.team?.name||'',
-      teamLogo:item.team?.logos?.[0]?.href||item.team?.logo||'',
-      goals:Number(item.value||item.displayValue||0),
-      appearances:Number(item.statistics?.find?.(s=>String(s.name||'').toLowerCase().includes('appear'))?.value||0)
-    }));
-    if(!players.length) throw new Error('No scorer leaderboard returned');
+    const r=await fetch(SOURCE,{headers:{'user-agent':'Mozilla/5.0 FootballTalk/1.0',accept:'text/html,application/xhtml+xml'}});
+    const html=await r.text();
+    if(!r.ok) throw new Error(`StatBunker returned ${r.status}`);
+    const players=parseTable(html)
+      .sort((a,b)=>b.goals-a.goals||a.name.localeCompare(b.name))
+      .slice(0,20)
+      .map((p,index)=>({...p,rank:index+1,photo:'',teamLogo:''}));
+    if(!players.length) throw new Error('No scorer rows found');
     res.setHeader('Cache-Control','public, s-maxage=1800, stale-while-revalidate=1800');
-    return res.status(200).json({season,updatedAt:new Date().toISOString(),source:'ESPN',players});
+    return res.status(200).json({season:'2026/27',updatedAt:new Date().toISOString(),source:'StatBunker',players});
   }catch(error){
     res.setHeader('Cache-Control','no-store');
     return res.status(502).json({error:'Unable to load top scorers',detail:String(error)});
