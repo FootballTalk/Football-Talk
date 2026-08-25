@@ -12,6 +12,23 @@ document.addEventListener('DOMContentLoaded',()=>{
   addStatsLink(nav);
   addStatsLink(quick,'Stats');
 
+  const transferLive=document.querySelector('.transfer-live');
+  if(transferLive){
+    const headTime=transferLive.querySelector('.transfer-live-head small');
+    if(headTime) headTime.textContent='Updated 25 Aug 2026, 12:45';
+    const grids=transferLive.querySelectorAll('.transfer-update-grid');
+    if(grids[0]) grids[0].innerHTML=`
+      <article class="transfer-update"><span class="transfer-status neutral">COMPLETED</span><h4>Tottenham — Sávio</h4><p>Tottenham have completed the signing of Sávio from Manchester City for an initial £75m, with up to £10m in add-ons.</p></article>
+      <article class="transfer-update go-update"><span class="transfer-status">AGREED</span><h4>Man City — Allan Elias</h4><p>Manchester City have agreed a deal with Palmeiras for winger Allan Elias worth about £34m, with final formalities now expected.</p></article>
+      <article class="transfer-update go-update"><span class="transfer-status">AGREED</span><h4>Man City — Ayyoub Bouaddi</h4><p>City have agreed a deal with Lille worth €95m plus €5m in add-ons for Ayyoub Bouaddi, with the move progressing towards completion.</p></article>`;
+    if(grids[1]) grids[1].innerHTML=`
+      <article class="transfer-update"><span class="transfer-status neutral">NEWCASTLE</span><h4>Nico González move close</h4><p>Newcastle are closing in on a move for Manchester City midfielder Nico González, with a fee around £50m under discussion.</p></article>
+      <article class="transfer-update"><span class="transfer-status neutral">NOTTM FOREST</span><h4>Liam Delap talks advance</h4><p>Nottingham Forest are close to signing Liam Delap from Chelsea as talks continue over the striker.</p></article>
+      <article class="transfer-update"><span class="transfer-status neutral">MAN CITY</span><h4>Cody Gakpo interest</h4><p>Manchester City are interested in Liverpool forward Cody Gakpo, although no club-to-club talks have taken place yet.</p></article>
+      <article class="transfer-update"><span class="transfer-status neutral">MAN CITY</span><h4>Enzo Fernández remains a target</h4><p>Manchester City continue to be linked with Chelsea midfielder Enzo Fernández as they assess further midfield options.</p></article>
+      <article class="transfer-update"><span class="transfer-status neutral">ASTON VILLA</span><h4>Joel Ordóñez interest</h4><p>Aston Villa are pushing for defensive reinforcements and remain interested in Club Brugge centre-back Joel Ordóñez.</p></article>`;
+  }
+
   if(!quick)return;
 
   const style=document.createElement('style');
