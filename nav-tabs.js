@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded',()=>{
   if(!document.querySelector('script[data-auto-editorial]')){
     const autoEditorial=document.createElement('script');
-    autoEditorial.src='auto-editorial.js?v=20260825-4';
+    autoEditorial.src='auto-editorial.js?v=20260825-5';
     autoEditorial.dataset.autoEditorial='1';
     document.body.appendChild(autoEditorial);
   }
@@ -29,12 +29,28 @@ document.addEventListener('DOMContentLoaded',()=>{
   addCupsLink(nav);
   addCupsLink(quick);
 
-  // Automatic Transfer Wire is now the primary transfer feed.
-  // Keep the intro panel, but remove all old seeded/hard-coded transfer lists.
+  // The Automatic Transfer Wire is the single visible source of transfer stories.
+  // Remove legacy seeded lists from the DOM rather than leaving stale cards behind it.
   const transfers=document.getElementById('transfers');
   if(transfers){
-    transfers.querySelectorAll('.transfer-update-grid,.transfer-live-head,.latest-transfer-head,#transfer-stories').forEach(el=>el.classList.add('auto-hidden'));
+    transfers.querySelectorAll('.transfer-update-grid,.transfer-live-head,.latest-transfer-head,#transfer-stories').forEach(el=>el.remove());
   }
+
+  // Keep Matchday focused on the live centre rather than old admin/story wording.
+  const matchday=document.getElementById('matchday');
+  if(matchday){
+    const strong=matchday.querySelector('.scoreboard strong');
+    const heading=matchday.querySelector('.scoreboard h3');
+    const copy=matchday.querySelector('.scoreboard p');
+    if(strong) strong.textContent='FT LIVE Matchday Centre';
+    if(heading) heading.textContent='Live scores, match status & results';
+    if(copy) copy.textContent='Live coverage for the Premier League, Championship, Carabao Cup and FA Cup, updated automatically throughout matchdays.';
+  }
+
+  // Replace stale hard-coded ticker text immediately while the live ticker loads.
+  document.querySelectorAll('.ticker-track span').forEach(span=>{
+    span.textContent='⚽ FT LIVE — Loading the latest football news, transfers and live match scores…';
+  });
 
   if(!quick)return;
 
