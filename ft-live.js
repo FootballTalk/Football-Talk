@@ -58,15 +58,15 @@
       const name = clean(leagueName).toLowerCase();
       return name === 'premier league' || name.includes('premier league') || name === 'championship' || name.includes('championship');
     };
+    const isLaunchStory = (title='') => {
+      const name=clean(title).toLowerCase();
+      return name.includes('welcome to football talk') || name.includes('football talk has a new home');
+    };
     const isTickerWorthyTitle = (title='') => {
       const name=clean(title).toLowerCase();
       if(!name) return false;
       const blocked=['fans have their say','where fans have their say','football talk'];
       return !blocked.includes(name) && !isLaunchStory(name);
-    };
-    const isLaunchStory = (title='') => {
-      const name=clean(title).toLowerCase();
-      return name.includes('welcome to football talk') || name.includes('football talk has a new home');
     };
     function removeLaunchStoryFromLatest(){
       const feed=document.getElementById('dynamic-posts');
@@ -140,9 +140,8 @@
         const data=await response.json();
         automaticNewsItems=(data.items||[]).slice(0,6).map(item=>{
           const type=clean(item.type)==='TRANSFER'?'TRANSFER':'NEWS';
-          const source=clean(item.source);
           const title=clean(item.title);
-          return isTickerWorthyTitle(title)?`${type}: ${title}${source?` — ${source}`:''}`:'';
+          return isTickerWorthyTitle(title)?`${type}: ${title} — FT`:'';
         }).filter(Boolean);
         if(!matchMode) render();
       }catch(_){}
