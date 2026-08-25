@@ -13,10 +13,9 @@
     mount.innerHTML='';
     mount.appendChild(selected.cloneNode(true));
 
-    // Section pages used to clone the old hard-coded transfer markup from index.html.
-    // Hide that legacy markup immediately; live editorial cards are injected below.
+    // Transfer section pages are driven by the automatic live wire only.
     if(view==='transfers'){
-      mount.querySelectorAll('.transfer-update-grid,.transfer-live-head').forEach(el=>el.style.display='none');
+      mount.querySelectorAll('.transfer-update-grid,.transfer-live-head,.latest-transfer-head,#transfer-stories').forEach(el=>el.style.display='none');
     }
 
     if(view!=='latest'){
@@ -32,12 +31,12 @@
     script.onload=()=>{
       if(view==='matchday'){
         const extra=document.createElement('script');
-        extra.src='matchday-extra.js';
+        extra.src='matchday-extra.js?v=20260825-2';
         document.body.appendChild(extra);
       }
       if(['latest','transfers','debate'].includes(view)){
         const auto=document.createElement('script');
-        auto.src='auto-editorial.js?v=20260825-3';
+        auto.src='auto-editorial.js?v=20260825-4';
         auto.dataset.autoEditorial='1';
         document.body.appendChild(auto);
       }
