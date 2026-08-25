@@ -28,17 +28,10 @@
     const FINISHED_STATUSES = new Set(['FT','AET','PEN']);
     let liveItems = [];
     let resultItems = [];
+    let automaticNewsItems = [];
     let lastLine = '';
     let timer = null;
     const clean = (text='') => String(text).replace(/\s+/g,' ').trim();
-
-    const editorialItems = [
-      'TRANSFER: Newcastle close in on a £50m move for Man City midfielder Nico González',
-      'TRANSFER: Nottingham Forest in talks with Chelsea over Liam Delap',
-      'TRANSFER: Man City finalising a £38.5m deal for Palmeiras winger Allan Elias',
-      'TRANSFER: Al Hilal make £50m offer for Arsenal winger Gabriel Martinelli',
-      'TRANSFER: Coventry move for Man City defender Stephen Mfuni falls through'
-    ];
 
     function latestNewsItems(){
       const items=[];
@@ -74,9 +67,10 @@
     function render(){
       const dynamicNews = latestNewsItems();
       const dynamicTransfers = latestTransferItems();
-      const items=[...liveItems,...resultItems,...dynamicNews,...dynamicTransfers,...editorialItems];
-      const finalItems=[...new Set(items)].slice(0,9);
-      const line=`⚽ ${finalItems.join('     •     ')}     •     `;
+      const items=[...liveItems,...resultItems,...automaticNewsItems,...dynamicNews,...dynamicTransfers];
+      const finalItems=[...new Set(items)].slice(0,10);
+      const fallback='NEWS: Football Talk live updates are loading';
+      const line=`⚽ ${(finalItems.length?finalItems:[fallback]).join('     •     ')}     •     `;
       if(line===lastLine) return;
       lastLine=line;
       const previousScroll = viewport.scrollLeft;
@@ -88,6 +82,21 @@
         viewport.scrollLeft = width ? previousScroll % width : 0;
       });
       ensureScrollLoop();
+    }
+
+    async function loadAutomaticNews(){
+      try{
+        const response=await fetch(`/api/news?t=${Date.now()}`,{cache:'no-store'});
+        if(!response.ok) return;
+        const data=await response.json();
+        automaticNewsItems=(data.items||[]).slice(0,6).map(item=>{
+          const type=clean(item.type)==='TRANSFER'?'TRANSFER':'NEWS';
+          const source=clean(item.source);
+          const title=clean(item.title);
+          return `${type}: ${title}${source?` — ${source}`:''}`;
+        }).filter(Boolean);
+        render();
+      }catch(_){}
     }
 
     async function loadLiveScores(){
@@ -119,10 +128,12 @@
     const posts=document.getElementById('dynamic-posts');
     if(posts) new MutationObserver(render).observe(posts,{childList:true,subtree:true});
     render();
+    loadAutomaticNews();
     loadLiveScores();
     loadLatestResult();
     setInterval(loadLiveScores,30000);
     setInterval(loadLatestResult,120000);
+    setInterval(loadAutomaticNews,180000);
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initFtLive,{once:true});
