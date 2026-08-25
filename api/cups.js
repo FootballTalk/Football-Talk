@@ -75,9 +75,10 @@ function extractMatches(data) {
 }
 
 async function fetchCup(cup, season) {
-  const url = new URL('https://www.fotmob.com/api/leagues');
+  const url = new URL('https://www.fotmob.com/api/data/leagues');
   url.searchParams.set('id', String(cup.id));
   url.searchParams.set('season', season);
+  url.searchParams.set('ccode3', 'GBR');
   const response = await fetch(url, {
     headers: {
       accept: 'application/json',
