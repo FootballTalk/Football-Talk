@@ -105,3 +105,4 @@
   function start(){ensureStyles();load();setInterval(load,REFRESH_MS);}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true}); else start();
 })();
+// Football Talk automatic editorial feed enabled.
