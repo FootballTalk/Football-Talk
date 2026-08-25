@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded',()=>{
   if(!document.querySelector('script[data-auto-editorial]')){
     const autoEditorial=document.createElement('script');
-    autoEditorial.src='auto-editorial.js?v=20260825-1';
+    autoEditorial.src='auto-editorial.js?v=20260825-2';
     autoEditorial.dataset.autoEditorial='1';
     document.body.appendChild(autoEditorial);
   }
@@ -29,27 +29,20 @@ document.addEventListener('DOMContentLoaded',()=>{
   addCupsLink(nav);
   addCupsLink(quick);
 
+  // The transfer section is now driven by auto-editorial.js only.
+  // Hide legacy hard-coded transfer cards so stale stories cannot remain visible.
   const transferLive=document.querySelector('.transfer-live');
   if(transferLive){
-    const headTime=transferLive.querySelector('.transfer-live-head small');
-    if(headTime) headTime.textContent='Updated 25 Aug 2026, 12:45';
-    const grids=transferLive.querySelectorAll('.transfer-update-grid');
-    if(grids[0]) grids[0].innerHTML=`
-      <article class="transfer-update"><span class="transfer-status neutral">COMPLETED</span><h4>Tottenham — Sávio</h4><p>Tottenham have completed the signing of Sávio from Manchester City for an initial £75m, with up to £10m in add-ons.</p></article>
-      <article class="transfer-update go-update"><span class="transfer-status">AGREED</span><h4>Man City — Allan Elias</h4><p>Manchester City have agreed a deal with Palmeiras for winger Allan Elias worth about £34m, with final formalities now expected.</p></article>
-      <article class="transfer-update go-update"><span class="transfer-status">AGREED</span><h4>Man City — Ayyoub Bouaddi</h4><p>City have agreed a deal with Lille worth €95m plus €5m in add-ons for Ayyoub Bouaddi, with the move progressing towards completion.</p></article>`;
-    if(grids[1]) grids[1].innerHTML=`
-      <article class="transfer-update"><span class="transfer-status neutral">NEWCASTLE</span><h4>Nico González move close</h4><p>Newcastle are closing in on a move for Manchester City midfielder Nico González, with a fee around £50m under discussion.</p></article>
-      <article class="transfer-update"><span class="transfer-status neutral">NOTTM FOREST</span><h4>Liam Delap talks advance</h4><p>Nottingham Forest are close to signing Liam Delap from Chelsea as talks continue over the striker.</p></article>
-      <article class="transfer-update"><span class="transfer-status neutral">MAN CITY</span><h4>Cody Gakpo interest</h4><p>Manchester City are interested in Liverpool forward Cody Gakpo, although no club-to-club talks have taken place yet.</p></article>
-      <article class="transfer-update"><span class="transfer-status neutral">MAN CITY</span><h4>Enzo Fernández remains a target</h4><p>Manchester City continue to be linked with Chelsea midfielder Enzo Fernández as they assess further midfield options.</p></article>
-      <article class="transfer-update"><span class="transfer-status neutral">ASTON VILLA</span><h4>Joel Ordóñez interest</h4><p>Aston Villa are pushing for defensive reinforcements and remain interested in Club Brugge centre-back Joel Ordóñez.</p></article>`;
+    transferLive.querySelectorAll('.transfer-update-grid').forEach(grid=>grid.classList.add('auto-hidden'));
+    const head=transferLive.querySelector('.transfer-live-head');
+    if(head) head.classList.add('auto-hidden');
   }
 
   if(!quick)return;
 
   const style=document.createElement('style');
   style.textContent=`
+    .auto-hidden{display:none!important}
     .quick-nav{background:#0b0b0e!important;border-bottom:1px solid #2b2b31!important;gap:0!important;padding:0 10px!important;align-items:stretch!important}
     .quick-nav a{position:relative!important;background:transparent!important;color:#fff!important;border:0!important;border-radius:0!important;padding:14px 16px 16px!important;font-weight:800!important;max-width:none!important}
     .quick-nav a:hover,.quick-nav a:focus-visible{background:#17171b!important;color:#fff!important}
