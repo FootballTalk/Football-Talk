@@ -4,7 +4,6 @@ const LEAGUES = [
   { id: 40, name: 'EFL Championship' },
 ];
 
-// Build refresh marker: 2026-08-24 production environment refresh #5.
 function londonDateString(date) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/London',
@@ -144,7 +143,7 @@ export default async function handler(req, res) {
   }
 
   const now = new Date();
-  const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const end = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
   const from = londonDateString(now);
   const to = londonDateString(end);
   const season = seasonFor(now);
