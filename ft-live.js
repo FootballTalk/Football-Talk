@@ -27,11 +27,16 @@
     const LIVE_STATUSES = new Set(['1H','2H','ET','BT','P','LIVE','HT']);
     const FINISHED_STATUSES = new Set(['FT','AET','PEN']);
     let liveItems = [];
+    let matchMode = false;
     let resultItems = [];
     let automaticNewsItems = [];
     let lastLine = '';
     let timer = null;
     const clean = (text='') => String(text).replace(/\s+/g,' ').trim();
+    const isFeaturedLeague = (leagueName='') => {
+      const name = clean(leagueName).toLowerCase();
+      return name === 'premier league' || name.includes('premier league') || name === 'championship' || name.includes('championship');
+    };
 
     function latestNewsItems(){
       const items=[];
@@ -65,11 +70,16 @@
     }
 
     function render(){
-      const dynamicNews = latestNewsItems();
-      const dynamicTransfers = latestTransferItems();
-      const items=[...liveItems,...resultItems,...automaticNewsItems,...dynamicNews,...dynamicTransfers];
-      const finalItems=[...new Set(items)].slice(0,10);
-      const fallback='NEWS: Football Talk live updates are loading';
+      let finalItems;
+      if(matchMode && liveItems.length){
+        finalItems=[...new Set(liveItems)];
+      }else{
+        const dynamicNews = latestNewsItems();
+        const dynamicTransfers = latestTransferItems();
+        const items=[...resultItems,...automaticNewsItems,...dynamicNews,...dynamicTransfers];
+        finalItems=[...new Set(items)].slice(0,10);
+      }
+      const fallback=matchMode?'LIVE MATCHES: Updating Premier League and Championship scores':'NEWS: Football Talk live updates are loading';
       const line=`⚽ ${(finalItems.length?finalItems:[fallback]).join('     •     ')}     •     `;
       if(line===lastLine) return;
       lastLine=line;
@@ -95,7 +105,7 @@
           const title=clean(item.title);
           return `${type}: ${title}${source?` — ${source}`:''}`;
         }).filter(Boolean);
-        render();
+        if(!matchMode) render();
       }catch(_){}
     }
 
@@ -104,12 +114,15 @@
         const response=await fetch(`/api/fixtures?live=1&t=${Date.now()}`,{cache:'no-store'});
         if(!response.ok) return;
         const data=await response.json();
-        const matches=(data.leagues||[]).flatMap(league=>(league.fixtures||[]).map(fixture=>({...fixture,leagueName:league.name}))).filter(fixture=>LIVE_STATUSES.has(fixture.status));
-        liveItems=matches.slice(0,2).map(fixture=>{
+        const matches=(data.leagues||[])
+          .flatMap(league=>(league.fixtures||[]).map(fixture=>({...fixture,leagueName:league.name})))
+          .filter(fixture=>LIVE_STATUSES.has(fixture.status) && isFeaturedLeague(fixture.leagueName));
+        liveItems=matches.map(fixture=>{
           const score=`${fixture.homeGoals??0}-${fixture.awayGoals??0}`;
           const matchStatus=fixture.status==='HT'?'HT':fixture.elapsed?`LIVE ${fixture.elapsed}'`:'LIVE';
           return `${matchStatus}: ${fixture.home} ${score} ${fixture.away} (${fixture.leagueName})`;
         });
+        matchMode=liveItems.length>0;
         render();
       }catch(_){}
     }
@@ -121,12 +134,12 @@
         const data=await response.json();
         const results=(data.leagues||[]).flatMap(league=>(league.fixtures||[]).map(fixture=>({...fixture,leagueName:league.name}))).filter(fixture=>FINISHED_STATUSES.has(fixture.status)).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
         resultItems=results.length?[`LATEST RESULT: ${results[0].home} ${results[0].homeGoals??'-'}-${results[0].awayGoals??'-'} ${results[0].away} (${results[0].leagueName})`]:[];
-        render();
+        if(!matchMode) render();
       }catch(_){}
     }
 
     const posts=document.getElementById('dynamic-posts');
-    if(posts) new MutationObserver(render).observe(posts,{childList:true,subtree:true});
+    if(posts) new MutationObserver(()=>{ if(!matchMode) render(); }).observe(posts,{childList:true,subtree:true});
     render();
     loadAutomaticNews();
     loadLiveScores();
