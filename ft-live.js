@@ -11,9 +11,11 @@
     if(heroContent && !heroContent.querySelector('.hero-kickers')){
       const kickers=document.createElement('div');
       kickers.className='hero-kickers';
-      kickers.innerHTML='<span class="live-chip">LIVE UPDATES</span><span>TRANSFERS</span><span>FAN DEBATE</span>';
+      kickers.innerHTML='<a class="live-chip" href="#ft-live-ticker" aria-label="Go to FT Live updates">LIVE UPDATES</a><a href="#transfers">TRANSFERS</a><a href="#debate">FAN DEBATE</a>';
       heroContent.prepend(kickers);
     }
+    const tickerSection=document.querySelector('.ticker');
+    if(tickerSection && !tickerSection.id) tickerSection.id='ft-live-ticker';
 
     const track = document.querySelector('.ticker-track');
     const viewport = document.querySelector('.ticker-viewport');
@@ -25,6 +27,10 @@
       .ticker-viewport{overflow:hidden!important;position:relative!important;height:44px!important;display:block!important;scroll-behavior:auto!important}
       .ticker-track.ft-scroll-track{position:relative!important;left:auto!important;top:auto!important;display:flex!important;align-items:center!important;width:max-content!important;max-width:none!important;white-space:nowrap!important;transform:none!important;animation:none!important;will-change:auto!important}
       .ticker-track.ft-scroll-track .ft-scroll-copy{display:block!important;flex:0 0 auto!important;white-space:nowrap!important;padding:12px 28px!important;font-weight:800!important;line-height:20px!important;transform:none!important}
+      .hero-kickers a{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);backdrop-filter:blur(8px);color:#fff;font-size:11px;font-weight:900;letter-spacing:.9px;text-transform:uppercase;text-decoration:none;cursor:pointer;transition:transform .15s ease,background .15s ease}
+      .hero-kickers a:hover,.hero-kickers a:focus-visible{transform:translateY(-2px);background:rgba(255,255,255,.14)}
+      .hero-kickers a.live-chip{background:#f7c600;color:#000;border-color:#f7c600}
+      html{scroll-behavior:smooth}
     `;
     document.head.appendChild(style);
 
