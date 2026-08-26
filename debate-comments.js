@@ -39,7 +39,7 @@
     const url=`${cfg.SUPABASE_URL}/rest/v1/poll_responses?select=answer&poll_id=eq.${encodeURIComponent(pollId)}&limit=200`;
     const r=await fetch(url,{headers}); if(!r.ok)throw new Error('comments unavailable');
     const rows=await r.json();
-    return rows.map(row=>{try{return JSON.parse(row.answer)}catch{return null}}).filter(x=>x&&x.kind==='debate-comment'&&x.id&&x.text).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+    return rows.map(row=>{try{return JSON.parse(row.answer)}catch{return null}}).filter(x=>x&&x.kind==='debate-comment'&&x.id&&x.text).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
   }
 
   async function saveComment(pollId,payload){
