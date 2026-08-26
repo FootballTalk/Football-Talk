@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     const tables=[...container.querySelectorAll('a')].find(a=>a.textContent.trim()==='Tables');
     if(tables) container.insertBefore(link,tables); else container.appendChild(link);
   };
-  const addCupsLink=(container,label='Cups')=>{
+  const addCupsLink=(container,label='Domestic Cups')=>{
     if(!container||container.querySelector('a[href="cups.html"]'))return;
     const link=document.createElement('a');
     link.href='cups.html';
@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     const link=document.createElement('a');
     link.href='european.html';
     link.textContent=label;
-    const cups=[...container.querySelectorAll('a')].find(a=>a.textContent.trim()==='Cups');
+    const cups=[...container.querySelectorAll('a')].find(a=>['Cups','Domestic Cups'].includes(a.textContent.trim()));
     if(cups) cups.insertAdjacentElement('afterend',link); else container.appendChild(link);
   };
   const addSuperSixLink=(container,label='Super Six')=>{
@@ -51,14 +51,16 @@ document.addEventListener('DOMContentLoaded',()=>{
   const quick=document.querySelector('.quick-nav');
   addStatsLink(nav);
   addStatsLink(quick,'Stats');
-  addCupsLink(nav);
-  addCupsLink(quick);
+  addCupsLink(nav,'Domestic Cups');
+  addCupsLink(quick,'Domestic Cups');
   addEuropeLink(nav,'Europe');
   addEuropeLink(quick,'Europe');
   addSuperSixLink(nav);
   addSuperSixLink(quick,'Super 6');
   addQuizLink(nav,'Daily Quiz');
   addQuizLink(quick,'Daily Quiz');
+
+  document.querySelectorAll('a[href="cups.html"]').forEach(a=>a.textContent='Domestic Cups');
 
   const transfers=document.getElementById('transfers');
   if(transfers){
