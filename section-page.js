@@ -40,6 +40,11 @@
         auto.dataset.autoEditorial='1';
         document.body.appendChild(auto);
       }
+      if(view==='debate'){
+        const comments=document.createElement('script');
+        comments.src='debate-comments.js?v=20260826-1';
+        document.body.appendChild(comments);
+      }
     };
     document.body.appendChild(script);
   }catch(e){
