@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     const link=document.createElement('a');
     link.href='super-six.html';
     link.textContent=label;
-    const debate=[...container.querySelectorAll('a')].find(a=>['Fan Debate','Debate'].includes(a.textContent.trim()));
+    const debate=[...container.querySelectorAll('a')].find(a=>(a.getAttribute('href')||'').includes('view=debate'));
     if(debate) debate.insertAdjacentElement('afterend',link); else container.appendChild(link);
   };
   const addQuizLink=(container,label='Daily Quiz')=>{
@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   addQuizLink(quick,'Daily Quiz');
 
   document.querySelectorAll('a[href="cups.html"]').forEach(a=>a.textContent='Domestic Cups');
+  document.querySelectorAll('a[href*="view=debate"]').forEach(a=>{a.innerHTML='<span class="debate-live-dot" aria-hidden="true"></span>Fan Debate Live';a.classList.add('debate-live-tab');});
 
   const transfers=document.getElementById('transfers');
   if(transfers){
@@ -103,11 +104,13 @@ document.addEventListener('DOMContentLoaded',()=>{
   const style=document.createElement('style');
   style.textContent=`
     .auto-hidden{display:none!important}
+    .debate-live-tab{display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important}
+    .debate-live-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:#24d164;box-shadow:0 0 0 3px rgba(36,209,100,.15),0 0 8px rgba(36,209,100,.75)}
     .quick-nav{background:#0b0b0e!important;border-bottom:1px solid #2b2b31!important;gap:0!important;padding:0 10px!important;align-items:stretch!important}
     .quick-nav a{position:relative!important;background:transparent!important;color:#fff!important;border:0!important;border-radius:0!important;padding:14px 16px 16px!important;font-weight:800!important;max-width:none!important}
     .quick-nav a:hover,.quick-nav a:focus-visible{background:#17171b!important;color:#fff!important}
     .quick-nav a.active-tab::after{content:'';position:absolute;left:10px;right:10px;bottom:0;height:5px;background:#f7c600}
-    @media(max-width:900px){.quick-nav{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:0!important;padding:0 4px!important}.quick-nav a{min-width:0!important;width:100%!important;padding:11px 3px 13px!important;font-size:11px!important;line-height:1.1!important}.quick-nav a.active-tab::after{left:5px;right:5px;height:4px}}
+    @media(max-width:900px){.quick-nav{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:0!important;padding:0 4px!important}.quick-nav a{min-width:0!important;width:100%!important;padding:11px 3px 13px!important;font-size:11px!important;line-height:1.1!important}.quick-nav a.active-tab::after{left:5px;right:5px;height:4px}.debate-live-dot{width:7px;height:7px;flex-basis:7px}}
   `;
   document.head.appendChild(style);
 
