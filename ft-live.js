@@ -38,6 +38,7 @@
 
     const LIVE_STATUSES = new Set(['1H','2H','ET','BT','P','LIVE','HT']);
     const FINISHED_STATUSES = new Set(['FT','AET','PEN']);
+    const RESULT_TTL_MS = 3 * 60 * 60 * 1000;
     let liveItems = [];
     let matchMode = false;
     let resultItems = [];
@@ -182,7 +183,15 @@
         if(cupResult.status==='fulfilled' && cupResult.value){
           results.push(...(cupResult.value.cups||[]).flatMap(cup=>(cup.fixtures||[]).map(fixture=>({...fixture,leagueName:cup.name}))));
         }
-        const finished=results.filter(fixture=>FINISHED_STATUSES.has(fixture.status) && isFeaturedLeague(fixture.leagueName)).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+        const now=Date.now();
+        const finished=results.filter(fixture=>{
+          if(!FINISHED_STATUSES.has(fixture.status) || !isFeaturedLeague(fixture.leagueName)) return false;
+          const ts=Number(fixture.timestamp||0);
+          if(!ts) return false;
+          const kickoffMs=ts < 100000000000 ? ts*1000 : ts;
+          const approximateFullTime=kickoffMs + (2*60*60*1000);
+          return now >= approximateFullTime && (now-approximateFullTime) <= RESULT_TTL_MS;
+        }).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
         resultItems=finished.length?[`LATEST RESULT: ${finished[0].home} ${finished[0].homeGoals??'-'}-${finished[0].awayGoals??'-'} ${finished[0].away} (${finished[0].leagueName})`]:[];
         if(!matchMode) render();
       }catch(_){}
