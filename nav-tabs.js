@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     const debate=[...container.querySelectorAll('a')].find(a=>['Fan Debate','Debate'].includes(a.textContent.trim()));
     if(debate) debate.insertAdjacentElement('afterend',link); else container.appendChild(link);
   };
-  const addQuizLink=(container,label='Quiz')=>{
+  const addQuizLink=(container,label='Daily Quiz')=>{
     if(!container||container.querySelector('a[href="quiz.html"]'))return;
     const link=document.createElement('a');
     link.href='quiz.html';
@@ -57,8 +57,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   addEuropeLink(quick,'Europe');
   addSuperSixLink(nav);
   addSuperSixLink(quick,'Super 6');
-  addQuizLink(nav,'Quiz');
-  addQuizLink(quick,'Quiz');
+  addQuizLink(nav,'Daily Quiz');
+  addQuizLink(quick,'Daily Quiz');
 
   const transfers=document.getElementById('transfers');
   if(transfers){
