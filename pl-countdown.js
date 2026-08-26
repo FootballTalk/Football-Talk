@@ -68,3 +68,11 @@
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
+
+// Load the confirmed Carabao Cup draw story into Latest News only; FT LIVE ticker is untouched.
+if(!document.querySelector('script[data-ft-draw-news]')){
+  const drawNews=document.createElement('script');
+  drawNews.src='draw-news.js?v=20260826-1';
+  drawNews.dataset.ftDrawNews='1';
+  document.body.appendChild(drawNews);
+}
