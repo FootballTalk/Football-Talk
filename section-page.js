@@ -29,6 +29,12 @@
     const script=document.createElement('script');
     script.src='script.js';
     script.onload=()=>{
+      if(view==='latest'){
+        const draw=document.createElement('script');
+        draw.src='draw-news.js?v=20260826-1';
+        draw.dataset.ftDrawNews='1';
+        document.body.appendChild(draw);
+      }
       if(view==='matchday'){
         const extra=document.createElement('script');
         extra.src='matchday-extra.js?v=20260825-2';
