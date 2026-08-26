@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f7c600">
+<title>Daily Quiz | Football Talk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--yellow:#f7c600;--black:#0b0b0e;--green:#167a38;--red:#b42318}*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f4f4f4;color:#111}.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;background:var(--black);color:#fff;border-bottom:4px solid var(--yellow);padding:14px 18px}.brand{display:flex;align-items:center;gap:12px}.mark{display:flex;align-items:center;justify-content:center;width:46px;height:46px;background:var(--yellow);color:#000;font-family:'Archivo Black';font-size:23px;transform:skew(-8deg)}.brand strong{font-family:'Archivo Black';display:block}.brand small{font-size:10px;letter-spacing:1.2px;color:#ccc}.close{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--yellow);color:#000;font-size:34px;font-weight:900;text-decoration:none}.wrap{max-width:850px;margin:auto;padding:34px 18px 70px}.eyebrow{font-size:12px;font-weight:900;letter-spacing:2px;color:#8a6e00}.title{font-family:'Archivo Black';font-size:clamp(42px,8vw,78px);line-height:.95;margin:6px 0 12px}.sub{color:#666;line-height:1.55;margin:0 0 20px}.quiz-meta{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px}.pill{background:#111;color:#fff;padding:8px 11px;font-size:12px;font-weight:900}.pill.yellow{background:var(--yellow);color:#000}.question{background:#fff;border-top:5px solid var(--yellow);box-shadow:0 8px 22px rgba(0,0,0,.06);padding:22px;margin:0 0 16px}.qnum{font-size:11px;font-weight:1000;letter-spacing:1px;color:#8a6e00}.question h2{font-family:'Archivo Black';font-size:24px;line-height:1.2;margin:8px 0 16px}.answers{display:grid;gap:9px}.answer{appearance:none;width:100%;text-align:left;background:#f6f6f6;border:2px solid #ddd;padding:13px 14px;font:inherit;font-weight:800;cursor:pointer}.answer:hover{border-color:#111}.answer.selected{border-color:#111;background:#fff6cc}.answer.correct{background:#e7f6ec;border-color:var(--green);color:#0d5e29}.answer.wrong{background:#fdebea;border-color:var(--red);color:#8d1b13}.answer:disabled{cursor:default}.controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.submit,.retry{appearance:none;border:0;background:#111;color:#fff;padding:14px 18px;font:inherit;font-weight:1000;cursor:pointer}.submit{background:var(--yellow);color:#000}.result{display:none;margin-top:20px;padding:24px;background:#111;color:#fff;border-top:5px solid var(--yellow)}.result.show{display:block}.result strong{display:block;font-family:'Archivo Black';font-size:34px;color:var(--yellow);margin-bottom:6px}.explanation{display:none;margin-top:10px;color:#555;font-size:14px;line-height:1.5}.question.answered .explanation{display:block}.footnote{margin-top:22px;color:#666;font-size:12px;line-height:1.5}@media(max-width:600px){.wrap{padding:24px 10px 60px}.title{font-size:46px}.brand small{display:none}.question{padding:17px}.question h2{font-size:21px}}
+</style>
+</head>
+<body>
+<header class="top"><div class="brand"><span class="mark">FT</span><span><strong>FOOTBALL TALK</strong><small>WHERE FANS HAVE THEIR SAY</small></span></div><a class="close" href="./" aria-label="Close quiz and return to Football Talk">×</a></header>
+<main class="wrap">
+<p class="eyebrow">TEST YOUR FOOTBALL KNOWLEDGE</p><h1 class="title">Daily Quiz</h1><p class="sub">Five football questions every day. Pick your answers, submit your score and come back tomorrow for a fresh set.</p>
+<div class="quiz-meta"><span class="pill yellow" id="date-pill"></span><span class="pill">5 QUESTIONS</span><span class="pill">NEW QUIZ DAILY</span></div>
+<div id="quiz"></div>
+<div class="controls"><button class="submit" id="submit">Submit answers</button><button class="retry" id="retry" hidden>Try again</button></div>
+<div class="result" id="result"></div>
+<p class="footnote">The Football Talk Daily Quiz rotates automatically using the date, so there is nothing to update manually.</p>
+</main>
+<script>
+(() => {
+const bank=[
+{q:'Which club has won the most European Cups / Champions League titles?',a:['AC Milan','Liverpool','Real Madrid','Bayern Munich'],c:2,e:'Real Madrid hold the record for the most European Cup and Champions League titles.'},
+{q:'Which country won the 1966 FIFA World Cup?',a:['England','West Germany','Brazil','Italy'],c:0,e:'England beat West Germany 4-2 after extra time at Wembley.'},
+{q:'Who is the Premier League’s all-time leading goalscorer?',a:['Wayne Rooney','Alan Shearer','Harry Kane','Sergio Agüero'],c:1,e:'Alan Shearer scored 260 Premier League goals.'},
+{q:'Which club plays its home matches at Anfield?',a:['Everton','Liverpool','Aston Villa','Leeds United'],c:1,e:'Anfield has been Liverpool’s home ground since 1892.'},
+{q:'Which nation won the 2018 FIFA World Cup?',a:['Croatia','Argentina','France','Germany'],c:2,e:'France defeated Croatia 4-2 in the final.'},
+{q:'What colour card means a player is sent off?',a:['Blue','Yellow','Red','Green'],c:2,e:'A red card means the player is dismissed from the match.'},
+{q:'Which English club is nicknamed the Gunners?',a:['Arsenal','Chelsea','West Ham','Tottenham'],c:0,e:'Arsenal are widely known as the Gunners.'},
+{q:'Which club plays at Old Trafford?',a:['Manchester City','Manchester United','Bolton Wanderers','Salford City'],c:1,e:'Old Trafford is Manchester United’s home stadium.'},
+{q:'Which nation won UEFA Euro 2016?',a:['France','Portugal','Spain','Italy'],c:1,e:'Portugal beat hosts France 1-0 after extra time in the final.'},
+{q:'Who scored the “Hand of God” goal at the 1986 World Cup?',a:['Pelé','Diego Maradona','Johan Cruyff','Zinedine Zidane'],c:1,e:'Diego Maradona scored it for Argentina against England.'},
+{q:'Which club is based at Stamford Bridge?',a:['Fulham','Chelsea','Brentford','QPR'],c:1,e:'Stamford Bridge is Chelsea’s home ground.'},
+{q:'How many players does each team normally start with on the pitch?',a:['9','10','11','12'],c:2,e:'A team starts with eleven players, including the goalkeeper.'},
+{q:'Which country has won the most men’s FIFA World Cups?',a:['Germany','Italy','Argentina','Brazil'],c:3,e:'Brazil have won the men’s World Cup five times.'},
+{q:'Which club is nicknamed the Magpies?',a:['Newcastle United','Sunderland','Leicester City','Burnley'],c:0,e:'Newcastle United are known as the Magpies.'},
+{q:'Which trophy is contested by the winners of the Champions League and Europa League?',a:['Community Shield','UEFA Super Cup','Club World Shield','European Cup Winners Cup'],c:1,e:'The Champions League and Europa League winners meet in the UEFA Super Cup.'},
+{q:'Which stadium hosted the 1966 World Cup final?',a:['Highbury','Old Trafford','Wembley','Hampden Park'],c:2,e:'The 1966 World Cup final was played at Wembley Stadium.'},
+{q:'Which club won the treble of Premier League, FA Cup and Champions League in 1999?',a:['Arsenal','Liverpool','Manchester United','Chelsea'],c:2,e:'Manchester United completed that famous treble in 1999.'},
+{q:'Which country is associated with the club Bayern Munich?',a:['Austria','Germany','Switzerland','Netherlands'],c:1,e:'Bayern Munich are based in Munich, Germany.'},
+{q:'What is the maximum number of points a team can earn for one league win?',a:['1','2','3','4'],c:2,e:'A league win is worth three points.'},
+{q:'Which club plays home games at the Etihad Stadium?',a:['Manchester United','Manchester City','Everton','Aston Villa'],c:1,e:'The Etihad Stadium is Manchester City’s home.'},
+{q:'Which nation won the 2022 FIFA World Cup?',a:['France','Argentina','Brazil','Croatia'],c:1,e:'Argentina beat France on penalties after a 3-3 draw.'},
+{q:'Which club is nicknamed the Toffees?',a:['Everton','Burnley','West Ham','Brighton'],c:0,e:'Everton are known as the Toffees.'},
+{q:'Which English competition is the oldest national football competition in the world?',a:['League Cup','FA Cup','Premier League','Community Shield'],c:1,e:'The FA Cup was first played in the 1871-72 season.'},
+{q:'Which club plays at Villa Park?',a:['Wolves','Aston Villa','Birmingham City','West Brom'],c:1,e:'Villa Park is the home of Aston Villa.'},
+{q:'Which position is allowed to handle the ball inside their own penalty area?',a:['Centre-back','Goalkeeper','Striker','Any defender'],c:1,e:'The goalkeeper may handle the ball within their own penalty area, subject to the Laws of the Game.'},
+{q:'Which country won the first FIFA World Cup in 1930?',a:['Brazil','Italy','Uruguay','Argentina'],c:2,e:'Uruguay won the inaugural World Cup on home soil in 1930.'},
+{q:'Which club’s traditional home kit is predominantly sky blue?',a:['Manchester City','Liverpool','Arsenal','Newcastle United'],c:0,e:'Manchester City are strongly associated with sky blue.'},
+{q:'Which city is home to Celtic and Rangers?',a:['Edinburgh','Aberdeen','Dundee','Glasgow'],c:3,e:'Both Celtic and Rangers are based in Glasgow.'},
+{q:'What does VAR stand for?',a:['Video Assistant Referee','Verified Action Review','Visual Assistant Replay','Video Action Referee'],c:0,e:'VAR stands for Video Assistant Referee.'},
+{q:'Which club plays at the Emirates Stadium?',a:['Tottenham Hotspur','Arsenal','Chelsea','West Ham United'],c:1,e:'The Emirates Stadium is Arsenal’s home ground.'},
+{q:'Who captained England to World Cup victory in 1966?',a:['Bobby Charlton','Bobby Moore','Geoff Hurst','Gordon Banks'],c:1,e:'Bobby Moore captained England in the 1966 World Cup final.'},
+{q:'Which club is nicknamed the Reds and plays at Anfield?',a:['Nottingham Forest','Liverpool','Barnsley','Middlesbrough'],c:1,e:'Liverpool are commonly known as the Reds.'},
+{q:'Which European club competition sits directly below the Champions League?',a:['Conference League','Europa League','Super Cup','Nations League'],c:1,e:'The UEFA Europa League is the second-tier major UEFA club competition.'},
+{q:'Which English club plays at St James’ Park?',a:['Newcastle United','Southampton','Leeds United','Norwich City'],c:0,e:'St James’ Park is Newcastle United’s home stadium.'},
+{q:'A standard football match lasts how many minutes before added time and extra time?',a:['80','90','100','120'],c:1,e:'A regulation match is two halves of 45 minutes.'}
+];
+const dayNumber=Math.floor(Date.now()/86400000); const start=(dayNumber*7)%bank.length; const questions=[]; for(let i=0;i<5;i++) questions.push(bank[(start+i*6)%bank.length]);
+const quiz=document.getElementById('quiz'),submit=document.getElementById('submit'),retry=document.getElementById('retry'),result=document.getElementById('result');
+document.getElementById('date-pill').textContent=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'short',day:'numeric',month:'short'}).format(new Date()).toUpperCase();
+const selections=new Array(5).fill(null);
+questions.forEach((item,i)=>{const box=document.createElement('section');box.className='question';box.innerHTML=`<span class="qnum">QUESTION ${i+1}</span><h2></h2><div class="answers"></div><p class="explanation"></p>`;box.querySelector('h2').textContent=item.q;box.querySelector('.explanation').textContent=item.e;const answers=box.querySelector('.answers');item.a.forEach((text,j)=>{const b=document.createElement('button');b.className='answer';b.type='button';b.textContent=text;b.addEventListener('click',()=>{if(box.classList.contains('answered'))return;selections[i]=j;[...answers.children].forEach(x=>x.classList.remove('selected'));b.classList.add('selected');});answers.appendChild(b)});quiz.appendChild(box)});
+submit.addEventListener('click',()=>{if(selections.some(v=>v===null)){result.className='result show';result.innerHTML='<strong>Nearly there!</strong>Please answer all five questions before submitting.';result.scrollIntoView({behavior:'smooth',block:'center'});return;}let score=0;[...document.querySelectorAll('.question')].forEach((box,i)=>{box.classList.add('answered');[...box.querySelectorAll('.answer')].forEach((b,j)=>{b.disabled=true;if(j===questions[i].c)b.classList.add('correct');if(j===selections[i]&&j!==questions[i].c)b.classList.add('wrong')});if(selections[i]===questions[i].c)score++;});const verdict=score===5?'Perfect score!':score>=4?'Top knowledge!':score>=3?'Solid effort!':score>=2?'Not bad — have another go tomorrow.':'Tough one today!';result.className='result show';result.innerHTML=`<strong>${score}/5</strong>${verdict}`;submit.hidden=true;retry.hidden=false;result.scrollIntoView({behavior:'smooth',block:'center'});});
+retry.addEventListener('click',()=>location.reload());
+})();
+</script>
+</body></html>
