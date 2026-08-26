@@ -42,7 +42,7 @@
       }
       if(view==='debate'){
         const comments=document.createElement('script');
-        comments.src='debate-comments.js?v=20260826-1';
+        comments.src='debate-comments.js?v=20260826-2';
         document.body.appendChild(comments);
       }
     };
