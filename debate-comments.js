@@ -1,6 +1,6 @@
 (function(){
   const cfg=window.FT_CONFIG||{};
-  const mount=document.getElementById('debate-posts');
+  const mount=document.getElementById('debate');
   if(!mount||!cfg.SUPABASE_URL||!cfg.SUPABASE_ANON_KEY)return;
 
   const headers={apikey:cfg.SUPABASE_ANON_KEY,Authorization:`Bearer ${cfg.SUPABASE_ANON_KEY}`};
@@ -21,10 +21,10 @@
       .ft-comments-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
       .ft-comments-head strong{font-size:15px}.ft-comment-toggle{border:0;background:#111;color:#fff;font-weight:900;padding:9px 12px;cursor:pointer}
       .ft-comment-panel[hidden]{display:none}.ft-comment-form,.ft-reply-form{display:grid;gap:8px;margin:10px 0 14px}
-      .ft-comment-form input,.ft-comment-form textarea,.ft-reply-form input,.ft-reply-form textarea{width:100%;border:2px solid #bbb;background:#fff;padding:10px;font:inherit;border-radius:0}
+      .ft-comment-form input,.ft-comment-form textarea,.ft-reply-form input,.ft-reply-form textarea{box-sizing:border-box;width:100%;border:2px solid #bbb;background:#fff;padding:10px;font:inherit;border-radius:0}
       .ft-comment-form textarea,.ft-reply-form textarea{resize:vertical;min-height:76px}
       .ft-comment-actions{display:flex;justify-content:flex-end;gap:8px}.ft-comment-submit,.ft-reply-submit{border:0;background:#f7c600;color:#111;font-weight:1000;padding:10px 15px;cursor:pointer}
-      .ft-comment-status{font-size:12px;color:#555;min-height:16px}.ft-comment-list{display:grid;gap:10px}
+      .ft-comment-status{font-size:12px;color:#555;min-height:16px}.ft-comment-list{display:grid;gap:10px;margin-top:10px}
       .ft-comment{background:#f6f6f6;border-left:5px solid #f7c600;padding:11px 12px}.ft-comment.reply{margin-left:24px;border-left-color:#111;background:#fff}
       .ft-comment-top{display:flex;justify-content:space-between;gap:10px;align-items:center}.ft-comment-name{font-weight:900}.ft-comment-time{font-size:11px;color:#777;white-space:nowrap}
       .ft-comment-text{margin:7px 0 8px;white-space:pre-wrap;line-height:1.4}.ft-reply-button{border:0;background:none;padding:0;color:#111;font-weight:900;text-decoration:underline;cursor:pointer}
@@ -62,19 +62,19 @@
 
   function enhanceCard(card){
     if(card.dataset.commentsReady==='1')return;
-    const title=card.querySelector('h3')?.textContent?.trim(); if(!title)return;
+    const title=card.querySelector('h3,h4')?.textContent?.trim(); if(!title)return;
     card.dataset.commentsReady='1'; const pollId=keyFor(title);
     const body=card.querySelector('.post-card-body')||card;
     const wrap=document.createElement('div'); wrap.className='ft-comments';
-    wrap.innerHTML=`<div class="ft-comments-head"><strong>💬 Fan comments</strong><button class="ft-comment-toggle" type="button">View / add comments</button></div><div class="ft-comment-panel" hidden><form class="ft-comment-form"><input name="name" maxlength="40" placeholder="Your name (optional)"><textarea name="text" maxlength="500" required placeholder="Have your say…"></textarea><div class="ft-comment-actions"><button class="ft-comment-submit" type="submit">Post comment</button></div><div class="ft-comment-status" aria-live="polite"></div></form><div class="ft-comment-list"><div class="ft-comments-loading">Loading comments…</div></div></div>`;
+    wrap.innerHTML=`<div class="ft-comments-head"><strong>💬 Comments</strong><button class="ft-comment-toggle" type="button">Hide comments</button></div><div class="ft-comment-panel"><form class="ft-comment-form"><input name="name" maxlength="40" placeholder="Your name (optional)"><textarea name="text" maxlength="500" required placeholder="Add a comment…"></textarea><div class="ft-comment-actions"><button class="ft-comment-submit" type="submit">Post comment</button></div><div class="ft-comment-status" aria-live="polite"></div></form><div class="ft-comment-list"><div class="ft-comments-loading">Loading comments…</div></div></div>`;
     body.appendChild(wrap);
     const panel=wrap.querySelector('.ft-comment-panel'),toggle=wrap.querySelector('.ft-comment-toggle'),list=wrap.querySelector('.ft-comment-list'),form=wrap.querySelector('.ft-comment-form');
-    let loaded=false;
-    const refresh=async()=>{try{const comments=await fetchComments(pollId);renderComments(list,comments,pollId,refresh);toggle.textContent=comments.length?`Comments (${comments.length})`:'View / add comments';}catch{list.innerHTML='<div class="ft-empty-comments">Comments are temporarily unavailable.</div>';}};
-    toggle.addEventListener('click',async()=>{panel.hidden=!panel.hidden;if(!panel.hidden&&!loaded){loaded=true;await refresh();}});
+    const refresh=async()=>{try{const comments=await fetchComments(pollId);renderComments(list,comments,pollId,refresh);toggle.textContent=panel.hidden?`Comments (${comments.length})`:'Hide comments';wrap.querySelector('.ft-comments-head strong').textContent=`💬 Comments (${comments.length})`;}catch{list.innerHTML='<div class="ft-empty-comments">Comments are temporarily unavailable.</div>';}};
+    toggle.addEventListener('click',async()=>{panel.hidden=!panel.hidden;toggle.textContent=panel.hidden?'View comments':'Hide comments';if(!panel.hidden)await refresh();});
     form.addEventListener('submit',async e=>{e.preventDefault();const text=form.text.value.trim();if(!text)return;const button=form.querySelector('.ft-comment-submit'),status=form.querySelector('.ft-comment-status');button.disabled=true;button.textContent='Posting…';status.textContent='';try{await saveComment(pollId,{kind:'debate-comment',id:makeId(),parentId:null,name:form.name.value.trim()||'Football fan',text,createdAt:new Date().toISOString()});form.reset();status.textContent='Comment posted.';await refresh();}catch{status.textContent='Could not post your comment just yet. Please try again.';}finally{button.disabled=false;button.textContent='Post comment';}});
+    refresh();
   }
 
-  function scan(){mount.querySelectorAll('.post-card').forEach(enhanceCard)}
+  function scan(){mount.querySelectorAll('.post-card,.auto-card.auto-debate').forEach(enhanceCard)}
   addStyles();scan();new MutationObserver(scan).observe(mount,{childList:true,subtree:true});
 })();
