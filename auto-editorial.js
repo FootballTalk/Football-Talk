@@ -71,9 +71,11 @@
   function render(data){
     const items=(data.items||[]).filter(item=>item&&item.title);
     const latest=[...items].sort((a,b)=>timeValue(b)-timeValue(a)).slice(0,MAX_LATEST);
+    // Transfer Centre is a live wire: newest transfer story must always be first.
+    // Relevance is only a tie-breaker, never allowed to keep older completed deals above fresh news.
     const transfers=items
       .filter(item=>item.type==='TRANSFER')
-      .sort((a,b)=>(b.relevance||0)-(a.relevance||0) || timeValue(b)-timeValue(a))
+      .sort((a,b)=>timeValue(b)-timeValue(a) || (b.relevance||0)-(a.relevance||0))
       .slice(0,MAX_TRANSFERS);
     const debates=items
       .filter(item=>item.debatePrompt)
@@ -91,7 +93,7 @@
     const transferSection=document.getElementById('transfers');
     if(transferSection){
       const transferLive=transferSection.querySelector('.transfer-live')||transferSection;
-      const block=ensureBlock(transferLive,'auto-live-transfers','Automatic Transfer Wire',"Gossip stays gossip until it's verified");
+      const block=ensureBlock(transferLive,'auto-live-transfers','Automatic Transfer Wire',"Newest first · gossip stays gossip until it's verified");
       block.querySelector('.auto-editorial-grid').innerHTML=transfers.length?transfers.map(item=>card(item)).join(''):'<div class="auto-card"><p>No fresh transfer stories on the live feed right now.</p></div>';
     }
 
