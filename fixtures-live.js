@@ -1,151 +1,205 @@
 (() => {
   const REFRESH_MS = 60000;
-  const LIVE_STATUSES = new Set(['1H','2H','ET','BT','P','LIVE']);
+  const PAST_DAYS = 14;
+  const FUTURE_DAYS = 120;
+  const LIVE_STATUSES = new Set(['1H','2H','ET','BT','P','LIVE','HT']);
   const FINISHED_STATUSES = new Set(['FT','AET','PEN']);
-
-  // Official Premier League UK broadcast selections currently announced.
-  // Key format: YYYY-MM-DD|home|away. Names are normalised below so API naming variants still match.
-  const PL_UK_TV = new Map([
-    ['2026-08-28|crystal palace|manchester city','Sky Sports'],
-    ['2026-08-29|liverpool|nottingham forest','TNT Sports'],
-    ['2026-08-29|tottenham hotspur|newcastle united','Sky Sports'],
-    ['2026-08-30|chelsea|brighton hove albion','Sky Sports'],
-    ['2026-08-30|leeds united|brentford','Sky Sports'],
-    ['2026-08-30|sunderland|fulham','Sky Sports'],
-    ['2026-08-30|manchester united|ipswich town','Sky Sports'],
-    ['2026-08-31|aston villa|arsenal','Sky Sports'],
-    ['2026-09-04|ipswich town|liverpool','Sky Sports'],
-    ['2026-09-05|newcastle united|bournemouth','TNT Sports'],
-    ['2026-09-05|hull city|aston villa','Sky Sports'],
-    ['2026-09-06|everton|manchester united','Sky Sports'],
-    ['2026-09-06|arsenal|chelsea','Sky Sports'],
-    ['2026-09-12|tottenham hotspur|everton','Sky Sports'],
-    ['2026-09-12|sunderland|arsenal','TNT Sports'],
-    ['2026-09-13|coventry city|brighton hove albion','Sky Sports'],
-    ['2026-09-13|manchester united|manchester city','Sky Sports'],
-    ['2026-09-14|leeds united|newcastle united','Sky Sports'],
-    ['2026-09-18|brentford|chelsea','Sky Sports'],
-    ['2026-09-19|tottenham hotspur|aston villa','TNT Sports'],
-    ['2026-09-19|nottingham forest|coventry city','Sky Sports'],
-    ['2026-09-20|bournemouth|liverpool','Sky Sports'],
-    ['2026-09-20|fulham|manchester united','Sky Sports'],
-    ['2026-10-10|arsenal|leeds united','TNT Sports'],
-    ['2026-10-10|manchester united|tottenham hotspur','Sky Sports'],
-    ['2026-10-11|crystal palace|nottingham forest','Sky Sports'],
-    ['2026-10-11|hull city|everton','Sky Sports'],
-    ['2026-10-11|liverpool|manchester city','Sky Sports'],
-    ['2026-10-12|coventry city|newcastle united','Sky Sports'],
-    ['2026-10-17|everton|chelsea','TNT Sports'],
-    ['2026-10-17|newcastle united|aston villa','Sky Sports'],
-    ['2026-10-18|bournemouth|sunderland','Sky Sports'],
-    ['2026-10-18|brighton hove albion|crystal palace','Sky Sports'],
-    ['2026-10-18|leeds united|manchester united','Sky Sports'],
-    ['2026-10-18|nottingham forest|arsenal','Sky Sports'],
-    ['2026-10-19|tottenham hotspur|coventry city','Sky Sports'],
-    ['2026-10-23|ipswich town|nottingham forest','Sky Sports'],
-    ['2026-10-24|aston villa|manchester city','TNT Sports'],
-    ['2026-10-24|chelsea|tottenham hotspur','Sky Sports'],
-    ['2026-10-25|crystal palace|newcastle united','Sky Sports'],
-    ['2026-10-25|hull city|brentford','Sky Sports'],
-    ['2026-10-25|manchester united|bournemouth','Sky Sports'],
-    ['2026-10-25|sunderland|leeds united','Sky Sports'],
-    ['2026-10-31|chelsea|manchester united','TNT Sports'],
-    ['2026-10-31|tottenham hotspur|crystal palace','Sky Sports'],
-    ['2026-11-01|aston villa|fulham','Sky Sports'],
-    ['2026-11-01|liverpool|arsenal','Sky Sports'],
-    ['2026-11-02|newcastle united|everton','Sky Sports']
-  ]);
-
-  function addLiveStyles() {
-    if (document.getElementById('ft-live-score-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'ft-live-score-styles';
-    style.textContent = `
-      .time.is-live{background:#d80000!important;color:#fff!important;box-shadow:0 0 0 2px rgba(216,0,0,.14);animation:ftLivePulse 1.8s ease-in-out infinite;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;padding-top:5px;padding-bottom:5px}
-      .time.is-finished{background:#111!important;color:#fff!important;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;padding-top:5px;padding-bottom:5px}
-      .ft-score-main{font-weight:900;font-size:1.08em;white-space:nowrap}
-      .ft-score-sub{display:block;margin-top:3px;font-size:.62em;font-weight:800;letter-spacing:.04em;white-space:nowrap}
-      .fixture-live{background:#fff9d9}
-      .fixtures-loading{padding:20px;background:#fff;border-top:5px solid #f7c600;font-weight:800}
-      .ft-tv-badge{grid-column:1/-1;justify-self:center;margin-top:-5px;margin-bottom:1px;background:#111;color:#f7c600;padding:5px 9px;font-size:10px;font-weight:1000;letter-spacing:.04em;border-radius:3px;white-space:nowrap}
-      @keyframes ftLivePulse{0%,100%{opacity:1}50%{opacity:.78}}
-    `;
-    document.head.appendChild(style);
-  }
-
-  function leaguePanelId(name='') {
-    return String(name).toLowerCase().includes('championship') ? 'fixtures-ch' : 'fixtures-pl';
-  }
+  const strip = document.getElementById('date-strip');
+  const content = document.getElementById('fixtures-content');
+  const selectedDateTitle = document.getElementById('selected-date');
+  const monthLabel = document.getElementById('month-label');
+  const filter = document.getElementById('competition-filter');
+  const picker = document.getElementById('date-picker');
+  let selectedDate = londonDateKey(new Date());
+  let latestLeagues = [];
+  let refreshTimer = null;
 
   function londonDateKey(value) {
     return new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
   }
 
-  function dayLabel(value) {
-    return new Intl.DateTimeFormat('en-GB', {timeZone:'Europe/London',weekday:'long',day:'numeric',month:'long'}).format(new Date(value));
+  function localDateFromKey(key) {
+    const [y,m,d] = key.split('-').map(Number);
+    return new Date(Date.UTC(y,m-1,d,12,0,0));
+  }
+
+  function shiftDate(key, days) {
+    const date = localDateFromKey(key);
+    date.setUTCDate(date.getUTCDate()+days);
+    return date.toISOString().slice(0,10);
+  }
+
+  function longDate(key) {
+    return new Intl.DateTimeFormat('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}).format(localDateFromKey(key));
+  }
+
+  function monthName(key) {
+    return new Intl.DateTimeFormat('en-GB',{month:'long',year:'numeric',timeZone:'UTC'}).format(localDateFromKey(key));
+  }
+
+  function shortParts(key) {
+    const date = localDateFromKey(key);
+    return {
+      dow: new Intl.DateTimeFormat('en-GB',{weekday:'short',timeZone:'UTC'}).format(date).toUpperCase(),
+      dom: String(date.getUTCDate()),
+      mon: new Intl.DateTimeFormat('en-GB',{month:'short',timeZone:'UTC'}).format(date).toUpperCase(),
+    };
   }
 
   function kickOff(value) {
-    return new Intl.DateTimeFormat('en-GB', {timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(value));
+    return new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(value));
   }
 
-  function normalTeam(name='') {
-    return String(name).toLowerCase().replace(/afc/g,'').replace(/&/g,' ').replace(/[^a-z0-9 ]/g,' ').replace(/\b(spurs)\b/g,'tottenham hotspur').replace(/\bman utd\b/g,'manchester united').replace(/\bman city\b/g,'manchester city').replace(/\bnott m forest\b/g,'nottingham forest').replace(/\bbrighton and hove albion\b/g,'brighton hove albion').replace(/\s+/g,' ').trim();
+  function buildRail() {
+    if (!strip) return;
+    strip.replaceChildren();
+    const today = londonDateKey(new Date());
+    for (let offset=-PAST_DAYS; offset<=FUTURE_DAYS; offset++) {
+      const key = shiftDate(today, offset);
+      const parts = shortParts(key);
+      const button = document.createElement('button');
+      button.type='button';
+      button.className='date-btn';
+      button.dataset.date=key;
+      button.setAttribute('role','tab');
+      button.setAttribute('aria-label', longDate(key));
+      button.innerHTML=`<span class="dow">${parts.dow}</span><span class="dom">${parts.dom}</span><span class="mon">${parts.mon}</span>`;
+      if (key===today) button.classList.add('today');
+      button.addEventListener('click',()=>selectDate(key,true));
+      strip.appendChild(button);
+    }
   }
 
-  function tvChannel(fixture) {
-    const key = `${londonDateKey(fixture.date)}|${normalTeam(fixture.home)}|${normalTeam(fixture.away)}`;
-    return PL_UK_TV.get(key) || '';
-  }
-
-  function previousFridayStart() {
-    const now=new Date(); const london=new Date(now.toLocaleString('en-US',{timeZone:'Europe/London'}));
-    const day=london.getDay(); const daysBack=(day+2)%7||7; london.setHours(0,0,0,0); london.setDate(london.getDate()-daysBack); return london.getTime();
+  function updateRailSelection(scroll=true) {
+    const today = londonDateKey(new Date());
+    let selectedButton = null;
+    strip?.querySelectorAll('.date-btn').forEach(button=>{
+      const active=button.dataset.date===selectedDate;
+      button.classList.toggle('selected',active);
+      button.setAttribute('aria-selected',String(active));
+      if(active) selectedButton=button;
+    });
+    if(selectedDateTitle) selectedDateTitle.textContent=selectedDate===today?`Today — ${longDate(selectedDate)}`:longDate(selectedDate);
+    if(monthLabel) monthLabel.textContent=monthName(selectedDate);
+    if(picker) picker.value=selectedDate;
+    if(scroll&&selectedButton) selectedButton.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});
   }
 
   function displayStatus(fixture) {
-    const scoreReady=fixture.homeGoals!=null&&fixture.awayGoals!=null; const score=scoreReady?`${fixture.homeGoals}-${fixture.awayGoals}`:'0-0'; const status=fixture.status||'NS';
-    if(LIVE_STATUSES.has(status)){const minute=fixture.elapsed?`${fixture.elapsed}'`:'';return{main:score,sub:`LIVE${minute?` · ${minute}`:''}`,live:true,finished:false};}
-    if(status==='HT')return{main:score,sub:'HT',live:true,finished:false};
-    if(FINISHED_STATUSES.has(status))return{main:score,sub:'FT',live:false,finished:true};
-    if(status==='PST')return{main:'POSTPONED',sub:'',live:false,finished:false};
-    if(status==='CANC')return{main:'CANCELLED',sub:'',live:false,finished:false};
-    if(status==='SUSP')return{main:score,sub:'SUSP',live:false,finished:false};
-    if(status==='ABD')return{main:score,sub:'ABD',live:false,finished:false};
-    return{main:kickOff(fixture.date),sub:'',live:false,finished:false};
+    const scoreReady=fixture.homeGoals!=null&&fixture.awayGoals!=null;
+    const score=scoreReady?`${fixture.homeGoals}-${fixture.awayGoals}`:'0-0';
+    const status=fixture.status||'NS';
+    if(LIVE_STATUSES.has(status)){
+      const minute=fixture.elapsed?`${fixture.elapsed}'`:'';
+      return{main:score,sub:status==='HT'?'HT':`LIVE${minute?` · ${minute}`:''}`,className:'live'};
+    }
+    if(FINISHED_STATUSES.has(status))return{main:score,sub:status==='FT'?'FT':status,className:'finished'};
+    if(status==='PST')return{main:'P-P',sub:'POSTPONED',className:''};
+    if(status==='CANC')return{main:'—',sub:'CANCELLED',className:''};
+    if(status==='SUSP')return{main:score,sub:'SUSP',className:''};
+    if(status==='ABD')return{main:score,sub:'ABD',className:''};
+    if(status==='TBD')return{main:'TBC',sub:'',className:''};
+    return{main:kickOff(fixture.date),sub:'',className:''};
   }
 
-  function fixtureRow(fixture,isPremierLeague=false) {
-    const display=displayStatus(fixture); const row=document.createElement('div'); row.className=`fixture${display.live?' fixture-live':''}`; row.dataset.fixtureId=fixture.id||''; row.dataset.premierLeague=isPremierLeague?'1':'0';
-    const home=document.createElement('div');home.className='team home';home.textContent=fixture.home||'';
-    const box=document.createElement('div');box.className=`time${display.live?' is-live':''}${display.finished?' is-finished':''}`;
-    const main=document.createElement('span');main.className='ft-score-main';main.textContent=display.main;box.appendChild(main);
-    if(display.sub){const sub=document.createElement('span');sub.className='ft-score-sub';sub.textContent=display.sub;box.appendChild(sub);}
-    const away=document.createElement('div');away.className='team away';away.textContent=fixture.away||'';row.append(home,box,away);
-    if(isPremierLeague){const channel=tvChannel(fixture);if(channel){const tv=document.createElement('div');tv.className='ft-tv-badge';tv.textContent=`📺 LIVE — ${channel}`;row.appendChild(tv);}}
+  function safeLogo(src, alt, className) {
+    if(!src) return null;
+    const img=document.createElement('img');
+    img.src=src; img.alt=alt; img.className=className; img.loading='lazy'; img.referrerPolicy='no-referrer';
+    img.addEventListener('error',()=>img.remove());
+    return img;
+  }
+
+  function teamNode(name, logo, side) {
+    const node=document.createElement('div');node.className=`team ${side}`;
+    const label=document.createElement('span');label.className='team-name';label.textContent=name||'';
+    const image=safeLogo(logo,`${name||'Team'} badge`,'team-logo');
+    if(side==='home'){node.appendChild(label);if(image)node.appendChild(image);}else{if(image)node.appendChild(image);node.appendChild(label);}
+    return node;
+  }
+
+  function fixtureRow(fixture) {
+    const row=document.createElement('div');row.className='fixture';row.dataset.fixtureId=fixture.id||'';
+    const status=displayStatus(fixture);
+    const score=document.createElement('div');score.className=`scorebox ${status.className}`.trim();
+    const main=document.createElement('span');main.className='score-main';main.textContent=status.main;score.appendChild(main);
+    if(status.sub){const sub=document.createElement('span');sub.className='score-sub';sub.textContent=status.sub;score.appendChild(sub);}
+    row.append(teamNode(fixture.home,fixture.homeLogo,'home'),score,teamNode(fixture.away,fixture.awayLogo,'away'));
     return row;
   }
 
-  function renderLeague(panel,fixtures,isPremierLeague=false) {
-    panel.replaceChildren(); if(!fixtures.length){const empty=document.createElement('div');empty.className='fixtures-loading';empty.textContent='No fixtures found for this period.';panel.appendChild(empty);return;}
-    const groups=new Map(); fixtures.forEach(fixture=>{const key=londonDateKey(fixture.date);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(fixture);});
-    groups.forEach(games=>{games.sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));const day=document.createElement('div');day.className='day';const heading=document.createElement('h3');heading.textContent=dayLabel(games[0].date);day.appendChild(heading);games.forEach(game=>day.appendChild(fixtureRow(game,isPremierLeague)));panel.appendChild(day);});
+  function competitionKey(league) { return `${league.id||0}|${league.country||''}|${league.name||''}`; }
+
+  function render() {
+    if(!content) return;
+    const chosen=filter?.value||'all';
+    const leagues=chosen==='all'?latestLeagues:latestLeagues.filter(league=>competitionKey(league)===chosen);
+    content.replaceChildren();
+    if(!leagues.length){const empty=document.createElement('div');empty.className='empty';empty.textContent='No fixtures are currently listed for this date.';content.appendChild(empty);return;}
+    leagues.forEach(league=>{
+      const section=document.createElement('section');section.className='competition';
+      const head=document.createElement('div');head.className='competition-head';
+      const logo=safeLogo(league.logo,`${league.name} logo`,'competition-logo'); if(logo) head.appendChild(logo);
+      const copy=document.createElement('div');copy.className='competition-head-copy';
+      const country=document.createElement('span');country.className='competition-country';country.textContent=league.country||'International';
+      const name=document.createElement('span');name.className='competition-name';name.textContent=league.name||'Other';copy.append(country,name);head.appendChild(copy);section.appendChild(head);
+      (league.fixtures||[]).forEach(fixture=>section.appendChild(fixtureRow(fixture)));
+      content.appendChild(section);
+    });
   }
 
-  function mergeLeagueData(fixturesData,resultsData) {
-    const cutoff=previousFridayStart(),nowTs=Date.now(),output={};
-    (fixturesData.leagues||[]).forEach(league=>{output[league.name]=[...(league.fixtures||[])];});
-    (resultsData.leagues||[]).forEach(league=>{const recent=(league.fixtures||[]).filter(f=>(f.timestamp||0)*1000>=cutoff&&(f.timestamp||0)*1000<=nowTs);const current=output[league.name]||[];const ids=new Set(current.map(f=>f.id));recent.forEach(f=>{if(!ids.has(f.id))current.push(f);});output[league.name]=current;});
-    Object.keys(output).forEach(name=>{const now=Date.now()/1000;output[name].sort((a,b)=>{const aPast=(a.timestamp||0)<now&&FINISHED_STATUSES.has(a.status),bPast=(b.timestamp||0)<now&&FINISHED_STATUSES.has(b.status);if(aPast!==bPast)return aPast?1:-1;return aPast?(b.timestamp||0)-(a.timestamp||0):(a.timestamp||0)-(b.timestamp||0);});}); return output;
+  function rebuildFilter() {
+    if(!filter) return;
+    const old=filter.value;
+    filter.replaceChildren();
+    const all=document.createElement('option');all.value='all';all.textContent=`All competitions (${latestLeagues.length})`;filter.appendChild(all);
+    latestLeagues.forEach(league=>{const option=document.createElement('option');option.value=competitionKey(league);option.textContent=`${league.country||'International'} — ${league.name||'Other'}`;filter.appendChild(option);});
+    filter.value=[...filter.options].some(o=>o.value===old)?old:'all';
   }
 
-  async function loadFullSchedule() {
-    try {const stamp=Date.now();const[fixturesRes,resultsRes]=await Promise.all([fetch(`/api/fixtures?t=${stamp}`,{cache:'no-store'}),fetch(`/api/fixtures?results=1&t=${stamp}`,{cache:'no-store'})]);if(!fixturesRes.ok||!resultsRes.ok)return;const fixturesData=await fixturesRes.json(),resultsData=await resultsRes.json(),merged=mergeLeagueData(fixturesData,resultsData);Object.entries(merged).forEach(([name,fixtures])=>{const panel=document.getElementById(leaguePanelId(name));if(panel)renderLeague(panel,fixtures,!String(name).toLowerCase().includes('championship'));});}catch(error){console.warn('Football Talk fixtures load failed:',error);}
+  async function loadDate({silent=false}={}) {
+    if(!content) return;
+    if(!silent){content.innerHTML='<div class="loading">Loading fixtures…</div>';}
+    try{
+      const response=await fetch(`/api/fixtures?date=${encodeURIComponent(selectedDate)}&t=${Date.now()}`,{cache:'no-store'});
+      const data=await response.json();
+      if(!response.ok) throw new Error(data.detail||data.error||'Unable to load fixtures');
+      latestLeagues=Array.isArray(data.leagues)?data.leagues:[];
+      rebuildFilter();
+      render();
+    }catch(error){
+      if(!silent){content.innerHTML=`<div class="error">Fixtures could not be loaded right now. ${String(error.message||'Please try again shortly.')}</div>`;}
+    }
   }
 
-  async function refreshLive() {
-    try {const response=await fetch(`/api/fixtures?live=1&t=${Date.now()}`,{cache:'no-store'});if(!response.ok)return;const data=await response.json();const byId=new Map((data.leagues||[]).flatMap(l=>(l.fixtures||[]).map(f=>[String(f.id),{fixture:f,isPremierLeague:!String(l.name).toLowerCase().includes('championship')}])));document.querySelectorAll('.fixture[data-fixture-id]').forEach(row=>{const item=byId.get(row.dataset.fixtureId);if(!item)return;row.replaceWith(fixtureRow(item.fixture,item.isPremierLeague));});}catch(_){}
+  async function selectDate(key, scroll=true) {
+    selectedDate=key;
+    updateRailSelection(scroll);
+    filter.value='all';
+    await loadDate();
+    scheduleRefresh();
   }
 
-  document.addEventListener('DOMContentLoaded',()=>{addLiveStyles();const eyebrow=document.querySelector('.eyebrow');if(eyebrow)eyebrow.textContent='NEXT 14 DAYS';const sub=document.querySelector('.sub');if(sub)sub.textContent='Premier League and EFL Championship fixtures for the next 14 days, plus recent completed matches. Premier League UK TV selections are labelled. All kick-off times shown in UK time.';document.querySelectorAll('.league-panel').forEach(panel=>{panel.innerHTML='<div class="fixtures-loading">Loading fixtures…</div>';});loadFullSchedule();window.setInterval(refreshLive,REFRESH_MS);window.setInterval(loadFullSchedule,2*60*1000);});
+  function scheduleRefresh() {
+    if(refreshTimer) window.clearInterval(refreshTimer);
+    refreshTimer=window.setInterval(()=>{
+      const today=londonDateKey(new Date());
+      if(selectedDate===today) loadDate({silent:true});
+    },REFRESH_MS);
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    buildRail();
+    updateRailSelection(false);
+    setTimeout(()=>updateRailSelection(true),50);
+    loadDate();
+    scheduleRefresh();
+    filter?.addEventListener('change',render);
+    picker?.addEventListener('change',()=>{if(picker.value)selectDate(picker.value,true);});
+    document.getElementById('today-btn')?.addEventListener('click',()=>selectDate(londonDateKey(new Date()),true));
+    document.getElementById('prev-day')?.addEventListener('click',()=>selectDate(shiftDate(selectedDate,-1),true));
+    document.getElementById('next-day')?.addEventListener('click',()=>selectDate(shiftDate(selectedDate,1),true));
+    document.getElementById('rail-left')?.addEventListener('click',()=>strip?.scrollBy({left:-420,behavior:'smooth'}));
+    document.getElementById('rail-right')?.addEventListener('click',()=>strip?.scrollBy({left:420,behavior:'smooth'}));
+  });
 })();
