@@ -1,4 +1,10 @@
 document.addEventListener('DOMContentLoaded',()=>{
+  if(!document.querySelector('script[data-site-logo]')){
+    const siteLogo=document.createElement('script');
+    siteLogo.src='site-logo.js?v=20260827-1';
+    siteLogo.dataset.siteLogo='1';
+    document.body.appendChild(siteLogo);
+  }
   if(!document.querySelector('script[data-auto-editorial]')){
     const autoEditorial=document.createElement('script');
     autoEditorial.src='auto-editorial.js?v=20260825-5';
