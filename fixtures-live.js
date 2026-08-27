@@ -50,6 +50,56 @@
     return new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(value));
   }
 
+  function normalText(value='') {
+    return String(value).toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+  }
+
+  function isFeaturedCompetition(league) {
+    const id = Number(league?.id || 0);
+    const name = normalText(league?.name);
+    const country = normalText(league?.country);
+    const knownIds = new Set([1,2,3,4,5,39,40,41,42,45,48,848]);
+    if (knownIds.has(id)) return true;
+
+    if (country === 'england') {
+      return /^(premier league|championship|league one|league two|fa cup|efl cup|league cup|carabao cup)$/.test(name);
+    }
+
+    if (/^(uefa )?champions league$/.test(name)) return true;
+    if (/^(uefa )?europa league$/.test(name)) return true;
+    if (/^(uefa )?(europa )?conference league$/.test(name)) return true;
+
+    return /^(fifa )?world cup$/.test(name)
+      || /world cup qualification/.test(name)
+      || /^(uefa )?european championship$/.test(name)
+      || /^euro /.test(name)
+      || /uefa nations league/.test(name)
+      || /copa america/.test(name);
+  }
+
+  function featuredPriority(league) {
+    const id = Number(league?.id || 0);
+    const name = normalText(league?.name);
+    const priorities = new Map([
+      [39,10],[40,20],[41,30],[42,40],[2,50],[3,60],[848,70],[48,80],[45,90],[1,100],[4,110],[5,120]
+    ]);
+    if (priorities.has(id)) return priorities.get(id);
+    if (name === 'premier league') return 10;
+    if (name === 'championship') return 20;
+    if (name === 'league one') return 30;
+    if (name === 'league two') return 40;
+    if (name.includes('champions league')) return 50;
+    if (name.includes('europa league')) return 60;
+    if (name.includes('conference league')) return 70;
+    if (/(carabao|efl cup|league cup)/.test(name)) return 80;
+    if (name === 'fa cup') return 90;
+    return 100;
+  }
+
+  function featuredLeagues() {
+    return latestLeagues.filter(isFeaturedCompetition).sort((a,b)=>featuredPriority(a)-featuredPriority(b));
+  }
+
   function buildRail() {
     if (!strip) return;
     strip.replaceChildren();
@@ -132,10 +182,20 @@
 
   function render() {
     if(!content) return;
-    const chosen=filter?.value||'all';
-    const leagues=chosen==='all'?latestLeagues:latestLeagues.filter(league=>competitionKey(league)===chosen);
+    const chosen=filter?.value||'featured';
+    let leagues;
+    if(chosen==='featured') leagues=featuredLeagues();
+    else if(chosen==='all') leagues=latestLeagues;
+    else leagues=latestLeagues.filter(league=>competitionKey(league)===chosen);
+
     content.replaceChildren();
-    if(!leagues.length){const empty=document.createElement('div');empty.className='empty';empty.textContent='No fixtures are currently listed for this date.';content.appendChild(empty);return;}
+    if(!leagues.length){
+      const empty=document.createElement('div');empty.className='empty';
+      empty.textContent=chosen==='featured'
+        ? 'No Football Talk priority fixtures are currently listed for this date. Choose All competitions to see the full worldwide schedule.'
+        : 'No fixtures are currently listed for this date.';
+      content.appendChild(empty);return;
+    }
     leagues.forEach(league=>{
       const section=document.createElement('section');section.className='competition';
       const head=document.createElement('div');head.className='competition-head';
@@ -150,11 +210,24 @@
 
   function rebuildFilter() {
     if(!filter) return;
-    const old=filter.value;
+    const old=filter.value || 'featured';
+    const featured=featuredLeagues();
     filter.replaceChildren();
-    const all=document.createElement('option');all.value='all';all.textContent=`All competitions (${latestLeagues.length})`;filter.appendChild(all);
-    latestLeagues.forEach(league=>{const option=document.createElement('option');option.value=competitionKey(league);option.textContent=`${league.country||'International'} — ${league.name||'Other'}`;filter.appendChild(option);});
-    filter.value=[...filter.options].some(o=>o.value===old)?old:'all';
+
+    const preferred=document.createElement('option');
+    preferred.value='featured';
+    preferred.textContent=`Football Talk favourites (${featured.length})`;
+    filter.appendChild(preferred);
+
+    const all=document.createElement('option');
+    all.value='all';
+    all.textContent=`All competitions (${latestLeagues.length})`;
+    filter.appendChild(all);
+
+    latestLeagues.forEach(league=>{
+      const option=document.createElement('option');option.value=competitionKey(league);option.textContent=`${league.country||'International'} — ${league.name||'Other'}`;filter.appendChild(option);
+    });
+    filter.value=[...filter.options].some(o=>o.value===old)?old:'featured';
   }
 
   async function loadDate({silent=false}={}) {
@@ -175,7 +248,7 @@
   async function selectDate(key, scroll=true) {
     selectedDate=key;
     updateRailSelection(scroll);
-    filter.value='all';
+    if(filter) filter.value='featured';
     await loadDate();
     scheduleRefresh();
   }
@@ -192,6 +265,7 @@
     buildRail();
     updateRailSelection(false);
     setTimeout(()=>updateRailSelection(true),50);
+    if(filter) filter.value='featured';
     loadDate();
     scheduleRefresh();
     filter?.addEventListener('change',render);
