@@ -42,7 +42,7 @@
       }
       if(['latest','transfers','debate'].includes(view)){
         const auto=document.createElement('script');
-        auto.src='auto-editorial.js?v=20260825-4';
+        auto.src='auto-editorial.js?v=20260827-1';
         auto.dataset.autoEditorial='1';
         document.body.appendChild(auto);
       }
