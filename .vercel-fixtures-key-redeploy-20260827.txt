@@ -1,0 +1,1 @@
+Trigger production redeploy so the restored API_FOOTBALL_KEY is available to the fixtures API.
