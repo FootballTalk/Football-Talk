@@ -9,13 +9,12 @@
   };
   const pad=n=>String(n).padStart(2,'0');
   const fixtureTime=f=>{
-    const raw=Number(f.timestamp||0);
+    const raw=Number(f?.timestamp||0);
     if(raw) return raw<100000000000?raw*1000:raw;
-    const value=f.date||f.kickoff||f.startTime;
+    const value=f?.date||f?.kickoff||f?.startTime;
     const parsed=value?Date.parse(value):NaN;
     return Number.isNaN(parsed)?0:parsed;
   };
-  const isPremier=name=>String(name||'').toLowerCase().includes('premier league');
 
   async function init(){
     const hero=document.querySelector('.hero');
@@ -37,23 +36,27 @@
       if(group.length===1) nextEl.textContent=`Next: ${when} — ${group[0].home} v ${group[0].away}`;
       else nextEl.textContent=`Next: ${when} — ${group.length} Premier League matches`;
     };
-    const chooseNext=fixtures=>{
-      const now=Date.now();
-      const future=fixtures.map(f=>({...f,_time:fixtureTime(f)})).filter(f=>f._time>now+1000).sort((a,b)=>a._time-b._time);
-      if(!future.length){target=0;group=[];nextEl.textContent='Next Premier League kick-off will appear here when fixtures are available.';return;}
-      target=future[0]._time;
-      group=future.filter(f=>Math.abs(f._time-target)<60000);
-      describe();
-    };
+
     const load=async()=>{
       try{
-        const r=await fetch(`/api/fixtures?t=${Date.now()}`,{cache:'no-store'});
-        if(!r.ok)throw new Error();
+        const r=await fetch(`/api/next-premier?t=${Date.now()}`,{cache:'no-store'});
         const data=await r.json();
-        const fixtures=(data.leagues||[]).filter(l=>isPremier(l.name)).flatMap(l=>l.fixtures||[]);
-        chooseNext(fixtures);
-      }catch(_){nextEl.textContent='Premier League countdown temporarily unavailable.';}
+        if(!r.ok)throw new Error(data.detail||data.error||'Unable to load next fixture');
+        const first=data.next||null;
+        if(!first){
+          target=0;group=[];
+          nextEl.textContent='Next Premier League kick-off will appear here when fixtures are available.';
+          return;
+        }
+        target=fixtureTime(first);
+        group=Array.isArray(data.group)&&data.group.length?data.group:[first];
+        describe();
+      }catch(_){
+        target=0;group=[];
+        nextEl.textContent='Premier League countdown temporarily unavailable.';
+      }
     };
+
     const tick=()=>{
       if(!target)return;
       const diff=target-Date.now();
@@ -64,7 +67,11 @@
       box.querySelector('[data-unit="mins"]').textContent=pad(t.mins);
       box.querySelector('[data-unit="secs"]').textContent=pad(t.secs);
     };
-    await load();tick();setInterval(tick,1000);setInterval(load,60000);
+
+    await load();
+    tick();
+    setInterval(tick,1000);
+    setInterval(load,300000);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
