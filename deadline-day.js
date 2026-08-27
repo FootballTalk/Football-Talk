@@ -1,4 +1,7 @@
 (() => {
+  const path=(location.pathname||'/').replace(/\/+$/,'')||'/';
+  if(path!=='/' && path!=='/index.html') return;
+
   const TIME_ZONE='Europe/London';
   const DEADLINE_DATE='2026-09-01';
   const DEADLINE_HOUR=23;
@@ -31,7 +34,7 @@
       </div>
     </div>`;
 
-  const anchor=document.querySelector('.ticker')||document.querySelector('.top-social')||document.querySelector('main');
+  const anchor=document.querySelector('.ticker');
   if(!anchor) return;
   anchor.insertAdjacentElement('beforebegin',host);
 
@@ -61,7 +64,7 @@
     return 'RUMOUR';
   };
 
-  const escapeHtml=value=>String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  const escapeHtml=value=>String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'}[c]));
 
   const render=items=>{
     const transfers=(items||[])
