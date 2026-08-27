@@ -45,8 +45,12 @@ function mapFixture(item) {
     away: item.teams?.away?.name,
     homeLogo: item.teams?.home?.logo,
     awayLogo: item.teams?.away?.logo,
+    homeWinner: item.teams?.home?.winner === true,
+    awayWinner: item.teams?.away?.winner === true,
     homeGoals: item.goals?.home,
     awayGoals: item.goals?.away,
+    penaltyHome: item.score?.penalty?.home,
+    penaltyAway: item.score?.penalty?.away,
     events: Array.isArray(item.events)
       ? item.events.map((event) => ({
           elapsed: event.time?.elapsed,
