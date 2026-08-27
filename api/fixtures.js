@@ -96,6 +96,38 @@ async function fetchLeague({ id, name }, apiKey, from, to, season) {
   return { id, name, fixtures: response.map(mapFixture) };
 }
 
+async function fetchDate(apiKey, date) {
+  const url = new URL(`${API_BASE}/fixtures`);
+  url.searchParams.set('date', date);
+  url.searchParams.set('timezone', 'Europe/London');
+  const response = await readApi(url, apiKey, `Fixtures for ${date}`);
+  const groups = new Map();
+
+  response.forEach((item) => {
+    const id = Number(item.league?.id || 0);
+    const key = String(id || `${item.league?.country || ''}-${item.league?.name || ''}`);
+    if (!groups.has(key)) {
+      groups.set(key, {
+        id,
+        name: item.league?.name || 'Other',
+        country: item.league?.country || 'International',
+        logo: item.league?.logo || '',
+        flag: item.league?.flag || '',
+        round: item.league?.round || '',
+        fixtures: [],
+      });
+    }
+    groups.get(key).fixtures.push(mapFixture(item));
+  });
+
+  return [...groups.values()]
+    .map((league) => ({
+      ...league,
+      fixtures: league.fixtures.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0)),
+    }))
+    .sort((a, b) => `${a.country} ${a.name}`.localeCompare(`${b.country} ${b.name}`, 'en'));
+}
+
 async function fetchLive(apiKey) {
   const url = new URL(`${API_BASE}/fixtures`);
   url.searchParams.set('live', 'all');
@@ -149,8 +181,24 @@ export default async function handler(req, res) {
   const season = seasonFor(now);
   const liveOnly = String(req.query?.live || '') === '1';
   const resultsOnly = String(req.query?.results || '') === '1';
+  const requestedDate = String(req.query?.date || '').trim();
 
   try {
+    if (requestedDate) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
+        return res.status(400).json({ error: 'Invalid date. Use YYYY-MM-DD.' });
+      }
+      const leagues = await fetchDate(apiKey.trim(), requestedDate);
+      const today = londonDateString(now);
+      const cache = requestedDate === today
+        ? 'public, s-maxage=30, stale-while-revalidate=30'
+        : requestedDate < today
+          ? 'public, s-maxage=3600, stale-while-revalidate=86400'
+          : 'public, s-maxage=900, stale-while-revalidate=1800';
+      res.setHeader('Cache-Control', cache);
+      return res.status(200).json({ date: requestedDate, allCompetitions: true, leagues });
+    }
+
     if (resultsOnly) {
       const resultData = await fetchResults(apiKey.trim(), now, season);
       res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=120');
