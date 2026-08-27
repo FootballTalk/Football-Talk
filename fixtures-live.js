@@ -135,6 +135,21 @@
     if(scroll&&selectedButton) selectedButton.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});
   }
 
+  function penaltyOutcome(fixture) {
+    const homePens=fixture.penaltyHome;
+    const awayPens=fixture.penaltyAway;
+    const havePens=homePens!=null&&awayPens!=null;
+    let winner='';
+    if(havePens&&Number(homePens)!==Number(awayPens)) winner=Number(homePens)>Number(awayPens)?fixture.home:fixture.away;
+    else if(fixture.homeWinner) winner=fixture.home;
+    else if(fixture.awayWinner) winner=fixture.away;
+    const shootout=havePens?`${homePens}-${awayPens}`:'';
+    if(winner&&shootout)return `${winner} win ${shootout} on penalties`;
+    if(winner)return `${winner} win on penalties`;
+    if(shootout)return `${shootout} on penalties`;
+    return 'Decided on penalties';
+  }
+
   function displayStatus(fixture) {
     const scoreReady=fixture.homeGoals!=null&&fixture.awayGoals!=null;
     const score=scoreReady?`${fixture.homeGoals}-${fixture.awayGoals}`:'0-0';
@@ -143,6 +158,7 @@
       const minute=fixture.elapsed?`${fixture.elapsed}'`:'';
       return{main:score,sub:status==='HT'?'HT':`LIVE${minute?` · ${minute}`:''}`,className:'live'};
     }
+    if(status==='PEN')return{main:score,sub:'PEN',note:penaltyOutcome(fixture),className:'finished'};
     if(FINISHED_STATUSES.has(status))return{main:score,sub:status==='FT'?'FT':status,className:'finished'};
     if(status==='PST')return{main:'P-P',sub:'POSTPONED',className:''};
     if(status==='CANC')return{main:'—',sub:'CANCELLED',className:''};
@@ -175,6 +191,7 @@
     const main=document.createElement('span');main.className='score-main';main.textContent=status.main;score.appendChild(main);
     if(status.sub){const sub=document.createElement('span');sub.className='score-sub';sub.textContent=status.sub;score.appendChild(sub);}
     row.append(teamNode(fixture.home,fixture.homeLogo,'home'),score,teamNode(fixture.away,fixture.awayLogo,'away'));
+    if(status.note){const note=document.createElement('div');note.className='fixture-note';note.textContent=status.note;row.appendChild(note);}
     return row;
   }
 
