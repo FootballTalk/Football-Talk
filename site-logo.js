@@ -1,8 +1,12 @@
 (() => {
-  const existing=[...document.scripts].find(s=>(s.src||'').includes('header-logo.js'));
-  if(existing)return;
-  const script=document.createElement('script');
-  script.src='header-logo.js?v=20260827-sitewide-2';
-  script.dataset.headerLogoShared='1';
-  document.head.appendChild(script);
+  const loadScript=(src,dataKey)=>{
+    if([...document.scripts].some(s=>(s.src||'').includes(src.split('?')[0]))) return;
+    const script=document.createElement('script');
+    script.src=src;
+    if(dataKey) script.dataset[dataKey]='1';
+    document.head.appendChild(script);
+  };
+
+  loadScript('header-logo.js?v=20260827-sitewide-2','headerLogoShared');
+  loadScript('persistent-tabs.js?v=20260827-1','persistentTabsShared');
 })();
