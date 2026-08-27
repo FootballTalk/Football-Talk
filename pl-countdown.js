@@ -83,3 +83,11 @@ if(!document.querySelector('script[data-ft-draw-news]')){
   drawNews.dataset.ftDrawNews='1';
   document.body.appendChild(drawNews);
 }
+
+// Apply the approved circular Football Talk logo to the live site header.
+if(!document.querySelector('script[data-ft-header-logo]')){
+  const headerLogo=document.createElement('script');
+  headerLogo.src='header-logo.js?v=20260827-1';
+  headerLogo.dataset.ftHeaderLogo='1';
+  document.body.appendChild(headerLogo);
+}
