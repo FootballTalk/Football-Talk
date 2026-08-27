@@ -1,10 +1,18 @@
 (async function(){
-  const allowed=new Set(['latest','transfers','matchday','debate','social']);
+  const allowed=new Set(['latest','transfers','matchday','debate','social','stats']);
   const params=new URLSearchParams(location.search);
   const view=allowed.has(params.get('view'))?params.get('view'):'latest';
-  const titleMap={latest:'Latest Football Talk',transfers:'Transfer Centre',matchday:'Matchday Centre',debate:'Fan Debate',social:'Follow Football Talk'};
+  const titleMap={latest:'Latest Football Talk',transfers:'Transfer Centre',matchday:'Matchday Centre',debate:'Fan Debate',social:'Follow Football Talk',stats:'Stats Zone'};
   document.title=`${titleMap[view]} | Football Talk`;
   const mount=document.getElementById('section-page-content');
+
+  if(view==='stats'){
+    const stats=document.createElement('script');
+    stats.src='stats-section.js?v=20260827-1';
+    document.body.appendChild(stats);
+    return;
+  }
+
   try{
     const html=await fetch('./index.html',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('load failed');return r.text()});
     const doc=new DOMParser().parseFromString(html,'text/html');
@@ -13,7 +21,6 @@
     mount.innerHTML='';
     mount.appendChild(selected.cloneNode(true));
 
-    // Transfer section pages are driven by the automatic live wire only.
     if(view==='transfers'){
       mount.querySelectorAll('.transfer-update-grid,.transfer-live-head,.latest-transfer-head,#transfer-stories').forEach(el=>el.style.display='none');
     }
