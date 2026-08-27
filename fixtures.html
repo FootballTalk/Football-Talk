@@ -9,14 +9,14 @@
 </style>
 </head><body>
 <header class="top"><div class="brand"><span class="mark">FT</span><span><strong>FOOTBALL TALK</strong><small>WHERE FANS HAVE THEIR SAY</small></span></div><a class="close" href="./" aria-label="Close fixtures and return to Football Talk">×</a></header>
-<main class="wrap"><p class="eyebrow">FIXTURES & SCORES</p><h1 class="title">Football Calendar</h1><p class="sub">Swipe across the dates and choose any day to see the football scheduled worldwide. Fixtures are grouped by competition, with live scores and match status shown automatically.</p>
+<main class="wrap"><p class="eyebrow">FIXTURES & SCORES</p><h1 class="title">Football Calendar</h1><p class="sub">Swipe across the dates and choose any day. Football Talk favourites are shown first, with the full worldwide schedule always available from the competition menu.</p>
 <section class="date-browser" aria-label="Fixture date browser">
   <div class="date-browser-head"><strong id="month-label">August 2026</strong><div class="date-actions"><button class="date-arrow" id="prev-day" type="button" aria-label="Previous day">‹</button><button class="today-btn" id="today-btn" type="button">Today</button><button class="date-arrow" id="next-day" type="button" aria-label="Next day">›</button></div></div>
   <div class="date-strip-wrap"><button class="rail-arrow" id="rail-left" type="button" aria-label="Scroll dates left">‹</button><div class="date-strip" id="date-strip" role="tablist" aria-label="Choose fixture date"></div><button class="rail-arrow" id="rail-right" type="button" aria-label="Scroll dates right">›</button></div>
 </section>
-<div class="controls"><select id="competition-filter" class="filter" aria-label="Filter by competition"><option value="all">All competitions</option></select><input id="date-picker" class="calendar" type="date" aria-label="Jump to date"></div>
+<div class="controls"><select id="competition-filter" class="filter" aria-label="Filter by competition"><option value="featured">Football Talk favourites</option><option value="all">All competitions</option></select><input id="date-picker" class="calendar" type="date" aria-label="Jump to date"></div>
 <h2 class="selected-date" id="selected-date"></h2>
 <section id="fixtures-content" aria-live="polite"><div class="loading">Loading fixtures…</div></section>
 <p class="note"><strong>Fixture information:</strong> match data is supplied automatically by the football data API. Dates and kick-off times can change, particularly for television selections and cup ties. All times are shown in UK time.</p></main>
-<script src="fixtures-live.js?v=20260827-calendar"></script>
+<script src="fixtures-live.js?v=20260827-favourites"></script>
 </body></html>
