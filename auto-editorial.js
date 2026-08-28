@@ -2,10 +2,61 @@
   const REFRESH_MS = 180000;
   const MAX_LATEST = 8;
   const MAX_TRANSFERS = 8;
+  const MAX_SEARCH_TRANSFERS = 30;
   const MAX_DEBATES = 4;
+
+  const CLUB_ALIASES = {
+    'arsenal':['arsenal'],
+    'aston villa':['aston villa','villa'],
+    'bournemouth':['bournemouth','afc bournemouth'],
+    'brentford':['brentford'],
+    'brighton':['brighton','brighton & hove albion','brighton and hove albion'],
+    'burnley':['burnley'],
+    'chelsea':['chelsea'],
+    'crystal palace':['crystal palace','palace'],
+    'everton':['everton'],
+    'fulham':['fulham'],
+    'leeds':['leeds','leeds united'],
+    'liverpool':['liverpool'],
+    'manchester city':['manchester city','man city','city'],
+    'manchester united':['manchester united','man utd','man united','united'],
+    'newcastle':['newcastle','newcastle united'],
+    'nottingham forest':['nottingham forest','nottm forest','forest'],
+    'sunderland':['sunderland'],
+    'tottenham':['tottenham','tottenham hotspur','spurs'],
+    'west ham':['west ham','west ham united'],
+    'wolves':['wolves','wolverhampton','wolverhampton wanderers'],
+    'birmingham':['birmingham','birmingham city'],
+    'blackburn':['blackburn','blackburn rovers'],
+    'bristol city':['bristol city'],
+    'charlton':['charlton','charlton athletic'],
+    'coventry':['coventry','coventry city'],
+    'derby':['derby','derby county'],
+    'hull':['hull','hull city'],
+    'ipswich':['ipswich','ipswich town'],
+    'leicester':['leicester','leicester city'],
+    'middlesbrough':['middlesbrough','boro'],
+    'millwall':['millwall'],
+    'norwich':['norwich','norwich city'],
+    'oxford united':['oxford united','oxford'],
+    'portsmouth':['portsmouth','pompey'],
+    'preston':['preston','preston north end'],
+    'qpr':['qpr','queens park rangers'],
+    'sheffield united':['sheffield united','sheff utd'],
+    'sheffield wednesday':['sheffield wednesday','sheff wed'],
+    'southampton':['southampton','saints'],
+    'stoke':['stoke','stoke city'],
+    'swansea':['swansea','swansea city'],
+    'watford':['watford'],
+    'west brom':['west brom','west bromwich albion','wba'],
+    'wrexham':['wrexham']
+  };
+
+  let latestTransferItems = [];
 
   const esc = (value='') => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
   const clean = (value='') => String(value).replace(/\s+/g,' ').trim();
+  const normalise = (value='') => clean(value).toLowerCase().replace(/[^a-z0-9& ]/g,' ');
   const fmt = value => value ? new Date(value).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
   const timeValue = item => new Date(item.publishedAt||0).getTime()||0;
 
@@ -14,7 +65,7 @@
     const style=document.createElement('style');
     style.id='auto-editorial-styles';
     style.textContent=`
-      .auto-editorial-wrap{margin:0 0 26px}.auto-editorial-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:0 0 12px}.auto-editorial-head h3{margin:0;font-size:20px}.auto-editorial-head small{opacity:.7}.auto-editorial-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.auto-card{background:#fff;color:#111;border-top:4px solid #f7c600;padding:16px;box-shadow:0 6px 18px rgba(0,0,0,.08)}.dark-section .auto-card{background:#17171b;color:#fff;border:1px solid #2a2a30;border-top:4px solid #f7c600}.auto-card h4{margin:8px 0;font-size:17px;line-height:1.25}.auto-card p{margin:0 0 10px;line-height:1.45;font-size:14px}.auto-meta{font-size:11px;opacity:.7}.auto-tag{display:inline-block;background:#111;color:#fff;font-size:10px;font-weight:900;letter-spacing:.08em;padding:5px 7px}.dark-section .auto-tag{background:#f7c600;color:#000}.auto-tag.official{background:#15b86a;color:#fff}.auto-tag.go{background:#f7c600;color:#000}.auto-tag.developing{background:#fff1a8;color:#111}.auto-tag.gossip{background:#ddd;color:#111}.auto-link{font-weight:900;color:inherit;text-decoration:none;border-bottom:2px solid #f7c600}.auto-debate{background:#fff8cf}.dark-section .auto-debate{background:#242014}.auto-note{font-size:12px;opacity:.72;margin:8px 0 0}.auto-hidden{display:none!important}@media(max-width:700px){.auto-editorial-grid{grid-template-columns:1fr}.auto-editorial-head{align-items:start;flex-direction:column}}
+      .auto-editorial-wrap{margin:0 0 26px}.auto-editorial-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:0 0 12px}.auto-editorial-head h3{margin:0;font-size:20px}.auto-editorial-head small{opacity:.7}.auto-editorial-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.auto-card{background:#fff;color:#111;border-top:4px solid #f7c600;padding:16px;box-shadow:0 6px 18px rgba(0,0,0,.08)}.dark-section .auto-card{background:#17171b;color:#fff;border:1px solid #2a2a30;border-top:4px solid #f7c600}.auto-card h4{margin:8px 0;font-size:17px;line-height:1.25}.auto-card p{margin:0 0 10px;line-height:1.45;font-size:14px}.auto-meta{font-size:11px;opacity:.7}.auto-tag{display:inline-block;background:#111;color:#fff;font-size:10px;font-weight:900;letter-spacing:.08em;padding:5px 7px}.dark-section .auto-tag{background:#f7c600;color:#000}.auto-tag.official{background:#15b86a;color:#fff}.auto-tag.go{background:#f7c600;color:#000}.auto-tag.developing{background:#fff1a8;color:#111}.auto-tag.gossip{background:#ddd;color:#111}.auto-link{font-weight:900;color:inherit;text-decoration:none;border-bottom:2px solid #f7c600}.auto-debate{background:#fff8cf}.dark-section .auto-debate{background:#242014}.auto-note{font-size:12px;opacity:.72;margin:8px 0 0}.auto-hidden{display:none!important}.club-transfer-search{margin:0 0 18px;padding:16px;background:#0f0f12;border:1px solid #2a2a30;border-top:4px solid #f7c600}.club-transfer-search h4{margin:0 0 6px;color:#fff;font-size:19px}.club-transfer-search p{margin:0 0 12px;color:#cfcfd4;font-size:13px}.club-transfer-search-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px}.club-transfer-search input{min-width:0;border:2px solid #444;background:#fff;color:#111;padding:12px 13px;font:inherit;font-weight:800}.club-transfer-search button{border:0;background:#f7c600;color:#000;padding:12px 14px;font:inherit;font-weight:1000;cursor:pointer}.club-transfer-search button.clear{background:#2b2b31;color:#fff}.club-transfer-status{margin:10px 0 0!important;font-size:12px!important;color:#f7c600!important;font-weight:800}.club-transfer-status:empty{display:none}@media(max-width:700px){.auto-editorial-grid{grid-template-columns:1fr}.auto-editorial-head{align-items:start;flex-direction:column}.club-transfer-search-row{grid-template-columns:1fr 1fr}.club-transfer-search input{grid-column:1/-1}}
     `;
     document.head.appendChild(style);
   }
@@ -68,15 +119,54 @@
     return wrap;
   }
 
+  function aliasesFor(query=''){
+    const q=normalise(query);
+    if(!q) return [];
+    for(const [club, aliases] of Object.entries(CLUB_ALIASES)){
+      if(club===q || aliases.some(alias=>normalise(alias)===q)) return [...new Set([club,...aliases].map(normalise))];
+    }
+    return [q];
+  }
+
+  function transferMatches(item, aliases){
+    const haystack=normalise(`${item.title||''} ${item.description||''}`);
+    return aliases.some(alias=>alias && haystack.includes(alias));
+  }
+
+  function renderTransferResults(query=''){
+    const block=document.getElementById('auto-live-transfers');
+    if(!block) return;
+    const grid=block.querySelector('.auto-editorial-grid');
+    const status=document.getElementById('club-transfer-status');
+    const q=clean(query);
+    const aliases=aliasesFor(q);
+    const results=q ? latestTransferItems.filter(item=>transferMatches(item,aliases)).slice(0,MAX_SEARCH_TRANSFERS) : latestTransferItems.slice(0,MAX_TRANSFERS);
+    grid.innerHTML=results.length ? results.map(item=>card(item)).join('') : `<div class="auto-card"><p>${q?`No recent transfer stories found for ${esc(q)}. Try the full club name or check again shortly.`:'No fresh transfer stories on the live feed right now.'}</p></div>`;
+    if(status) status.textContent=q ? `Showing ${results.length} recent transfer ${results.length===1?'story':'stories'} for ${q}` : '';
+  }
+
+  function ensureTransferSearch(transferLive){
+    let search=document.getElementById('club-transfer-search');
+    if(search) return search;
+    search=document.createElement('div');
+    search.id='club-transfer-search';
+    search.className='club-transfer-search';
+    search.innerHTML=`<h4>Find your club’s transfers</h4><p>Type a team name to filter the latest transfer stories.</p><div class="club-transfer-search-row"><input id="club-transfer-input" type="search" placeholder="e.g. Liverpool, Arsenal, Man Utd" autocomplete="off" aria-label="Search transfers by club"><button id="club-transfer-button" type="button">Search</button><button id="club-transfer-clear" class="clear" type="button">Clear</button></div><p id="club-transfer-status" class="club-transfer-status" aria-live="polite"></p>`;
+    transferLive.prepend(search);
+    const input=search.querySelector('#club-transfer-input');
+    const doSearch=()=>renderTransferResults(input.value);
+    search.querySelector('#club-transfer-button').addEventListener('click',doSearch);
+    search.querySelector('#club-transfer-clear').addEventListener('click',()=>{input.value='';renderTransferResults('');input.focus();});
+    input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();doSearch();}});
+    return search;
+  }
+
   function render(data){
     const items=(data.items||[]).filter(item=>item&&item.title);
     const latest=[...items].sort((a,b)=>timeValue(b)-timeValue(a)).slice(0,MAX_LATEST);
-    // Transfer Centre is a live wire: newest transfer story must always be first.
-    // Relevance is only a tie-breaker, never allowed to keep older completed deals above fresh news.
-    const transfers=items
+    latestTransferItems=items
       .filter(item=>item.type==='TRANSFER')
-      .sort((a,b)=>timeValue(b)-timeValue(a) || (b.relevance||0)-(a.relevance||0))
-      .slice(0,MAX_TRANSFERS);
+      .sort((a,b)=>timeValue(b)-timeValue(a) || (b.relevance||0)-(a.relevance||0));
     const debates=items
       .filter(item=>item.debatePrompt)
       .sort((a,b)=>(b.relevance||0)-(a.relevance||0) || timeValue(b)-timeValue(a))
@@ -93,8 +183,10 @@
     const transferSection=document.getElementById('transfers');
     if(transferSection){
       const transferLive=transferSection.querySelector('.transfer-live')||transferSection;
-      const block=ensureBlock(transferLive,'auto-live-transfers','Automatic Transfer Wire',"Newest first · gossip stays gossip until it's verified");
-      block.querySelector('.auto-editorial-grid').innerHTML=transfers.length?transfers.map(item=>card(item)).join(''):'<div class="auto-card"><p>No fresh transfer stories on the live feed right now.</p></div>';
+      ensureTransferSearch(transferLive);
+      ensureBlock(transferLive,'auto-live-transfers','Automatic Transfer Wire',"Newest first · gossip stays gossip until it's verified");
+      const currentQuery=document.getElementById('club-transfer-input')?.value||'';
+      renderTransferResults(currentQuery);
     }
 
     const debateSection=document.getElementById('debate');
