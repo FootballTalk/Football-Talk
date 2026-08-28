@@ -84,9 +84,13 @@ const bank=[
 ];
 const londonDateKey=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const dateKey=londonDateKey();
-const attemptKey=`football-talk-daily-quiz-${dateKey}`;
 const dayNumber=Math.floor(new Date(`${dateKey}T12:00:00Z`).getTime()/86400000);
 const start=(dayNumber*7)%bank.length;const questions=[];for(let i=0;i<5;i++)questions.push(bank[(start+i*11)%bank.length]);
+function hashQuestions(items){let h=2166136261;const s=items.map(x=>`${x.q}|${x.a.join('|')}|${x.c}`).join('||');for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(36)}
+const quizVersion=hashQuestions(questions);
+const attemptKey=`football-talk-daily-quiz-${dateKey}-${quizVersion}`;
+const legacyAttemptKey=`football-talk-daily-quiz-${dateKey}`;
+try{localStorage.removeItem(legacyAttemptKey)}catch(_){}
 const quiz=document.getElementById('quiz'),submit=document.getElementById('submit'),result=document.getElementById('result');
 document.getElementById('date-pill').textContent=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'short',day:'numeric',month:'short'}).format(new Date()).toUpperCase();
 const selections=new Array(5).fill(null);
@@ -95,7 +99,7 @@ function verdictFor(score){return score===5?'Elite football brain!':score>=4?'To
 function showCompleted(saved){const savedSelections=Array.isArray(saved.selections)?saved.selections:[];let score=Number(saved.score)||0;[...document.querySelectorAll('.question')].forEach((box,i)=>{box.classList.add('answered');[...box.querySelectorAll('.answer')].forEach((b,j)=>{b.disabled=true;if(j===questions[i].c)b.classList.add('correct');if(j===savedSelections[i]&&j!==questions[i].c)b.classList.add('wrong');if(j===savedSelections[i])b.classList.add('selected');});});result.className='result show';result.innerHTML=`<strong>${score}/5</strong>${verdictFor(score)}<br><br><span style="color:#cfcfd4;font-size:14px">Today’s attempt is complete. A new quiz will be available tomorrow.</span>`;submit.hidden=true;}
 let savedAttempt=null;try{savedAttempt=JSON.parse(localStorage.getItem(attemptKey)||'null')}catch(_){savedAttempt=null}
 if(savedAttempt&&savedAttempt.completed){showCompleted(savedAttempt);return;}
-submit.addEventListener('click',()=>{if(selections.some(v=>v===null)){result.className='result show';result.innerHTML='<strong>Nearly there!</strong>Please answer all five questions before submitting.';result.scrollIntoView({behavior:'smooth',block:'center'});return;}let score=0;[...document.querySelectorAll('.question')].forEach((box,i)=>{box.classList.add('answered');[...box.querySelectorAll('.answer')].forEach((b,j)=>{b.disabled=true;if(j===questions[i].c)b.classList.add('correct');if(j===selections[i]&&j!==questions[i].c)b.classList.add('wrong')});if(selections[i]===questions[i].c)score++;});const saved={completed:true,score,selections:[...selections],date:dateKey};try{localStorage.setItem(attemptKey,JSON.stringify(saved))}catch(_){}result.className='result show';result.innerHTML=`<strong>${score}/5</strong>${verdictFor(score)}<br><br><span style="color:#cfcfd4;font-size:14px">That’s your one attempt for today. Come back tomorrow for a fresh quiz.</span>`;submit.hidden=true;result.scrollIntoView({behavior:'smooth',block:'center'});});
+submit.addEventListener('click',()=>{if(selections.some(v=>v===null)){result.className='result show';result.innerHTML='<strong>Nearly there!</strong>Please answer all five questions before submitting.';result.scrollIntoView({behavior:'smooth',block:'center'});return;}let score=0;[...document.querySelectorAll('.question')].forEach((box,i)=>{box.classList.add('answered');[...box.querySelectorAll('.answer')].forEach((b,j)=>{b.disabled=true;if(j===questions[i].c)b.classList.add('correct');if(j===selections[i]&&j!==questions[i].c)b.classList.add('wrong')});if(selections[i]===questions[i].c)score++;});const saved={completed:true,score,selections:[...selections],date:dateKey,version:quizVersion};try{localStorage.setItem(attemptKey,JSON.stringify(saved))}catch(_){}result.className='result show';result.innerHTML=`<strong>${score}/5</strong>${verdictFor(score)}<br><br><span style="color:#cfcfd4;font-size:14px">That’s your one attempt for today. Come back tomorrow for a fresh quiz.</span>`;submit.hidden=true;result.scrollIntoView({behavior:'smooth',block:'center'});});
 })();
 </script>
 <script src="site-logo.js?v=20260827-2"></script>
