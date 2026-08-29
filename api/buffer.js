@@ -71,7 +71,7 @@ async function websiteStories(){
 }
 async function latestWebsiteStory(){return (await websiteStories()).find(eligible)||null;}
 async function createDraft(channelId,text){
-  const result=await gql(`mutation FootballTalkDraft($channelId: ChannelId!,$text: String) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:addToQueue,saveToDraft:true}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`,{channelId,text});
+  const result=await gql(`mutation FootballTalkDraft($channelId: ChannelId!,$text: String) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:addToQueue,saveToDraft:true,metadata:{facebook:{type:post}}}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`,{channelId,text});
   const payload=result.data?.createPost;
   if(!payload?.post)throw new Error(payload?.message||'Buffer did not create the draft');
   return {post:payload.post,rateLimit:result.rateLimit};
