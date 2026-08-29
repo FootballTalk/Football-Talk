@@ -1,0 +1,1 @@
+Retry deployment after adding live as-it-stands Premier League and Championship tables. No additional runtime logic in this file.
