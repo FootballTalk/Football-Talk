@@ -1,1 +1,1 @@
-Football Talk members transfer watcher folded into existing API. Redeploy marker 2026-08-29.
+Football Talk members transfer watcher folded into existing API. Redeploy marker refreshed 2026-08-29 11:48 BST to force GitHub/Vercel deployment webhook.
