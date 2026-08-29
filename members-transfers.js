@@ -29,15 +29,27 @@
       .itsago-live{display:flex;align-items:center;overflow:hidden;min-height:48px;background:#08080a;border:1px solid #39393f;border-radius:10px}
       .itsago-live-label{align-self:stretch;display:flex;align-items:center;flex:0 0 auto;padding:0 12px;background:#b11219;color:#fff;font-weight:1000;font-size:12px;z-index:2}
       .itsago-live-window{flex:1;overflow:hidden;white-space:nowrap}
-      .itsago-live-track{display:inline-flex;width:max-content;animation:ftItsAGo 38s linear infinite;will-change:transform}
+      .itsago-live-track{display:inline-flex;width:max-content;animation:ftItsAGo var(--ticker-duration,120s) linear infinite;will-change:transform}
       .itsago-live-item{display:inline-flex;align-items:center;padding:0 22px;color:#fff;font-weight:900;font-size:14px;white-space:nowrap}
       .itsago-live-item:after{content:'◆';color:#f7c600;font-size:8px;margin-left:28px}
       .itsago-live-time{margin-left:9px;color:#999;font-size:11px;font-weight:700}
       .itsago-status{padding:13px 15px;border:1px dashed #444;border-radius:9px;background:#101013;color:#ddd;font-weight:800}
       @keyframes ftItsAGo{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-      @media(max-width:700px){.itsago-live-label{font-size:10px;padding:0 9px}.itsago-live-item{font-size:13px;padding:0 16px}.itsago-live-track{animation-duration:32s}}
+      @media(max-width:700px){.itsago-live-label{font-size:10px;padding:0 9px}.itsago-live-item{font-size:13px;padding:0 16px}}
     `;
     document.head.appendChild(style);
+  }
+  function setReadableSpeed() {
+    const track = feed.querySelector('.itsago-live-track');
+    if (!track) return;
+    requestAnimationFrame(() => {
+      const distance = track.scrollWidth / 2;
+      const mobile = window.matchMedia('(max-width:700px)').matches;
+      const pixelsPerSecond = mobile ? 22 : 28;
+      const minimumSeconds = mobile ? 110 : 95;
+      const duration = Math.max(minimumSeconds, distance / pixelsPerSecond);
+      track.style.setProperty('--ticker-duration', duration.toFixed(1) + 's');
+    });
   }
   function render(items) {
     addStyles();
@@ -50,6 +62,7 @@
       return '<span class="itsago-live-item">🚨 ' + escapeHtml(item.text) + (when ? '<span class="itsago-live-time">' + escapeHtml(when) + '</span>' : '') + '</span>';
     }).join('');
     feed.innerHTML = '<div class="itsago-live"><div class="itsago-live-label">IT’S A GO!</div><div class="itsago-live-window"><div class="itsago-live-track">' + parts + parts + '</div></div></div>';
+    setReadableSpeed();
     if (updated) updated.textContent = 'Live · ' + new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
   }
   async function refreshToken(current) {
@@ -109,4 +122,5 @@
   load();
   setInterval(load, 120000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+  window.addEventListener('resize', setReadableSpeed);
 })();
