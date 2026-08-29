@@ -6,8 +6,8 @@
   const esc=(v='')=>String(v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
   const fmt=v=>v?new Date(v).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
   function render(items){
-    if(!items.length){feed.innerHTML='<div class="empty-state"><strong>No fresh “Here We Go” posts showing right now</strong><span>The feed checks Fabrizio Romano’s official Telegram mirror and will refresh automatically.</span></div>';return;}
-    feed.innerHTML=items.map(item=>`<article class="press-card"><div class="press-card-top"><span class="here-we-go">🚨 HERE WE GO</span><span>${esc(fmt(item.publishedAt))}</span></div><p>${esc(item.text)}</p><a href="${esc(item.link)}" target="_blank" rel="noopener noreferrer">View original post →</a></article>`).join('');
+    if(!items.length){feed.innerHTML='<div class="empty-state"><strong>No fresh “IT’S A GO!” updates showing right now</strong><span>The feed checks Fabrizio Romano’s official Telegram mirror and will refresh automatically.</span></div>';return;}
+    feed.innerHTML=items.map(item=>`<article class="press-card"><div class="press-card-top"><span class="here-we-go">🚨 IT’S A GO!</span><span>${esc(fmt(item.publishedAt))}</span></div><p>${esc(item.text)}</p><a href="${esc(item.link)}" target="_blank" rel="noopener noreferrer">View Fabrizio source →</a></article>`).join('');
   }
   async function load(){
     const session=read();
