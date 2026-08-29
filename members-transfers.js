@@ -61,7 +61,7 @@
       const when = item.publishedAt ? new Date(item.publishedAt).toLocaleString('en-GB', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
       return '<span class="itsago-live-item">🚨 ' + escapeHtml(item.text) + (when ? '<span class="itsago-live-time">' + escapeHtml(when) + '</span>' : '') + '</span>';
     }).join('');
-    feed.innerHTML = '<div class="itsago-live"><div class="itsago-live-label">IT’S A GO!</div><div class="itsago-live-window"><div class="itsago-live-track">' + parts + parts + '</div></div></div>';
+    feed.innerHTML = '<div class="itsago-live"><div class="itsago-live-label">FOOTBALL TALK · IT’S A GO!</div><div class="itsago-live-window"><div class="itsago-live-track">' + parts + parts + '</div></div></div>';
     setReadableSpeed();
     if (updated) updated.textContent = 'Live · ' + new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
   }
