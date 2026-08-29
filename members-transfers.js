@@ -18,8 +18,11 @@
   }
   function cleanTickerText(value) {
     return String(value || '')
+      .replace(/^\s*RT\s+@?FabrizioRomano\s*:?\s*/gi, '')
+      .replace(/@FabrizioRomano\b/gi, '')
       .replace(/\bFabrizio\s+Romano\b/gi, '')
       .replace(/\bRomano\b/gi, '')
+      .replace(/^\s*RT\s*@?\s*:?\s*/gi, '')
       .replace(/^\s*[-–—:|]+\s*/, '')
       .replace(/\s+([,.;!?])/g, '$1')
       .replace(/\s{2,}/g, ' ')
