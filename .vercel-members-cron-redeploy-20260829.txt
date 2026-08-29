@@ -1,1 +1,1 @@
-Football Talk members transfer watcher folded into existing API. Redeploy marker refreshed 2026-08-29 11:48 BST to force GitHub/Vercel deployment webhook.
+Football Talk members transfer watcher folded into existing API. Redeploy marker refreshed 2026-08-29 12:59 BST after Vercel Pro activation to deploy the 2-minute background watcher.
