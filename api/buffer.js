@@ -34,14 +34,17 @@ async function connectionInfo(){
 }
 
 function storyKey(item){return crypto.createHash('sha256').update(`${item.link||''}|${item.title||''}`).digest('hex').slice(0,24);}
-function eligible(item){
-  if(!item?.title)return false;
-  if(item.type==='TRANSFER'&&!['OFFICIAL','DEVELOPING'].includes(item.stage))return false;
-  if(item.type!=='TRANSFER'&&item.type!=='NEWS')return false;
-  if((item.relevance||0)<1)return false;
+function eligibility(item){
+  if(!item?.title)return {ok:false,reason:'missing-title'};
+  if(item.type==='TRANSFER'&&!['OFFICIAL','DEVELOPING'].includes(item.stage))return {ok:false,reason:`transfer-stage-${item.stage||'none'}`};
+  if(item.type!=='TRANSFER'&&item.type!=='NEWS')return {ok:false,reason:`unsupported-type-${item.type||'none'}`};
+  if((item.relevance||0)<1)return {ok:false,reason:'low-relevance'};
   const age=Date.now()-new Date(item.publishedAt||0).getTime();
-  return Number.isFinite(age)&&age>=0&&age<=6*60*60*1000;
+  if(!Number.isFinite(age)||age<0)return {ok:false,reason:'invalid-date'};
+  if(age>6*60*60*1000)return {ok:false,reason:'older-than-6-hours'};
+  return {ok:true,ageMinutes:Math.round(age/60000)};
 }
+function eligible(item){return eligibility(item).ok;}
 function postText(item){
   const transfer=item.type==='TRANSFER';
   const lead=transfer?(item.stage==='OFFICIAL'?'🚨 TRANSFER CENTRE — DEAL DONE':'🔥 TRANSFER CENTRE — GAINING PACE'):'⚽ FOOTBALL TALK';
@@ -60,12 +63,13 @@ async function rememberDraft(cfg,id,item,post){
   const r=await fetch(`${cfg.url}/rest/v1/poll_responses`,{method:'POST',headers:sbHeaders(cfg,{'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({poll_id:DRAFT_PREFIX+id,answer:JSON.stringify(record)})});
   if(!r.ok)throw new Error(`Supabase ${r.status}`);
 }
-async function latestWebsiteStory(){
+async function websiteStories(){
   const r=await fetch(`${SITE_URL}api/news`,{headers:{'User-Agent':'FootballTalk Buffer Sync/1.0'},cache:'no-store'});
   if(!r.ok)throw new Error(`Website news ${r.status}`);
   const data=await r.json();
-  return (data.items||[]).find(eligible)||null;
+  return data.items||[];
 }
+async function latestWebsiteStory(){return (await websiteStories()).find(eligible)||null;}
 async function createDraft(channelId,text){
   const result=await gql(`mutation FootballTalkDraft($channelId: ChannelId!,$text: String) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:addToQueue,saveToDraft:true}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`,{channelId,text});
   const payload=result.data?.createPost;
@@ -85,6 +89,26 @@ async function syncDraft(){
   await rememberDraft(cfg,id,item,created.post);
   return {ok:true,created:true,title:item.title,channel:target.displayName||target.name||'Facebook',postId:created.post.id,rateLimit:created.rateLimit};
 }
+async function diagnostics(){
+  const cfg=siteConfig();
+  const [items,info]=await Promise.all([websiteStories(),connectionInfo()]);
+  const target=(info.channels||[]).find(c=>String(c.service||'').toLowerCase()==='facebook'&&/football\s*talk/i.test(`${c.name||''} ${c.displayName||''}`));
+  const sample=(items||[]).slice(0,12).map(item=>({title:item.title,type:item.type,stage:item.stage||null,relevance:item.relevance||0,publishedAt:item.publishedAt||null,...eligibility(item)}));
+  const selected=(items||[]).find(eligible)||null;
+  let duplicate=false;
+  if(selected)duplicate=await alreadyDrafted(cfg,storyKey(selected));
+  return {
+    ok:true,
+    mode:'diagnostic',
+    bufferConnected:true,
+    organization:info.organization?{id:info.organization.id,name:info.organization.name}:null,
+    channels:(info.channels||[]).map(c=>({id:c.id,name:c.displayName||c.name,service:c.service,isQueuePaused:!!c.isQueuePaused})),
+    facebookTarget:target?{id:target.id,name:target.displayName||target.name}:null,
+    storyCount:items.length,
+    selectedStory:selected?{title:selected.title,type:selected.type,stage:selected.stage||null,relevance:selected.relevance||0,publishedAt:selected.publishedAt||null,alreadyDrafted:duplicate}:null,
+    recentEligibility:sample
+  };
+}
 
 module.exports=async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
@@ -92,8 +116,7 @@ module.exports=async function handler(req,res){
   try{
     const isCron=String(req.headers['user-agent']||'').toLowerCase().includes('vercel-cron');
     if(isCron)return res.status(200).json(await syncDraft());
-    const info=await connectionInfo();
-    return res.status(200).json({ok:true,mode:'diagnostic',...info});
+    return res.status(200).json(await diagnostics());
   }catch(error){
     console.error('Buffer connection failed',error);
     return res.status(502).json({ok:false,error:'Buffer connection unavailable',detail:String(error.message||error)});
