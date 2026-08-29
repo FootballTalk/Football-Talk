@@ -8,7 +8,7 @@
   };
 
   loadScript('header-logo.js?v=20260827-sitewide-2','headerLogoShared');
-  loadScript('persistent-tabs.js?v=20260827-2','persistentTabsShared');
+  loadScript('persistent-tabs.js?v=20260829-members-1','persistentTabsShared');
   loadScript('stats-route.js?v=20260827-1','statsRouteShared');
   loadScript('deadline-day.js?v=20260827-1','deadlineDayShared');
   if(/quiz\.html$/i.test(location.pathname)) loadScript('quiz-scoreboard.js?v=20260829-1','quizScoreboardShared');
