@@ -1,64 +1,112 @@
 (() => {
-  const feed=document.getElementById('members-transfer-feed');
-  const updated=document.getElementById('members-transfer-updated');
-  if(!feed)return;
-  const read=()=>{try{return JSON.parse(localStorage.getItem('football-talk-member-session')||'null')}catch{return null}};
-  const esc=(v='')=>String(v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
-  const fmt=v=>v?new Date(v).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
-  let retryTimer=null;
+  const feed = document.getElementById('members-transfer-feed');
+  const updated = document.getElementById('members-transfer-updated');
+  if (!feed) return;
+  const KEY = 'football-talk-member-session';
+  let timer;
 
-  function styles(){
-    if(document.getElementById('itsago-ticker-css'))return;
-    const s=document.createElement('style');
-    s.id='itsago-ticker-css';
-    s.textContent='.transfer-feed{overflow:hidden;padding:18px}.transfer-feed-head{margin-bottom:10px}.transfer-feed-head p{font-size:14px}.itsago-ticker{overflow:hidden;display:flex;align-items:center;min-height:52px;background:#08080a;border:1px solid #3b3b40;border-radius:10px}.itsago-label{flex:0 0 auto;align-self:stretch;display:flex;align-items:center;padding:0 14px;background:#b11219;color:#fff;font-weight:1000;z-index:2;box-shadow:8px 0 18px rgba(0,0,0,.35)}.itsago-window{overflow:hidden;white-space:nowrap;flex:1}.itsago-track{display:inline-flex;width:max-content;will-change:transform;animation:itsago-scroll 42s linear infinite}.itsago-item{display:inline-flex;align-items:center;gap:9px;padding:0 26px;font-weight:900;color:#f4f4f5;white-space:nowrap}.itsago-item:after{content:"◆";color:#f7c600;margin-left:18px;font-size:9px}.itsago-time{font-size:11px;color:#9f9fa6;font-weight:700}.itsago-status{padding:14px 16px;background:#101013;border:1px dashed #444;border-radius:10px;color:#bbb}.itsago-status strong{color:#f7c600}.itsago-ticker:hover .itsago-track{animation-play-state:paused}@keyframes itsago-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}@media(max-width:700px){.transfer-feed{padding:14px}.itsago-label{padding:0 10px;font-size:11px}.itsago-item{padding:0 18px;font-size:13px}.itsago-track{animation-duration:34s}.transfer-feed-head p{font-size:13px}}';
-    document.head.appendChild(s);
+  function session() {
+    try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (_) { return null; }
   }
-
-  function render(items){
-    styles();
-    if(!items.length){
-      feed.innerHTML='<div class="itsago-status"><strong>No IT\'S A GO! confirmations right now.</strong> The ticker will update automatically when a new confirmed transfer lands.</div>';
+  function save(value) {
+    try { localStorage.setItem(KEY, JSON.stringify(value)); } catch (_) {}
+  }
+  function escapeHtml(value) {
+    const div = document.createElement('div');
+    div.textContent = String(value || '');
+    return div.innerHTML;
+  }
+  function status(message) {
+    feed.innerHTML = '<div class="itsago-status">' + escapeHtml(message) + '</div>';
+  }
+  function addStyles() {
+    if (document.getElementById('itsago-live-css')) return;
+    const style = document.createElement('style');
+    style.id = 'itsago-live-css';
+    style.textContent = `
+      .transfer-feed{padding:14px!important}
+      .transfer-feed-head{margin-bottom:10px!important}
+      .itsago-live{display:flex;align-items:center;overflow:hidden;min-height:48px;background:#08080a;border:1px solid #39393f;border-radius:10px}
+      .itsago-live-label{align-self:stretch;display:flex;align-items:center;flex:0 0 auto;padding:0 12px;background:#b11219;color:#fff;font-weight:1000;font-size:12px;z-index:2}
+      .itsago-live-window{flex:1;overflow:hidden;white-space:nowrap}
+      .itsago-live-track{display:inline-flex;width:max-content;animation:ftItsAGo 38s linear infinite;will-change:transform}
+      .itsago-live-item{display:inline-flex;align-items:center;padding:0 22px;color:#fff;font-weight:900;font-size:14px;white-space:nowrap}
+      .itsago-live-item:after{content:'◆';color:#f7c600;font-size:8px;margin-left:28px}
+      .itsago-live-time{margin-left:9px;color:#999;font-size:11px;font-weight:700}
+      .itsago-status{padding:13px 15px;border:1px dashed #444;border-radius:9px;background:#101013;color:#ddd;font-weight:800}
+      @keyframes ftItsAGo{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+      @media(max-width:700px){.itsago-live-label{font-size:10px;padding:0 9px}.itsago-live-item{font-size:13px;padding:0 16px}.itsago-live-track{animation-duration:32s}}
+    `;
+    document.head.appendChild(style);
+  }
+  function render(items) {
+    addStyles();
+    if (!items.length) {
+      status('No fresh IT’S A GO! confirmations right now — watching live for the next confirmed transfer.');
       return;
     }
-    const one=items.slice(0,20).map(item=>'<span class="itsago-item"><span>🚨 '+esc(item.text)+'</span><span class="itsago-time">'+esc(fmt(item.publishedAt))+'</span></span>').join('');
-    feed.innerHTML='<div class="itsago-ticker" aria-label="Latest confirmed transfers"><div class="itsago-label">IT\'S A GO!</div><div class="itsago-window"><div class="itsago-track">'+one+one+'</div></div></div>';
+    const parts = items.slice(0, 20).map(item => {
+      const when = item.publishedAt ? new Date(item.publishedAt).toLocaleString('en-GB', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+      return '<span class="itsago-live-item">🚨 ' + escapeHtml(item.text) + (when ? '<span class="itsago-live-time">' + escapeHtml(when) + '</span>' : '') + '</span>';
+    }).join('');
+    feed.innerHTML = '<div class="itsago-live"><div class="itsago-live-label">IT’S A GO!</div><div class="itsago-live-window"><div class="itsago-live-track">' + parts + parts + '</div></div></div>';
+    if (updated) updated.textContent = 'Live · ' + new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
   }
-
-  function queueRetry(ms=2500){
-    clearTimeout(retryTimer);
-    retryTimer=setTimeout(load,ms);
+  async function refreshToken(current) {
+    const cfg = window.FT_CONFIG || {};
+    if (!current?.refresh_token || !cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) return null;
+    try {
+      const response = await fetch(cfg.SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+        method:'POST',
+        headers:{apikey:cfg.SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify({refresh_token:current.refresh_token}),
+        cache:'no-store'
+      });
+      if (!response.ok) return null;
+      const fresh = await response.json();
+      if (!fresh.access_token) return null;
+      const merged = {...current, ...fresh, refresh_token:fresh.refresh_token || current.refresh_token};
+      save(merged);
+      return merged;
+    } catch (_) { return null; }
   }
-
-  async function load(){
-    clearTimeout(retryTimer);
-    const session=read();
-    if(!session?.access_token){
-      styles();
-      feed.innerHTML='<div class="itsago-status"><strong>Loading live confirmations…</strong></div>';
-      queueRetry();
+  async function request(current) {
+    return fetch('/api/members-transfers?ts=' + Date.now(), {
+      headers:{Authorization:'Bearer ' + current.access_token},
+      cache:'no-store'
+    });
+  }
+  async function load() {
+    clearTimeout(timer);
+    addStyles();
+    let current = session();
+    if (!current?.access_token) {
+      status('Connecting to the live IT’S A GO! ticker…');
+      timer = setTimeout(load, 1500);
       return;
     }
-    try{
-      const r=await fetch('/api/members-transfers?t='+Date.now(),{headers:{Authorization:'Bearer '+session.access_token},cache:'no-store'});
-      if(r.status===401){
-        feed.innerHTML='<div class="itsago-status"><strong>Refreshing your member session…</strong></div>';
-        queueRetry();
-        return;
+    try {
+      let response = await request(current);
+      if (response.status === 401 || response.status === 403) {
+        status('Refreshing the live ticker…');
+        const fresh = await refreshToken(current);
+        if (!fresh) { timer = setTimeout(load, 5000); return; }
+        current = fresh;
+        response = await request(current);
       }
-      if(!r.ok)throw new Error('feed unavailable');
-      const data=await r.json();
-      render(data.items||[]);
-      if(updated)updated.textContent='Updated '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-    }catch(_){
-      styles();
-      feed.innerHTML='<div class="itsago-status"><strong>Ticker temporarily unavailable.</strong> Retrying automatically…</div>';
-      queueRetry(10000);
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const data = await response.json();
+      render(Array.isArray(data.items) ? data.items : []);
+    } catch (error) {
+      console.warn('IT’S A GO ticker:', error);
+      status('Live ticker reconnecting…');
+      timer = setTimeout(load, 8000);
     }
   }
 
+  addStyles();
+  status('Connecting to the live IT’S A GO! ticker…');
   load();
-  setInterval(load,120000);
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden)load();});
-  window.addEventListener('storage',e=>{if(e.key==='football-talk-member-session')load();});
+  setInterval(load, 120000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
 })();
