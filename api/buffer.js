@@ -3,6 +3,7 @@ const path=require('path');
 const crypto=require('crypto');
 const BUFFER_ENDPOINT='https://api.buffer.com';
 const DRAFT_PREFIX='buffer-draft:';
+const PUBLISH_PREFIX='buffer-publish:';
 const SITE_URL='https://www.footballtalk.uk/';
 const DEFAULT_SOCIAL_IMAGE=`${SITE_URL}social-card.svg`;
 
@@ -56,7 +57,7 @@ function debateFor(item){
 function facebookText(item){return `${leadFor(item)}\n\n${cleanTitle(item.title)}\n\n${debateFor(item)}\n\n🔗 ${SITE_URL}\n\n#WhereFansHaveTheirSay`;}
 function instagramText(item){return `${leadFor(item)}\n\n${cleanTitle(item.title)}\n\n${debateFor(item)}\n\nMore football at footballtalk.uk\n\n#FootballTalk #WhereFansHaveTheirSay`;}
 function xText(item){
-  const lead=leadFor(item).replace('⚽ FOOTBALL TALK','⚽ FOOTBALL TALK');
+  const lead=leadFor(item);
   const suffix=`\n\n${SITE_URL}\n#WhereFansHaveTheirSay`;
   const debate=`\n\n${debateFor(item)}`;
   const available=Math.max(30,280-lead.length-debate.length-suffix.length-4);
@@ -69,39 +70,39 @@ function imageUrl(item){
   const found=candidates.find(v=>/^https:\/\//i.test(String(v||'')));
   return found||DEFAULT_SOCIAL_IMAGE;
 }
-async function alreadyDrafted(cfg,id,service){
-  const key=`${DRAFT_PREFIX}${service}:${id}`;
+async function alreadyRecorded(cfg,prefix,id,service){
+  const key=`${prefix}${service}:${id}`;
   const url=`${cfg.url}/rest/v1/poll_responses?select=poll_id&poll_id=eq.${encodeURIComponent(key)}&limit=1`;
   const r=await fetch(url,{headers:sbHeaders(cfg),cache:'no-store'});
   if(!r.ok)return false;
   const rows=await r.json();
   return Array.isArray(rows)&&rows.length>0;
 }
-async function rememberDraft(cfg,id,item,post,service){
-  const record={kind:'buffer-draft',storyId:id,title:item.title,bufferPostId:post?.id||null,createdAt:new Date().toISOString(),channel:service};
-  const r=await fetch(`${cfg.url}/rest/v1/poll_responses`,{method:'POST',headers:sbHeaders(cfg,{'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({poll_id:`${DRAFT_PREFIX}${service}:${id}`,answer:JSON.stringify(record)})});
+async function remember(cfg,prefix,kind,id,item,post,service){
+  const record={kind,storyId:id,title:item.title,bufferPostId:post?.id||null,createdAt:new Date().toISOString(),channel:service};
+  const r=await fetch(`${cfg.url}/rest/v1/poll_responses`,{method:'POST',headers:sbHeaders(cfg,{'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({poll_id:`${prefix}${service}:${id}`,answer:JSON.stringify(record)})});
   if(!r.ok)throw new Error(`Supabase ${r.status}`);
 }
 async function websiteStories(){
-  const r=await fetch(`${SITE_URL}api/news`,{headers:{'User-Agent':'FootballTalk Buffer Sync/1.2'},cache:'no-store'});
+  const r=await fetch(`${SITE_URL}api/news`,{headers:{'User-Agent':'FootballTalk Buffer Sync/1.3'},cache:'no-store'});
   if(!r.ok)throw new Error(`Website news ${r.status}`);
   const data=await r.json();
   return data.items||[];
 }
-async function createDraft(channelId,text,service,image){
+async function createPost(channelId,text,service,{draft=false,image=null}={}){
   let query;
-  let variables={channelId,text};
+  const variables={channelId,text};
   if(service==='instagram'){
-    query=`mutation FootballTalkInstagramDraft($channelId: ChannelId!,$text: String,$image: String!) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:addToQueue,saveToDraft:true,assets:[{image:{url:$image}}],metadata:{instagram:{type:post,shouldShareToFeed:true}}}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`;
     variables.image=image;
+    query=`mutation FootballTalkInstagramDraft($channelId: ChannelId!,$text: String,$image: String!) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:addToQueue,saveToDraft:true,assets:[{image:{url:$image}}],metadata:{instagram:{type:post,shouldShareToFeed:true}}}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`;
   }else if(service==='facebook'){
-    query=`mutation FootballTalkFacebookDraft($channelId: ChannelId!,$text: String) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:addToQueue,saveToDraft:true,metadata:{facebook:{type:post}}}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`;
+    query=`mutation FootballTalkFacebookPost($channelId: ChannelId!,$text: String) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:shareNow,saveToDraft:false,metadata:{facebook:{type:post}}}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`;
   }else{
-    query=`mutation FootballTalkDraft($channelId: ChannelId!,$text: String) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:addToQueue,saveToDraft:true}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`;
+    query=`mutation FootballTalkXPost($channelId: ChannelId!,$text: String) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:shareNow,saveToDraft:false}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`;
   }
   const result=await gql(query,variables);
   const payload=result.data?.createPost;
-  if(!payload?.post)throw new Error(payload?.message||`Buffer did not create the ${service} draft`);
+  if(!payload?.post)throw new Error(payload?.message||`Buffer did not create the ${service} post`);
   return {post:payload.post,rateLimit:result.rateLimit};
 }
 function channelFor(info,service){
@@ -110,33 +111,33 @@ function channelFor(info,service){
     service==='twitter'?/footballt8lk/i.test(`${c.name||''} ${c.displayName||''}`):true
   ));
 }
-async function syncDraft(){
+async function syncPublish(){
   const cfg=siteConfig();
   const items=await websiteStories();
   const info=await connectionInfo();
-  const targets={facebook:channelFor(info,'facebook'),twitter:channelFor(info,'twitter'),instagram:channelFor(info,'instagram')};
+  const targets={facebook:channelFor(info,'facebook'),twitter:channelFor(info,'twitter')};
   if(!targets.facebook)throw new Error('Football Talk Facebook channel not found in Buffer');
+  if(!targets.twitter)throw new Error('Football Talk X channel not found in Buffer');
   for(const item of items){
     if(!eligible(item))continue;
     const id=storyKey(item);
-    const services=Object.keys(targets).filter(s=>targets[s]);
     const pending=[];
-    for(const service of services)if(!(await alreadyDrafted(cfg,id,service)))pending.push(service);
+    for(const service of Object.keys(targets))if(!(await alreadyRecorded(cfg,PUBLISH_PREFIX,id,service)))pending.push(service);
     if(!pending.length)continue;
-    const created=[];
+    const published=[];
     const errors=[];
     for(const service of pending){
       const target=targets[service];
-      const text=service==='facebook'?facebookText(item):service==='instagram'?instagramText(item):xText(item);
+      const text=service==='facebook'?facebookText(item):xText(item);
       try{
-        const made=await createDraft(target.id,text,service,imageUrl(item));
-        await rememberDraft(cfg,id,item,made.post,service);
-        created.push({service,channel:target.displayName||target.name,postId:made.post.id});
+        const made=await createPost(target.id,text,service,{draft:false});
+        await remember(cfg,PUBLISH_PREFIX,'buffer-publish',id,item,made.post,service);
+        published.push({service,channel:target.displayName||target.name,postId:made.post.id});
       }catch(error){errors.push({service,error:String(error.message||error)});}
     }
-    return {ok:created.length>0,created:created.length>0,title:item.title,image:imageUrl(item),drafts:created,errors};
+    return {ok:published.length>0,published:published.length>0,title:item.title,posts:published,errors,instagram:'paused-until-next-session'};
   }
-  return {ok:true,created:false,reason:'No fresh undrafted selected story'};
+  return {ok:true,published:false,reason:'No fresh unpublished selected story',instagram:'paused-until-next-session'};
 }
 async function diagnostics(){
   const cfg=siteConfig();
@@ -147,17 +148,17 @@ async function diagnostics(){
   for(const item of items){
     if(!eligible(item))continue;
     const id=storyKey(item);
-    const drafted=await Promise.all(Object.keys(targets).filter(s=>targets[s]).map(s=>alreadyDrafted(cfg,id,s)));
-    if(drafted.some(v=>!v)){selected=item;break;}
+    const published=await Promise.all(['facebook','twitter'].map(s=>alreadyRecorded(cfg,PUBLISH_PREFIX,id,s)));
+    if(published.some(v=>!v)){selected=item;break;}
   }
-  return {ok:true,mode:'diagnostic',bufferConnected:true,organization:info.organization?{id:info.organization.id,name:info.organization.name}:null,channels:(info.channels||[]).map(c=>({id:c.id,name:c.displayName||c.name,service:c.service,isQueuePaused:!!c.isQueuePaused})),targets:Object.fromEntries(Object.entries(targets).map(([k,v])=>[k,v?{id:v.id,name:v.displayName||v.name}:null])),storyCount:items.length,selectedStory:selected?{title:selected.title,type:selected.type,stage:selected.stage||null,relevance:selected.relevance||0,publishedAt:selected.publishedAt||null,image:imageUrl(selected),facebookPreview:facebookText(selected),xPreview:xText(selected),instagramPreview:instagramText(selected)}:null,recentEligibility:sample};
+  return {ok:true,mode:'diagnostic',publishing:'facebook-and-x-live',instagram:'paused',bufferConnected:true,organization:info.organization?{id:info.organization.id,name:info.organization.name}:null,channels:(info.channels||[]).map(c=>({id:c.id,name:c.displayName||c.name,service:c.service,isQueuePaused:!!c.isQueuePaused})),targets:Object.fromEntries(Object.entries(targets).map(([k,v])=>[k,v?{id:v.id,name:v.displayName||v.name}:null])),storyCount:items.length,selectedStory:selected?{title:selected.title,type:selected.type,stage:selected.stage||null,relevance:selected.relevance||0,publishedAt:selected.publishedAt||null,facebookPreview:facebookText(selected),xPreview:xText(selected)}:null,recentEligibility:sample};
 }
 module.exports=async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({error:'Method not allowed'});}
   try{
     const isCron=String(req.headers['user-agent']||'').toLowerCase().includes('vercel-cron');
-    if(isCron||String(req.query?.run||'')==='1')return res.status(200).json(await syncDraft());
+    if(isCron||String(req.query?.run||'')==='1')return res.status(200).json(await syncPublish());
     return res.status(200).json(await diagnostics());
   }catch(error){
     console.error('Buffer connection failed',error);
