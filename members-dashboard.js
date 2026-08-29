@@ -5,6 +5,14 @@
   const predPrefix='member-prediction:';
   const finished=new Set(['FT','AET','PEN']);
   const clubs=['Arsenal','Aston Villa','Bournemouth','Brentford','Brighton','Burnley','Chelsea','Crystal Palace','Everton','Fulham','Leeds United','Liverpool','Manchester City','Manchester United','Newcastle United','Nottingham Forest','Sunderland','Tottenham Hotspur','West Ham United','Wolverhampton Wanderers'];
+  const clubAliases={
+    'brighton':['brighton','brighton & hove albion'],
+    'leeds united':['leeds united','leeds'],
+    'newcastle united':['newcastle united','newcastle'],
+    'tottenham hotspur':['tottenham hotspur','tottenham','spurs'],
+    'west ham united':['west ham united','west ham'],
+    'wolverhampton wanderers':['wolverhampton wanderers','wolverhampton','wolves']
+  };
   const esc=(v='')=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   const readJSON=(k,fallback)=>{try{return JSON.parse(localStorage.getItem(k)||'null')||fallback}catch{return fallback}};
   const session=()=>readJSON(sessionKey,null);
@@ -13,6 +21,14 @@
   const prefs=()=>readJSON(prefKey,{club:''});
   const savePrefs=p=>localStorage.setItem(prefKey,JSON.stringify({...prefs(),...p}));
   const headers=()=>({apikey:cfg.SUPABASE_ANON_KEY,Authorization:`Bearer ${cfg.SUPABASE_ANON_KEY}`});
+  const norm=v=>String(v||'').toLowerCase().replace(/&/g,'and').replace(/\bfc\b/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+  function sameClub(selected,apiName){
+    const s=norm(selected),a=norm(apiName);
+    if(!s||!a)return false;
+    if(s===a)return true;
+    const aliases=(clubAliases[s]||[s]).map(norm);
+    return aliases.includes(a);
+  }
 
   function styles(){
     if(document.getElementById('member-dashboard-styles'))return;
@@ -47,13 +63,13 @@
         fetch('/api/fixtures',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject()),
         fetch('/api/standings',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject())
       ]);
-      const matches=(fx.leagues||[]).flatMap(l=>(l.fixtures||[]).map(f=>({...f,competition:l.name}))).filter(f=>f.home===club||f.away===club).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));
+      const matches=(fx.leagues||[]).flatMap(l=>(l.fixtures||[]).map(f=>({...f,competition:l.name}))).filter(f=>sameClub(club,f.home)||sameClub(club,f.away)).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));
       const next=matches[0];
-      const row=(st.leagues||[]).flatMap(l=>(l.standings||[]).map(r=>({...r,competition:l.name}))).find(r=>r.team===club);
+      const row=(st.leagues||[]).flatMap(l=>(l.standings||[]).map(r=>({...r,competition:l.name}))).find(r=>sameClub(club,r.team));
       if(!next){el.innerHTML=`<div class="my-matchday-title">🏟️ My Matchday</div><div class="hub-note">No ${esc(club)} fixture is showing in the next 14 days.</div>`;return}
       const d=new Date(next.date||((next.timestamp||0)*1000));
       const when=d.toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
-      const venue=next.home===club?'Home':'Away';
+      const venue=sameClub(club,next.home)?'Home':'Away';
       el.innerHTML=`<div class="my-matchday-title">🏟️ My Matchday</div><div class="my-matchday-teams"><div class="my-matchday-team">${next.homeLogo?`<img src="${esc(next.homeLogo)}" alt="">`:''}${esc(next.home)}</div><div class="my-matchday-v">V</div><div class="my-matchday-team">${next.awayLogo?`<img src="${esc(next.awayLogo)}" alt="">`:''}${esc(next.away)}</div></div><div class="my-matchday-meta"><b>${esc(next.competition||'Next fixture')}</b><br>${esc(when)} · ${venue}</div>${row?`<div class="my-matchday-stats"><span class="my-matchday-stat">#${esc(row.rank)} in table</span><span class="my-matchday-stat">${esc(row.points)} pts</span>${row.form?`<span class="my-matchday-stat form-dots">Form ${formHtml(row.form)}</span>`:''}</div>`:''}`;
     }catch(_){el.innerHTML='<div class="my-matchday-title">🏟️ My Matchday</div><div class="hub-note">Matchday information is temporarily unavailable.</div>'}
   }
