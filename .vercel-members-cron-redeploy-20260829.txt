@@ -1,1 +1,1 @@
-Football Talk members transfer watcher folded into existing API. Redeploy marker refreshed 2026-08-29 12:59 BST after Vercel Pro activation to deploy the 2-minute background watcher.
+Football Talk members transfer watcher folded into existing API. Redeploy marker refreshed 2026-08-29 13:12 BST to publish the members-only live IT'S A GO confirmation ticker and updated members copy.
