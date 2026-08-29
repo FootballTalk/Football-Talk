@@ -29,7 +29,7 @@
       .itsago-live{display:flex;align-items:center;overflow:hidden;min-height:48px;background:#08080a;border:1px solid #39393f;border-radius:10px}
       .itsago-live-label{align-self:stretch;display:flex;align-items:center;flex:0 0 auto;padding:0 12px;background:#b11219;color:#fff;font-weight:1000;font-size:12px;z-index:2}
       .itsago-live-window{flex:1;overflow:hidden;white-space:nowrap}
-      .itsago-live-track{display:inline-flex;width:max-content;animation:ftItsAGo var(--ticker-duration,120s) linear infinite;will-change:transform}
+      .itsago-live-track{display:inline-flex;width:max-content;animation:ftItsAGo var(--ticker-duration,60s) linear infinite;will-change:transform}
       .itsago-live-item{display:inline-flex;align-items:center;padding:0 22px;color:#fff;font-weight:900;font-size:14px;white-space:nowrap}
       .itsago-live-item:after{content:'◆';color:#f7c600;font-size:8px;margin-left:28px}
       .itsago-live-time{margin-left:9px;color:#999;font-size:11px;font-weight:700}
@@ -45,8 +45,8 @@
     requestAnimationFrame(() => {
       const distance = track.scrollWidth / 2;
       const mobile = window.matchMedia('(max-width:700px)').matches;
-      const pixelsPerSecond = mobile ? 22 : 28;
-      const minimumSeconds = mobile ? 110 : 95;
+      const pixelsPerSecond = mobile ? 44 : 56;
+      const minimumSeconds = mobile ? 55 : 47.5;
       const duration = Math.max(minimumSeconds, distance / pixelsPerSecond);
       track.style.setProperty('--ticker-duration', duration.toFixed(1) + 's');
     });
