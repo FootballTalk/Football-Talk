@@ -8,6 +8,7 @@
   const saveSession=s=>{try{localStorage.setItem(storageKey,JSON.stringify(s))}catch(_){}};
   const clearSession=()=>{try{localStorage.removeItem(storageKey)}catch(_){}};
   const getUsername=user=>user?.user_metadata?.username||user?.user_metadata?.display_name||'Football fan';
+  const next=(()=>{const v=new URLSearchParams(location.search).get('next')||'';return /^[A-Za-z0-9._/-]+$/.test(v)&&!v.startsWith('//')?v:''})();
 
   window.FT_MEMBER={
     session:readSession,
@@ -32,6 +33,7 @@
     authCard.style.display='none';accountBox.classList.add('show');
     document.getElementById('welcome-name').textContent=`Welcome, ${getUsername(session.user)}`;
     document.getElementById('account-email').textContent=session.user.email||'';
+    if(next) setTimeout(()=>location.replace(next),250);
     return true;
   }
   const existing=readSession();if(existing)showAccount(existing);
