@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+  <rect width="1080" height="1080" fill="#090909"/>
+  <path d="M0 0h1080v22H0zM0 1058h1080v22H0z" fill="#ffd400"/>
+  <circle cx="540" cy="430" r="210" fill="#111" stroke="#ffd400" stroke-width="14"/>
+  <text x="540" y="485" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="170" font-weight="900" fill="#ffd400">FT</text>
+  <text x="540" y="715" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="82" font-weight="800" fill="#fff">FOOTBALL TALK</text>
+  <text x="540" y="790" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="38" font-weight="600" fill="#ffd400">WHERE FANS HAVE THEIR SAY</text>
+  <text x="540" y="890" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="34" fill="#fff">footballtalk.uk</text>
+</svg>
