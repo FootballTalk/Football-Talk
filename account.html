@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f7c600">
+<title>Join Football Talk | Free Member Account</title>
+<style>
+:root{--yellow:#f7c600;--black:#0b0b0e}*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f4f4f4;color:#111}.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;background:var(--black);color:#fff;border-bottom:4px solid var(--yellow);padding:14px 18px}.brand{display:flex;align-items:center;gap:12px}.mark{display:flex;align-items:center;justify-content:center;width:46px;height:46px;background:var(--yellow);color:#000;font-weight:1000;font-size:22px;transform:skew(-8deg)}.brand strong{display:block;font-size:18px}.brand small{font-size:10px;letter-spacing:1.1px;color:#ccc}.close{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--yellow);color:#000;font-size:34px;font-weight:900;text-decoration:none}.wrap{max-width:760px;margin:auto;padding:34px 18px 70px}.eyebrow{font-size:12px;font-weight:900;letter-spacing:2px;color:#8a6e00}.title{font-size:clamp(40px,8vw,72px);line-height:.95;margin:7px 0 12px;font-weight:1000}.sub{color:#666;line-height:1.55;margin-bottom:22px}.member-card{background:#fff;border-top:5px solid var(--yellow);box-shadow:0 8px 22px rgba(0,0,0,.07);padding:22px}.tabs{display:flex;gap:8px;margin-bottom:18px}.tabs button{flex:1;border:2px solid #111;background:#fff;padding:12px;font-weight:900;cursor:pointer}.tabs button.active{background:#111;color:#fff}.form{display:grid;gap:12px}.form[hidden]{display:none}.form label{font-size:12px;font-weight:900}.form input{width:100%;border:2px solid #ccc;padding:13px;font:inherit}.form input:focus{outline:none;border-color:#111}.action{border:0;background:var(--yellow);padding:14px 18px;font:inherit;font-weight:1000;cursor:pointer}.status{min-height:22px;font-size:13px;line-height:1.4;color:#555}.account-box{display:none;background:#111;color:#fff;padding:22px;border-top:5px solid var(--yellow)}.account-box.show{display:block}.account-box strong{display:block;color:var(--yellow);font-size:28px;margin-bottom:6px}.logout{margin-top:14px;border:2px solid var(--yellow);background:transparent;color:#fff;padding:11px 15px;font-weight:900;cursor:pointer}.benefits{margin-top:22px;background:#fff;padding:20px;border-left:5px solid var(--yellow)}.benefits h2{margin-top:0}.benefits ul{line-height:1.8;padding-left:20px}.small{font-size:12px;color:#777;line-height:1.5;margin-top:14px}@media(max-width:600px){.wrap{padding:24px 10px 60px}.title{font-size:46px}.brand small{display:none}}
+</style>
+</head>
+<body>
+<header class="top"><div class="brand"><span class="mark">FT</span><span><strong>FOOTBALL TALK</strong><small>WHERE FANS HAVE THEIR SAY</small></span></div><a class="close" href="./" aria-label="Return to Football Talk">×</a></header>
+<main class="wrap">
+<p class="eyebrow">FREE MEMBER ACCOUNT</p><h1 class="title">Join Football Talk</h1><p class="sub">Everything on Football Talk stays free to read. Create an account to build your member profile and unlock member-only features as they roll out.</p>
+<section class="member-card" id="auth-card">
+<div class="tabs"><button id="join-tab" class="active" type="button">Create free account</button><button id="login-tab" type="button">Sign in</button></div>
+<form id="join-form" class="form">
+<div><label for="username">Football Talk username</label><input id="username" name="username" maxlength="30" minlength="3" required autocomplete="nickname" placeholder="e.g. KopKing77"></div>
+<div><label for="join-email">Email</label><input id="join-email" name="email" type="email" required autocomplete="email" placeholder="you@example.com"></div>
+<div><label for="join-password">Password</label><input id="join-password" name="password" type="password" minlength="8" required autocomplete="new-password" placeholder="At least 8 characters"></div>
+<button class="action" type="submit">Join Football Talk — Free</button><div id="join-status" class="status" aria-live="polite"></div>
+</form>
+<form id="login-form" class="form" hidden>
+<div><label for="login-email">Email</label><input id="login-email" name="email" type="email" required autocomplete="email"></div>
+<div><label for="login-password">Password</label><input id="login-password" name="password" type="password" required autocomplete="current-password"></div>
+<button class="action" type="submit">Sign in</button><div id="login-status" class="status" aria-live="polite"></div>
+</form>
+</section>
+<section id="account-box" class="account-box"><strong id="welcome-name">Welcome</strong><span id="account-email"></span><br><span>Free Football Talk member</span><br><button id="logout" class="logout" type="button">Sign out</button></section>
+<section class="benefits"><h2>Your free membership</h2><ul><li>Public Football Talk username</li><li>Saved quiz history and member leaderboards coming next</li><li>Member identity for comments, polls and predictions</li><li>Future favourites, badges and notification preferences</li></ul><p class="small">Your email is used for secure sign-in, verification and password recovery. Your public username is the name intended to appear around Football Talk.</p></section>
+</main>
+<script src="config.js"></script><script src="member-auth.js?v=20260829-1"></script><script src="site-logo.js?v=20260829-2"></script>
+</body></html>
