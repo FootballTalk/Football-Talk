@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
   if(!document.querySelector('script[data-auto-editorial]')){
     const autoEditorial=document.createElement('script');
-    autoEditorial.src='auto-editorial.js?v=20260825-5';
+    autoEditorial.src='auto-editorial.js?v=20260829-confirmed-1';
     autoEditorial.dataset.autoEditorial='1';
     document.body.appendChild(autoEditorial);
   }
