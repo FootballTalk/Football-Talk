@@ -1,1 +1,1 @@
-Football Talk members transfer watcher folded into existing API. Redeploy marker refreshed 2026-08-29 13:13 BST to retry publication of the members-only live IT'S A GO confirmation ticker and updated members copy.
+Football Talk members transfer watcher folded into existing API. Redeploy marker refreshed 2026-08-29 13:16 BST to publish the fixed members-only live IT'S A GO confirmation ticker after the member-session retry fix.
