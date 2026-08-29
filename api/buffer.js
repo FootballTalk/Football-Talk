@@ -4,6 +4,7 @@ const crypto=require('crypto');
 const BUFFER_ENDPOINT='https://api.buffer.com';
 const DRAFT_PREFIX='buffer-draft:';
 const SITE_URL='https://www.footballtalk.uk/';
+const DEFAULT_SOCIAL_IMAGE=`${SITE_URL}social-card.svg`;
 
 function siteConfig(){
   const text=fs.readFileSync(path.join(process.cwd(),'config.js'),'utf8');
@@ -43,67 +44,113 @@ function eligibility(item){
 }
 function eligible(item){return eligibility(item).ok;}
 function cleanTitle(value){return String(value||'').replace(/\s+/g,' ').trim();}
-function postText(item){
+function leadFor(item){return item.type==='TRANSFER'?(item.stage==='OFFICIAL'?'🚨 DEAL DONE':'🔥 TRANSFER CENTRE — GAINING PACE'):'⚽ FOOTBALL TALK';}
+function debateFor(item){
   const title=cleanTitle(item.title);
-  const transfer=item.type==='TRANSFER';
-  const lead=transfer?(item.stage==='OFFICIAL'?'🚨 DEAL DONE':'🔥 TRANSFER CENTRE — GAINING PACE'):'⚽ FOOTBALL TALK';
   let debate=String(item.debatePrompt||'').trim();
-  if(!debate){
-    if(transfer) debate=item.stage==='OFFICIAL'?'Good move? Have your say 👇':'Can you see this one happening? Have your say 👇';
-    else if(/\blive\b/i.test(title)) debate='Follow the action and have your say 👇';
-    else debate='What do you make of this? Have your say 👇';
-  }
-  return `${lead}\n\n${title}\n\n${debate}\n\n🔗 ${SITE_URL}\n\n#WhereFansHaveTheirSay`;
+  if(debate)return debate;
+  if(item.type==='TRANSFER')return item.stage==='OFFICIAL'?'Good move? Have your say 👇':'Can you see this one happening? Have your say 👇';
+  if(/\blive\b/i.test(title))return 'Follow the action and have your say 👇';
+  return 'What do you make of this? Have your say 👇';
 }
-async function alreadyDrafted(cfg,id){
-  const url=`${cfg.url}/rest/v1/poll_responses?select=poll_id&poll_id=eq.${encodeURIComponent(DRAFT_PREFIX+id)}&limit=1`;
+function facebookText(item){return `${leadFor(item)}\n\n${cleanTitle(item.title)}\n\n${debateFor(item)}\n\n🔗 ${SITE_URL}\n\n#WhereFansHaveTheirSay`;}
+function instagramText(item){return `${leadFor(item)}\n\n${cleanTitle(item.title)}\n\n${debateFor(item)}\n\nMore football at footballtalk.uk\n\n#FootballTalk #WhereFansHaveTheirSay`;}
+function xText(item){
+  const lead=leadFor(item).replace('⚽ FOOTBALL TALK','⚽ FOOTBALL TALK');
+  const suffix=`\n\n${SITE_URL}\n#WhereFansHaveTheirSay`;
+  const debate=`\n\n${debateFor(item)}`;
+  const available=Math.max(30,280-lead.length-debate.length-suffix.length-4);
+  let title=cleanTitle(item.title);
+  if(title.length>available)title=title.slice(0,Math.max(1,available-1)).trimEnd()+'…';
+  return `${lead}\n\n${title}${debate}${suffix}`.slice(0,280);
+}
+function imageUrl(item){
+  const candidates=[item.image,item.imageUrl,item.image_url,item.thumbnail,item.thumbnailUrl,item.media?.image,item.media?.url];
+  const found=candidates.find(v=>/^https:\/\//i.test(String(v||'')));
+  return found||DEFAULT_SOCIAL_IMAGE;
+}
+async function alreadyDrafted(cfg,id,service){
+  const key=`${DRAFT_PREFIX}${service}:${id}`;
+  const url=`${cfg.url}/rest/v1/poll_responses?select=poll_id&poll_id=eq.${encodeURIComponent(key)}&limit=1`;
   const r=await fetch(url,{headers:sbHeaders(cfg),cache:'no-store'});
   if(!r.ok)return false;
   const rows=await r.json();
   return Array.isArray(rows)&&rows.length>0;
 }
-async function rememberDraft(cfg,id,item,post){
-  const record={kind:'buffer-draft',storyId:id,title:item.title,bufferPostId:post?.id||null,createdAt:new Date().toISOString(),channel:'facebook'};
-  const r=await fetch(`${cfg.url}/rest/v1/poll_responses`,{method:'POST',headers:sbHeaders(cfg,{'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({poll_id:DRAFT_PREFIX+id,answer:JSON.stringify(record)})});
+async function rememberDraft(cfg,id,item,post,service){
+  const record={kind:'buffer-draft',storyId:id,title:item.title,bufferPostId:post?.id||null,createdAt:new Date().toISOString(),channel:service};
+  const r=await fetch(`${cfg.url}/rest/v1/poll_responses`,{method:'POST',headers:sbHeaders(cfg,{'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({poll_id:`${DRAFT_PREFIX}${service}:${id}`,answer:JSON.stringify(record)})});
   if(!r.ok)throw new Error(`Supabase ${r.status}`);
 }
 async function websiteStories(){
-  const r=await fetch(`${SITE_URL}api/news`,{headers:{'User-Agent':'FootballTalk Buffer Sync/1.1'},cache:'no-store'});
+  const r=await fetch(`${SITE_URL}api/news`,{headers:{'User-Agent':'FootballTalk Buffer Sync/1.2'},cache:'no-store'});
   if(!r.ok)throw new Error(`Website news ${r.status}`);
   const data=await r.json();
   return data.items||[];
 }
-async function latestWebsiteStory(){return (await websiteStories()).find(eligible)||null;}
-async function createDraft(channelId,text){
-  const result=await gql(`mutation FootballTalkDraft($channelId: ChannelId!,$text: String) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:addToQueue,saveToDraft:true,metadata:{facebook:{type:post}}}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`,{channelId,text});
+async function createDraft(channelId,text,service,image){
+  let query;
+  let variables={channelId,text};
+  if(service==='instagram'){
+    query=`mutation FootballTalkInstagramDraft($channelId: ChannelId!,$text: String,$image: String!) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:addToQueue,saveToDraft:true,assets:[{image:{url:$image}}],metadata:{instagram:{type:post,shouldShareToFeed:true}}}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`;
+    variables.image=image;
+  }else if(service==='facebook'){
+    query=`mutation FootballTalkFacebookDraft($channelId: ChannelId!,$text: String) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:addToQueue,saveToDraft:true,metadata:{facebook:{type:post}}}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`;
+  }else{
+    query=`mutation FootballTalkDraft($channelId: ChannelId!,$text: String) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:addToQueue,saveToDraft:true}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`;
+  }
+  const result=await gql(query,variables);
   const payload=result.data?.createPost;
-  if(!payload?.post)throw new Error(payload?.message||'Buffer did not create the draft');
+  if(!payload?.post)throw new Error(payload?.message||`Buffer did not create the ${service} draft`);
   return {post:payload.post,rateLimit:result.rateLimit};
+}
+function channelFor(info,service){
+  return (info.channels||[]).find(c=>String(c.service||'').toLowerCase()===service&&(
+    service==='facebook'?/football\s*talk/i.test(`${c.name||''} ${c.displayName||''}`):
+    service==='twitter'?/footballt8lk/i.test(`${c.name||''} ${c.displayName||''}`):true
+  ));
 }
 async function syncDraft(){
   const cfg=siteConfig();
   const items=await websiteStories();
   const info=await connectionInfo();
-  const target=(info.channels||[]).find(c=>String(c.service||'').toLowerCase()==='facebook'&&/football\s*talk/i.test(`${c.name||''} ${c.displayName||''}`));
-  if(!target)throw new Error('Football Talk Facebook channel not found in Buffer');
+  const targets={facebook:channelFor(info,'facebook'),twitter:channelFor(info,'twitter'),instagram:channelFor(info,'instagram')};
+  if(!targets.facebook)throw new Error('Football Talk Facebook channel not found in Buffer');
   for(const item of items){
     if(!eligible(item))continue;
     const id=storyKey(item);
-    if(await alreadyDrafted(cfg,id))continue;
-    const created=await createDraft(target.id,postText(item));
-    await rememberDraft(cfg,id,item,created.post);
-    return {ok:true,created:true,title:item.title,channel:target.displayName||target.name||'Facebook',postId:created.post.id,rateLimit:created.rateLimit};
+    const services=Object.keys(targets).filter(s=>targets[s]);
+    const pending=[];
+    for(const service of services)if(!(await alreadyDrafted(cfg,id,service)))pending.push(service);
+    if(!pending.length)continue;
+    const created=[];
+    const errors=[];
+    for(const service of pending){
+      const target=targets[service];
+      const text=service==='facebook'?facebookText(item):service==='instagram'?instagramText(item):xText(item);
+      try{
+        const made=await createDraft(target.id,text,service,imageUrl(item));
+        await rememberDraft(cfg,id,item,made.post,service);
+        created.push({service,channel:target.displayName||target.name,postId:made.post.id});
+      }catch(error){errors.push({service,error:String(error.message||error)});}
+    }
+    return {ok:created.length>0,created:created.length>0,title:item.title,image:imageUrl(item),drafts:created,errors};
   }
   return {ok:true,created:false,reason:'No fresh undrafted selected story'};
 }
 async function diagnostics(){
   const cfg=siteConfig();
   const [items,info]=await Promise.all([websiteStories(),connectionInfo()]);
-  const target=(info.channels||[]).find(c=>String(c.service||'').toLowerCase()==='facebook'&&/football\s*talk/i.test(`${c.name||''} ${c.displayName||''}`));
+  const targets={facebook:channelFor(info,'facebook'),twitter:channelFor(info,'twitter'),instagram:channelFor(info,'instagram')};
   const sample=(items||[]).slice(0,12).map(item=>({title:item.title,type:item.type,stage:item.stage||null,relevance:item.relevance||0,publishedAt:item.publishedAt||null,...eligibility(item)}));
   let selected=null;
-  for(const item of items){if(eligible(item)&&!(await alreadyDrafted(cfg,storyKey(item)))){selected=item;break;}}
-  return {ok:true,mode:'diagnostic',bufferConnected:true,organization:info.organization?{id:info.organization.id,name:info.organization.name}:null,channels:(info.channels||[]).map(c=>({id:c.id,name:c.displayName||c.name,service:c.service,isQueuePaused:!!c.isQueuePaused})),facebookTarget:target?{id:target.id,name:target.displayName||target.name}:null,storyCount:items.length,selectedStory:selected?{title:selected.title,type:selected.type,stage:selected.stage||null,relevance:selected.relevance||0,publishedAt:selected.publishedAt||null,preview:postText(selected)}:null,recentEligibility:sample};
+  for(const item of items){
+    if(!eligible(item))continue;
+    const id=storyKey(item);
+    const drafted=await Promise.all(Object.keys(targets).filter(s=>targets[s]).map(s=>alreadyDrafted(cfg,id,s)));
+    if(drafted.some(v=>!v)){selected=item;break;}
+  }
+  return {ok:true,mode:'diagnostic',bufferConnected:true,organization:info.organization?{id:info.organization.id,name:info.organization.name}:null,channels:(info.channels||[]).map(c=>({id:c.id,name:c.displayName||c.name,service:c.service,isQueuePaused:!!c.isQueuePaused})),targets:Object.fromEntries(Object.entries(targets).map(([k,v])=>[k,v?{id:v.id,name:v.displayName||v.name}:null])),storyCount:items.length,selectedStory:selected?{title:selected.title,type:selected.type,stage:selected.stage||null,relevance:selected.relevance||0,publishedAt:selected.publishedAt||null,image:imageUrl(selected),facebookPreview:facebookText(selected),xPreview:xText(selected),instagramPreview:instagramText(selected)}:null,recentEligibility:sample};
 }
 module.exports=async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
