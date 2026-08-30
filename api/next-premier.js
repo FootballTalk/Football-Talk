@@ -31,6 +31,10 @@ function mapFixture(item){
 }
 
 const emergencyFixtures=[
+  ['2026-08-30T14:00:00+01:00','Chelsea','Brighton & Hove Albion'],
+  ['2026-08-30T14:00:00+01:00','Leeds United','Brentford'],
+  ['2026-08-30T14:00:00+01:00','Sunderland','Fulham'],
+  ['2026-08-30T16:30:00+01:00','Manchester United','Ipswich Town'],
   ['2026-08-31T20:00:00+01:00','Aston Villa','Arsenal'],
   ['2026-09-04T20:00:00+01:00','Ipswich Town','Liverpool'],
   ['2026-09-05T12:30:00+01:00','Newcastle United','AFC Bournemouth'],
