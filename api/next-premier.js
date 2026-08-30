@@ -11,7 +11,7 @@ const emergencyFixtures=[['2026-08-30T14:00:00+01:00','Chelsea','Brighton & Hove
 function payload(fixtures,now,from,to,season,source,reason=''){
   const future=(fixtures||[]).filter(f=>Number(f.timestamp||0)*1000>now.getTime()+1000).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));
   const first=future[0]||null;const target=first?.timestamp||0;const group=target?future.filter(f=>Math.abs((f.timestamp||0)-target)<60):[];
-  return{from,to,season,next:first,group,fixtures:future,source,fallback:source!=='api-football',reason};
+  return{from,to,season,next:first,group,fixtures:future,source,fallback:Boolean(reason)||source==='premier-league-verified-emergency',reason};
 }
 function emergencyPayload(now,from,to,season,reason){return payload(emergencyFixtures,now,from,to,season,'premier-league-verified-emergency',reason);}
 async function fotmobPayload(now,from,to,season,reason=''){
@@ -23,7 +23,7 @@ async function fotmobPayload(now,from,to,season,reason=''){
 export default async function handler(req,res){
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({error:'Method not allowed'});}
   const now=new Date();const from=londonDateString(now);const end=new Date(now.getTime()+90*24*60*60*1000);const to=londonDateString(end);const season=seasonFor(now);const apiKey=(process.env.API_FOOTBALL_KEY||'').trim();
-  if(!apiKey){try{const out=await fotmobPayload(now,from,to,season,'API_FOOTBALL_KEY is not configured');res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=900');return res.status(200).json(out);}catch(error){res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=900');return res.status(200).json(emergencyPayload(now,from,to,season,String(error.message||error)));}}
+  if(!apiKey){try{const out=await fotmobPayload(now,from,to,season);res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=900');return res.status(200).json(out);}catch(error){res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=900');return res.status(200).json(emergencyPayload(now,from,to,season,String(error.message||error)));}}
   try{const url=new URL(`${API_BASE}/fixtures`);url.searchParams.set('league','39');url.searchParams.set('season',String(season));url.searchParams.set('from',from);url.searchParams.set('to',to);url.searchParams.set('timezone','Europe/London');const response=await fetch(url,{headers:{'x-apisports-key':apiKey,accept:'application/json'}});const data=await response.json();const errors=apiErrors(data);if(!response.ok||errors.length)throw new Error(errors.join('; ')||`HTTP ${response.status}`);const out=payload((data.response||[]).map(mapFixture),now,from,to,season,'api-football');if(!out.next)throw new Error('Primary fixture feed returned no future fixtures');res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=900');return res.status(200).json(out);}
   catch(error){const message=String(error.message||error);console.error('Next Premier League fixture primary feed error:',message);try{const out=await fotmobPayload(now,from,to,season,message);res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=900');return res.status(200).json(out);}catch(fallbackError){res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=900');return res.status(200).json(emergencyPayload(now,from,to,season,`${message}; ${String(fallbackError.message||fallbackError)}`));}}
 }
