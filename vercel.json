@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/buffer-manual",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/10 * * * *"
     }
   ]
 }
