@@ -6,6 +6,7 @@ const DRAFT_PREFIX='buffer-draft:';
 const PUBLISH_PREFIX='buffer-publish:';
 const SITE_URL='https://www.footballtalk.uk/';
 const DEFAULT_SOCIAL_IMAGE=`${SITE_URL}api/social-card-image`;
+const INSTAGRAM_SOCIAL_IMAGE=`${SITE_URL}api/instagram-card-image`;
 
 function siteConfig(){
   const text=fs.readFileSync(path.join(process.cwd(),'config.js'),'utf8');
@@ -80,6 +81,7 @@ function imageUrl(item){
   const found=candidates.find(v=>/^https:\/\//i.test(String(v||'')));
   return found||DEFAULT_SOCIAL_IMAGE;
 }
+function imageFor(item,service){return service==='instagram'?INSTAGRAM_SOCIAL_IMAGE:imageUrl(item);}
 async function alreadyRecorded(cfg,prefix,id,service){
   const key=`${prefix}${service}:${id}`;
   const url=`${cfg.url}/rest/v1/poll_responses?select=poll_id&poll_id=eq.${encodeURIComponent(key)}&limit=1`;
@@ -140,15 +142,16 @@ async function syncPublish(){
     for(const service of pending){
       const target=targets[service];
       const text=service==='facebook'?facebookText(item):service==='instagram'?instagramText(item):xText(item);
+      const image=imageFor(item,service);
       try{
-        const made=await createPost(target.id,text,service,{draft:false,image:imageUrl(item)});
+        const made=await createPost(target.id,text,service,{draft:false,image});
         await remember(cfg,PUBLISH_PREFIX,'buffer-publish',id,item,made.post,service);
-        published.push({service,channel:target.displayName||target.name,postId:made.post.id,image:imageUrl(item)});
+        published.push({service,channel:target.displayName||target.name,postId:made.post.id,image});
       }catch(error){errors.push({service,error:String(error.message||error)});}
     }
-    return {ok:published.length>0,published:published.length>0,title:item.title,posts:published,errors,instagram:'live-with-image'};
+    return {ok:published.length>0,published:published.length>0,title:item.title,posts:published,errors,instagram:'automatic-square-image'};
   }
-  return {ok:true,published:false,reason:'No fresh unpublished selected story',instagram:'live-with-image'};
+  return {ok:true,published:false,reason:'No fresh unpublished selected story',instagram:'automatic-square-image'};
 }
 async function diagnostics(){
   const cfg=siteConfig();
@@ -162,7 +165,7 @@ async function diagnostics(){
     const published=await Promise.all(['facebook','twitter','instagram'].map(s=>alreadyRecorded(cfg,PUBLISH_PREFIX,id,s)));
     if(published.some(v=>!v)){selected=item;break;}
   }
-  return {ok:true,mode:'diagnostic',publishing:'facebook-x-instagram-live',instagram:'live-with-required-image',bufferConnected:true,organization:info.organization?{id:info.organization.id,name:info.organization.name}:null,channels:(info.channels||[]).map(c=>({id:c.id,name:c.displayName||c.name,service:c.service,isQueuePaused:!!c.isQueuePaused})),targets:Object.fromEntries(Object.entries(targets).map(([k,v])=>[k,v?{id:v.id,name:v.displayName||v.name}:null])),storyCount:items.length,selectedStory:selected?{title:selected.title,type:selected.type,stage:selected.stage||null,relevance:selected.relevance||0,publishedAt:selected.publishedAt||null,image:imageUrl(selected),facebookPreview:facebookText(selected),instagramPreview:instagramText(selected),xPreview:xText(selected)}:null,recentEligibility:sample};
+  return {ok:true,mode:'diagnostic',publishing:'facebook-x-instagram-live',instagram:'automatic-square-image',instagramImage:INSTAGRAM_SOCIAL_IMAGE,bufferConnected:true,organization:info.organization?{id:info.organization.id,name:info.organization.name}:null,channels:(info.channels||[]).map(c=>({id:c.id,name:c.displayName||c.name,service:c.service,isQueuePaused:!!c.isQueuePaused})),targets:Object.fromEntries(Object.entries(targets).map(([k,v])=>[k,v?{id:v.id,name:v.displayName||v.name}:null])),storyCount:items.length,selectedStory:selected?{title:selected.title,type:selected.type,stage:selected.stage||null,relevance:selected.relevance||0,publishedAt:selected.publishedAt||null,image:imageUrl(selected),instagramImage:INSTAGRAM_SOCIAL_IMAGE,facebookPreview:facebookText(selected),instagramPreview:instagramText(selected),xPreview:xText(selected)}:null,recentEligibility:sample};
 }
 module.exports=async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
