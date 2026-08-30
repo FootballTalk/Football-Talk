@@ -30,20 +30,65 @@ function mapFixture(item){
   };
 }
 
+const emergencyFixtures=[
+  ['2026-08-31T20:00:00+01:00','Aston Villa','Arsenal'],
+  ['2026-09-04T20:00:00+01:00','Ipswich Town','Liverpool'],
+  ['2026-09-05T12:30:00+01:00','Newcastle United','AFC Bournemouth'],
+  ['2026-09-05T15:00:00+01:00','Brentford','Sunderland'],
+  ['2026-09-05T15:00:00+01:00','Brighton & Hove Albion','Leeds United'],
+  ['2026-09-05T15:00:00+01:00','Fulham','Crystal Palace'],
+  ['2026-09-05T15:00:00+01:00','Manchester City','Coventry City'],
+  ['2026-09-05T15:00:00+01:00','Nottingham Forest','Tottenham Hotspur'],
+  ['2026-09-05T17:30:00+01:00','Hull City','Aston Villa'],
+  ['2026-09-06T14:00:00+01:00','Everton','Manchester United'],
+  ['2026-09-06T16:30:00+01:00','Arsenal','Chelsea'],
+  ['2026-09-12T15:00:00+01:00','AFC Bournemouth','Brentford'],
+  ['2026-09-12T15:00:00+01:00','Aston Villa','Nottingham Forest'],
+  ['2026-09-12T15:00:00+01:00','Chelsea','Hull City'],
+  ['2026-09-12T15:00:00+01:00','Crystal Palace','Ipswich Town'],
+  ['2026-09-12T15:00:00+01:00','Liverpool','Fulham'],
+  ['2026-09-12T17:30:00+01:00','Tottenham Hotspur','Everton'],
+  ['2026-09-12T20:00:00+01:00','Sunderland','Arsenal'],
+  ['2026-09-13T14:00:00+01:00','Coventry City','Brighton & Hove Albion'],
+  ['2026-09-13T16:30:00+01:00','Manchester United','Manchester City'],
+  ['2026-09-14T20:00:00+01:00','Leeds United','Newcastle United'],
+  ['2026-09-18T20:00:00+01:00','Brentford','Chelsea'],
+  ['2026-09-19T12:30:00+01:00','Tottenham Hotspur','Aston Villa'],
+  ['2026-09-19T15:00:00+01:00','Brighton & Hove Albion','Arsenal'],
+  ['2026-09-19T15:00:00+01:00','Everton','Ipswich Town'],
+  ['2026-09-19T15:00:00+01:00','Leeds United','Crystal Palace'],
+  ['2026-09-19T15:00:00+01:00','Newcastle United','Hull City'],
+  ['2026-09-19T17:30:00+01:00','Nottingham Forest','Coventry City'],
+  ['2026-09-20T14:00:00+01:00','AFC Bournemouth','Liverpool'],
+  ['2026-09-20T14:00:00+01:00','Manchester City','Sunderland'],
+  ['2026-09-20T16:30:00+01:00','Fulham','Manchester United']
+].map(([date,home,away],i)=>({id:`fallback-${i+1}`,date,timestamp:Math.floor(Date.parse(date)/1000),status:'NS',home,away}));
+
+function fallbackPayload(now,from,to,season,reason){
+  const fixtures=emergencyFixtures.filter(f=>Number(f.timestamp)*1000>now.getTime()+1000).sort((a,b)=>a.timestamp-b.timestamp);
+  const first=fixtures[0]||null;
+  const target=first?.timestamp||0;
+  const group=target?fixtures.filter(f=>Math.abs(f.timestamp-target)<60):[];
+  return {from,to,season,next:first,group,source:'premier-league-verified-fallback',fallback:true,reason};
+}
+
 export default async function handler(req,res){
   if(req.method!=='GET'){
     res.setHeader('Allow','GET');
     return res.status(405).json({error:'Method not allowed'});
   }
 
-  const apiKey=process.env.API_FOOTBALL_KEY;
-  if(!apiKey)return res.status(500).json({error:'API_FOOTBALL_KEY is not configured'});
-
   const now=new Date();
   const from=londonDateString(now);
   const end=new Date(now.getTime()+60*24*60*60*1000);
   const to=londonDateString(end);
   const season=seasonFor(now);
+  const apiKey=process.env.API_FOOTBALL_KEY;
+
+  if(!apiKey){
+    res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=900');
+    return res.status(200).json(fallbackPayload(now,from,to,season,'API_FOOTBALL_KEY is not configured'));
+  }
 
   try{
     const url=new URL(`${API_BASE}/fixtures`);
@@ -63,12 +108,17 @@ export default async function handler(req,res){
     const target=first?.timestamp||0;
     const group=target?fixtures.filter(f=>Math.abs((f.timestamp||0)-target)<60):[];
 
+    if(!first){
+      res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=900');
+      return res.status(200).json(fallbackPayload(now,from,to,season,'Primary fixture feed returned no future fixtures'));
+    }
+
     res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=900');
-    return res.status(200).json({from,to,season,next:first,group});
+    return res.status(200).json({from,to,season,next:first,group,source:'api-football',fallback:false});
   }catch(error){
     const message=error instanceof Error?error.message:String(error);
-    console.error('Next Premier League fixture error:',message);
-    res.setHeader('Cache-Control','no-store');
-    return res.status(502).json({error:'Unable to load next Premier League fixture',detail:message});
+    console.error('Next Premier League fixture primary feed error:',message);
+    res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=900');
+    return res.status(200).json(fallbackPayload(now,from,to,season,message));
   }
 }
