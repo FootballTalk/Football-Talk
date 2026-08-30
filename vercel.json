@@ -6,11 +6,11 @@
     },
     {
       "path": "/api/buffer",
-      "schedule": "5,35 * * * *"
+      "schedule": "5 * * * *"
     },
     {
       "path": "/api/buffer-manual",
-      "schedule": "*/10 * * * *"
+      "schedule": "35 * * * *"
     }
   ]
 }
