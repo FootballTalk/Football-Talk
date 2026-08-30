@@ -73,7 +73,7 @@ function fallbackPayload(now,from,to,season,reason){
   const first=fixtures[0]||null;
   const target=first?.timestamp||0;
   const group=target?fixtures.filter(f=>Math.abs(f.timestamp-target)<60):[];
-  return {from,to,season,next:first,group,source:'premier-league-verified-fallback',fallback:true,reason};
+  return {from,to,season,next:first,group,fixtures,source:'premier-league-verified-fallback',fallback:true,reason};
 }
 
 export default async function handler(req,res){
@@ -118,7 +118,7 @@ export default async function handler(req,res){
     }
 
     res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=900');
-    return res.status(200).json({from,to,season,next:first,group,source:'api-football',fallback:false});
+    return res.status(200).json({from,to,season,next:first,group,fixtures,source:'api-football',fallback:false});
   }catch(error){
     const message=error instanceof Error?error.message:String(error);
     console.error('Next Premier League fixture primary feed error:',message);
