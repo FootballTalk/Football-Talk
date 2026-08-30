@@ -2,6 +2,7 @@ const fs=require('fs');
 const path=require('path');
 const TELEGRAM_URL='https://t.me/s/FabrizioRomanoTG';
 const PREFIX='members-transfer:';
+const MAX_ITEM_AGE_MS=7*24*60*60*1000;
 
 function siteConfig(){
   const text=fs.readFileSync(path.join(process.cwd(),'config.js'),'utf8');
@@ -22,6 +23,41 @@ function decode(value=''){
     .replace(/\n{3,}/g,'\n\n').trim();
 }
 
+function isFresh(publishedAt){
+  const ts=Date.parse(publishedAt||'');
+  return Number.isFinite(ts)&&Date.now()-ts<=MAX_ITEM_AGE_MS&&Date.now()-ts>=-60*60*1000;
+}
+
+function isTickerEligible(text='',publishedAt){
+  const value=String(text||'');
+  if(!/\bhere we go\b/i.test(value))return false;
+  if(!isFresh(publishedAt))return false;
+  if(/\b(podcast|youtube|twitch|giveaway|sponsor(?:ed)?|betting|episode|interview|merch|subscribe)\b/i.test(value))return false;
+  return /\b(to|join(?:s|ed|ing)?|sign(?:s|ed|ing)?|move(?:s|d|ing)?|loan|deal|agreement|transfer|contract|extension)\b/i.test(value);
+}
+
+function tickerText(value=''){
+  let text=String(value||'')
+    .replace(/https?:\/\/\S+/gi,' ')
+    .replace(/@[A-Za-z0-9_]+/g,' ')
+    .replace(/#[A-Za-z0-9_]+/g,' ')
+    .replace(/\bFabrizio\s+Romano\b/gi,' ')
+    .replace(/\bRomano\b/gi,' ')
+    .replace(/\s{2,}/g,' ')
+    .trim();
+  const here=text.search(/\bhere we go\b/i);
+  if(here>=0){
+    const after=text.slice(here).match(/[.!?](?:\s|$)/);
+    if(after){
+      const end=here+after.index+1;
+      const next=text.slice(end).match(/^\s*([^.!?]{0,180}[.!?])/);
+      text=next?text.slice(0,end+next[0].length):text.slice(0,end);
+    }
+  }
+  if(text.length>280)text=text.slice(0,277).trimEnd()+'…';
+  return text.replace(/\s+([,.;!?])/g,'$1').replace(/\s{2,}/g,' ').trim();
+}
+
 async function authorised(req,cfg){
   const header=req.headers.authorization||'';
   const token=header.startsWith('Bearer ')?header.slice(7):'';
@@ -38,10 +74,12 @@ function parseTelegram(html=''){
   for(const block of blocks){
     const post=(block.match(/data-post="FabrizioRomanoTG\/(\d+)"/i)||[])[1];
     const textHtml=(block.match(/<div class="tgme_widget_message_text[^>]*>([\s\S]*?)<\/div>/i)||[])[1]||'';
-    const text=decode(textHtml);
-    if(!post||!text||!/\bhere we go\b/i.test(text))continue;
+    const rawText=decode(textHtml);
     const publishedAt=(block.match(/<time[^>]+datetime="([^"]+)"/i)||[])[1]||null;
-    items.push({kind:'members-transfer',id:post,text,publishedAt,capturedAt:new Date().toISOString(),link:`https://t.me/FabrizioRomanoTG/${post}`,source:'Fabrizio Romano — Official Telegram'});
+    if(!post||!rawText||!isTickerEligible(rawText,publishedAt))continue;
+    const text=tickerText(rawText);
+    if(!text)continue;
+    items.push({kind:'members-transfer',id:post,text,publishedAt,capturedAt:new Date().toISOString(),link:`https://t.me/FabrizioRomanoTG/${post}`,source:'transfer confirmation feed'});
   }
   return items.sort((a,b)=>new Date(b.publishedAt||0)-new Date(a.publishedAt||0)).slice(0,20);
 }
@@ -81,7 +119,9 @@ async function storedItems(cfg){
   if(!r.ok)throw new Error(`Supabase ${r.status}`);
   const rows=await r.json();
   return rows.map(row=>{try{return JSON.parse(row.answer)}catch{return null}})
-    .filter(item=>item&&item.kind==='members-transfer'&&item.id&&item.text)
+    .filter(item=>item&&item.kind==='members-transfer'&&item.id&&item.text&&isTickerEligible(item.text,item.publishedAt))
+    .map(item=>({...item,text:tickerText(item.text)}))
+    .filter(item=>item.text)
     .sort((a,b)=>new Date(b.publishedAt||0)-new Date(a.publishedAt||0))
     .slice(0,20);
 }
