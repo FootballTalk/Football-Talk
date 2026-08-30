@@ -68,8 +68,18 @@ async function publishPending(){
     const text=textFor(work.item,service);
     if(!text){errors.push({service,error:'Missing post text'});continue;}
     const image=imageFor(work.item,service);
-    try{const post=await createPost(targets[service].id,text,service,image);await remember(cfg,work.item,post,service);posts.push({service,channel:targets[service].displayName||targets[service].name,postId:post.id,image});}
-    catch(error){const detail=String(error.message||error);errors.push({service,error:detail});if(/HTTP 429|quota low|backing off/i.test(detail))break;}
+    try{
+      const post=await createPost(targets[service].id,text,service,image);
+      await remember(cfg,work.item,post,service);
+      posts.push({service,channel:targets[service].displayName||targets[service].name,postId:post.id,image});
+      if(service==='instagram')console.info('Instagram Buffer publish succeeded',{itemId:work.item.id,postId:post.id,channel:targets[service].displayName||targets[service].name,image});
+    }
+    catch(error){
+      const detail=String(error.message||error);
+      errors.push({service,error:detail});
+      if(service==='instagram')console.error('Instagram Buffer publish failed',{itemId:work.item.id,title:work.item.title,channelId:targets[service]?.id||null,channel:targets[service]?.displayName||targets[service]?.name||null,image,textLength:text.length,detail,rateLimit:lastRateLimit,backoff:backoffState()});
+      if(/HTTP 429|quota low|backing off/i.test(detail))break;
+    }
   }
   return{ok:posts.length>0||errors.length===0,published:posts.length>0,id:work.item.id,title:work.item.title,posts,errors,instagram:'automatic-square-image',backoff:backoffState()};
 }
