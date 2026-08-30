@@ -52,61 +52,79 @@ function imageFromBlock(block = '') {
 }
 
 function classify(title = '', description = '') {
-  const text = `${title} ${description}`.toLowerCase().replace(/\s+/g, ' ').trim();
+  const headline = String(title).toLowerCase().replace(/\s+/g, ' ').trim();
+  const detail = String(description).toLowerCase().replace(/\s+/g, ' ').trim();
 
-  // Strong transfer language: these phrases are sufficiently specific on their own.
-  const strongTransferPatterns = [
-    /\btransfer(s| window| target| news| latest| update| fee)?\b/,
-    /\b(signs|signed|signing|joins|joined)\b/,
-    /\bloan (move|deal|switch|agreement)\b/,
-    /\b(on loan|loaned to|loaned from)\b/,
-    /\bmedical (booked|scheduled|completed|underway|set)\b/,
+  // Headline wording is the strongest signal. Do not use vague words such as
+  // "sign", "interest", "move" or "fee" as simple substring matches because
+  // they also occur constantly in match analysis and opinion pieces.
+  const headlineTransferPatterns = [
+    /\btransfer(?:s| news| update| latest| window)?\b/,
+    /\bgossip\b/,
+    /\b(?:signs|signed|joins|joined)\b/,
+    /\bsign [a-z]/,
+    /\b(?:loan|loaned)\b/,
+    /\b(?:deal|deals)\b/,
+    /\bbid\b/,
+    /\bmedical\b/,
     /\bpersonal terms\b/,
-    /\bfee agreed\b/,
-    /\bdeal agreed\b/,
-    /\bagree(?:d|s)? (?:a )?deal\b/,
-    /\bagreement reached\b/,
-    /\bbid (?:accepted|rejected|submitted|made)\b/,
-    /\boffer (?:accepted|rejected|submitted|made)\b/,
-    /\bset to sign\b/,
-    /\bset to join\b/,
-    /\bset to leave\b/,
-    /\bclose to (?:signing|joining|leaving)\b/,
-    /\bin talks (?:to|with|over|for)\b/,
-    /\badvanced talks\b/,
-    /\bnegotiations? (?:with|over|for|to sign|to join)\b/,
-    /\btarget(?:ing|s|ed)? [a-z]/,
-    /\blinked with (?:a )?(?:move|switch|transfer)\b/,
-    /\binterest in signing\b/,
-    /\bapproach (?:made|for)\b/,
-    /\brelease clause\b/,
-    /\bcontract offer\b/,
-    /\bfree agent\b/
+    /\b(?:advanced |open )?talks? (?:with|over|for|to)\b/,
+    /\bnegotiations?\b/,
+    /\bset to (?:sign|join|leave|move)\b/,
+    /\bclose to (?:signing|joining|leaving|a deal)\b/,
+    /\b(?:sale|sold|sell|selling)\b/,
+    /\b(?:move|switch) (?:to|from|for)\b/,
+    /\bcompletes? .*\bmove\b/,
+    /\bagree(?:d|s)? .*\b(?:deal|move|transfer)\b/
   ];
-  if (strongTransferPatterns.some(pattern => pattern.test(text))) return 'TRANSFER';
+  if (headlineTransferPatterns.some(pattern => pattern.test(headline))) return 'TRANSFER';
 
-  // Generic words such as "deal", "move", "interest" and "window" occur in lots of
-  // non-transfer stories, so only treat them as transfer signals in a clear football
-  // recruitment context.
-  const contextualTransferPatterns = [
+  // Descriptions need a clear transaction phrase. This deliberately avoids
+  // standalone mentions such as "transfer strategy", "transfer fees" or
+  // "a sign the striker is low in confidence".
+  const detailTransferPatterns = [
     /\b(?:club|side|team) (?:want|wants|wanted|keen|interested) (?:to sign|in signing)\b/,
-    /\b(?:move|switch) to [a-z][a-z .'-]{2,}\b/,
-    /\b(?:move|switch) from [a-z][a-z .'-]{2,}\b/,
-    /\bdeal (?:for|to sign|to join|worth|with)\b/,
-    /\b(?:summer|winter|january) window\b.*\b(?:sign|transfer|deal|target)\b/,
-    /\b(?:sign|join|leave) [a-z][a-z .'-]{2,}\b/
+    /\b(?:show|shows|shown|expressed|have|has) interest in (?:signing|buying)\b/,
+    /\binterest in [a-z][a-z .'-]{2,} (?:winger|striker|midfielder|defender|goalkeeper|forward)\b/,
+    /\b(?:sign|signs|signed) [a-z][a-z .'-]{2,} (?:from|for|on|in)\b/,
+    /\b(?:join|joins|joined) [a-z][a-z .'-]{2,} (?:from|for|on)\b/,
+    /\b(?:move|moves|moved|switch|switches|switched) (?:to|from) [a-z]/,
+    /\bmove for [a-z][a-z .'-]{2,}\b/,
+    /\bdeal (?:to sign|to sell|to buy|for|worth)\b/,
+    /\bagree(?:d|s)? (?:a |an )?(?:£|€|\$|[0-9]|deal|fee)/,
+    /\bfee (?:agreed|worth|of)\b/,
+    /\bbid (?:accepted|rejected|submitted|made|for)\b/,
+    /\boffer (?:accepted|rejected|submitted|made|for)\b/,
+    /\b(?:buy|buying|bought|sell|selling|sold) [a-z][a-z .'-]{2,} (?:to|from|for)\b/,
+    /\b(?:on loan|loan move|loan deal|season-long loan)\b/,
+    /\bmedical (?:booked|scheduled|completed|underway|set)\b/,
+    /\bpersonal terms\b/,
+    /\b(?:advanced |open )?talks? (?:with|over|for|to sign|to buy)\b/,
+    /\bnegotiations? (?:with|over|for|to sign|to buy)\b/,
+    /\bset to (?:sign|join|leave|move)\b/,
+    /\brelease clause\b/,
+    /\bcontract offer\b/
   ];
-  return contextualTransferPatterns.some(pattern => pattern.test(text)) ? 'TRANSFER' : 'NEWS';
+  return detailTransferPatterns.some(pattern => pattern.test(detail)) ? 'TRANSFER' : 'NEWS';
 }
 
 function transferStage(title = '', description = '') {
+  const headline = String(title).toLowerCase();
   const text = `${title} ${description}`.toLowerCase();
-  const official = [
+  const officialPatterns = [
+    /\b(?:sign|signs|signed) [a-z]/,
+    /\b(?:joins|joined)\b/,
+    /\bcompletes? .*\bmove\b/,
+    /\bcompleted .*\bmove\b/,
+    /\bofficially (?:joins|signed)\b/,
+    /\b(?:signing|move) confirmed\b/
+  ];
+  if (officialPatterns.some(pattern => pattern.test(headline)) || [
     'has signed', 'have signed', 'signs for', 'signs from', 'completes the signing',
     'completed the signing', 'complete the signing', 'signing confirmed', 'officially joins',
     'officially signed', 'announces signing', 'announce signing'
-  ];
-  if (official.some(phrase => text.includes(phrase))) return 'OFFICIAL';
+  ].some(phrase => text.includes(phrase))) return 'OFFICIAL';
+
   const personalTermsOnly = text.includes('personal terms') && !text.includes('deal agreed') && !text.includes('agreement reached') && !text.includes('clubs agreed');
   if (!personalTermsOnly && [
     'deal agreed', 'agree deal', 'agreed deal', 'agreement reached', 'club agreement reached',
@@ -115,7 +133,7 @@ function transferStage(title = '', description = '') {
   if ([
     'advanced talks', 'talks advanced', 'close to', 'closing in', 'set to', 'medical', 'finalising',
     'finalizing', 'bid accepted', 'offer accepted', 'verbal agreement', 'in negotiations',
-    'negotiations', 'talks continue', 'talks progressing'
+    'negotiations', 'talks continue', 'talks progressing', 'open talks'
   ].some(phrase => text.includes(phrase))) return 'DEVELOPING';
   return 'GOSSIP';
 }
