@@ -7,6 +7,10 @@
     {
       "path": "/api/buffer",
       "schedule": "5,35 * * * *"
+    },
+    {
+      "path": "/api/buffer-manual",
+      "schedule": "* * * * *"
     }
   ]
 }
