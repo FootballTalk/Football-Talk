@@ -1,8 +1,14 @@
-import {getFotmobMatchDetails,getFotmobMatchesByDate,fotmobDate} from '../lib/fotmob.js';
+import {getFotmobMatchDetails,getFotmobMatchesByDate,fotmobDate,FOTMOB_LEAGUES} from '../lib/fotmob.js';
 
 const API_BASE='https://v3.football.api-sports.io';
 const COMPETITIONS=[{id:39,name:'Premier League'},{id:40,name:'EFL Championship'},{id:48,name:'Carabao Cup'},{id:45,name:'FA Cup'}];
 const COMPETITION_MAP=new Map(COMPETITIONS.map(c=>[c.id,c]));
+const FOTMOB_COMPETITION_MAP=new Map([
+  [FOTMOB_LEAGUES.premier.id,{id:39,name:'Premier League'}],
+  [FOTMOB_LEAGUES.championship.id,{id:40,name:'EFL Championship'}],
+  [FOTMOB_LEAGUES.carabao.id,{id:48,name:'Carabao Cup'}],
+  [FOTMOB_LEAGUES.faCup.id,{id:45,name:'FA Cup'}],
+]);
 
 function londonDateString(date){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);const map=Object.fromEntries(parts.map(({type,value})=>[type,value]));return `${map.year}-${map.month}-${map.day}`;}
 function seasonFor(date){const year=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric'}).format(date));const month=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',month:'numeric'}).format(date));return month>=7?year:year-1;}
@@ -53,7 +59,7 @@ function parseFotmobLineups(details,fixture){
 }
 async function fotmobFallback(date,season,reason=''){
   const leagues=await getFotmobMatchesByDate(date);
-  const fixtures=leagues.filter(l=>COMPETITION_MAP.has(Number(l.id))).flatMap(l=>{const comp=COMPETITION_MAP.get(Number(l.id));return(l.fixtures||[]).map(f=>({fixtureId:f.id,date:f.date,timestamp:f.timestamp,status:f.status,elapsed:f.elapsed,leagueId:comp.id,leagueName:comp.name,home:f.home,away:f.away,homeLogo:f.homeLogo,awayLogo:f.awayLogo,lineups:[]}));}).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));
+  const fixtures=leagues.filter(l=>FOTMOB_COMPETITION_MAP.has(Number(l.providerId))).flatMap(l=>{const comp=FOTMOB_COMPETITION_MAP.get(Number(l.providerId));return(l.fixtures||[]).map(f=>({fixtureId:f.id,date:f.date,timestamp:f.timestamp,status:f.status,elapsed:f.elapsed,leagueId:comp.id,leagueName:comp.name,home:f.home,away:f.away,homeLogo:f.homeLogo,awayLogo:f.awayLogo,lineups:[]}));}).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));
   const enriched=[];const lineupErrors=[];
   for(const fixture of fixtures){
     let lineups=[];
