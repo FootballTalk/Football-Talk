@@ -5,7 +5,7 @@ const BUFFER_ENDPOINT='https://api.buffer.com';
 const DRAFT_PREFIX='buffer-draft:';
 const PUBLISH_PREFIX='buffer-publish:';
 const SITE_URL='https://www.footballtalk.uk/';
-const DEFAULT_SOCIAL_IMAGE=`${SITE_URL}social-card.svg`;
+const DEFAULT_SOCIAL_IMAGE=`${SITE_URL}api/social-card-image`;
 
 function siteConfig(){
   const text=fs.readFileSync(path.join(process.cwd(),'config.js'),'utf8');
@@ -94,7 +94,7 @@ async function remember(cfg,prefix,kind,id,item,post,service){
   if(!r.ok)throw new Error(`Supabase ${r.status}`);
 }
 async function websiteStories(){
-  const r=await fetch(`${SITE_URL}api/news`,{headers:{'User-Agent':'FootballTalk Buffer Sync/1.4'},cache:'no-store'});
+  const r=await fetch(`${SITE_URL}api/news`,{headers:{'User-Agent':'FootballTalk Buffer Sync/1.5'},cache:'no-store'});
   if(!r.ok)throw new Error(`Website news ${r.status}`);
   const data=await r.json();
   return data.items||[];
@@ -104,7 +104,7 @@ async function createPost(channelId,text,service,{draft=false,image=null}={}){
   const variables={channelId,text};
   if(image)variables.image=image;
   if(service==='instagram'){
-    query=`mutation FootballTalkInstagramDraft($channelId: ChannelId!,$text: String,$image: String!) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:addToQueue,saveToDraft:true,assets:[{image:{url:$image}}],metadata:{instagram:{type:post,shouldShareToFeed:true}}}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`;
+    query=`mutation FootballTalkInstagramPost($channelId: ChannelId!,$text: String,$image: String!) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:shareNow,saveToDraft:false,assets:[{image:{url:$image}}],metadata:{instagram:{type:post,shouldShareToFeed:true}}}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`;
   }else if(service==='facebook'){
     query=`mutation FootballTalkFacebookPost($channelId: ChannelId!,$text: String,$image: String!) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:shareNow,saveToDraft:false,assets:[{image:{url:$image}}],metadata:{facebook:{type:post}}}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`;
   }else{
@@ -125,9 +125,10 @@ async function syncPublish(){
   const cfg=siteConfig();
   const items=await websiteStories();
   const info=await connectionInfo();
-  const targets={facebook:channelFor(info,'facebook'),twitter:channelFor(info,'twitter')};
+  const targets={facebook:channelFor(info,'facebook'),twitter:channelFor(info,'twitter'),instagram:channelFor(info,'instagram')};
   if(!targets.facebook)throw new Error('Football Talk Facebook channel not found in Buffer');
   if(!targets.twitter)throw new Error('Football Talk X channel not found in Buffer');
+  if(!targets.instagram)throw new Error('Football Talk Instagram channel not found in Buffer');
   for(const item of items){
     if(!eligible(item))continue;
     const id=storyKey(item);
@@ -138,30 +139,30 @@ async function syncPublish(){
     const errors=[];
     for(const service of pending){
       const target=targets[service];
-      const text=service==='facebook'?facebookText(item):xText(item);
+      const text=service==='facebook'?facebookText(item):service==='instagram'?instagramText(item):xText(item);
       try{
         const made=await createPost(target.id,text,service,{draft:false,image:imageUrl(item)});
         await remember(cfg,PUBLISH_PREFIX,'buffer-publish',id,item,made.post,service);
-        published.push({service,channel:target.displayName||target.name,postId:made.post.id});
+        published.push({service,channel:target.displayName||target.name,postId:made.post.id,image:imageUrl(item)});
       }catch(error){errors.push({service,error:String(error.message||error)});}
     }
-    return {ok:published.length>0,published:published.length>0,title:item.title,posts:published,errors,instagram:'paused-until-next-session'};
+    return {ok:published.length>0,published:published.length>0,title:item.title,posts:published,errors,instagram:'live-with-image'};
   }
-  return {ok:true,published:false,reason:'No fresh unpublished selected story',instagram:'paused-until-next-session'};
+  return {ok:true,published:false,reason:'No fresh unpublished selected story',instagram:'live-with-image'};
 }
 async function diagnostics(){
   const cfg=siteConfig();
   const [items,info]=await Promise.all([websiteStories(),connectionInfo()]);
   const targets={facebook:channelFor(info,'facebook'),twitter:channelFor(info,'twitter'),instagram:channelFor(info,'instagram')};
-  const sample=(items||[]).slice(0,12).map(item=>({title:item.title,type:item.type,stage:item.stage||null,relevance:item.relevance||0,publishedAt:item.publishedAt||null,...eligibility(item)}));
+  const sample=(items||[]).slice(0,12).map(item=>({title:item.title,type:item.type,stage:item.stage||null,relevance:item.relevance||0,publishedAt:item.publishedAt||null,image:item.image||null,...eligibility(item)}));
   let selected=null;
   for(const item of items){
     if(!eligible(item))continue;
     const id=storyKey(item);
-    const published=await Promise.all(['facebook','twitter'].map(s=>alreadyRecorded(cfg,PUBLISH_PREFIX,id,s)));
+    const published=await Promise.all(['facebook','twitter','instagram'].map(s=>alreadyRecorded(cfg,PUBLISH_PREFIX,id,s)));
     if(published.some(v=>!v)){selected=item;break;}
   }
-  return {ok:true,mode:'diagnostic',publishing:'facebook-and-x-live',instagram:'paused',bufferConnected:true,organization:info.organization?{id:info.organization.id,name:info.organization.name}:null,channels:(info.channels||[]).map(c=>({id:c.id,name:c.displayName||c.name,service:c.service,isQueuePaused:!!c.isQueuePaused})),targets:Object.fromEntries(Object.entries(targets).map(([k,v])=>[k,v?{id:v.id,name:v.displayName||v.name}:null])),storyCount:items.length,selectedStory:selected?{title:selected.title,type:selected.type,stage:selected.stage||null,relevance:selected.relevance||0,publishedAt:selected.publishedAt||null,image:imageUrl(selected),facebookPreview:facebookText(selected),xPreview:xText(selected)}:null,recentEligibility:sample};
+  return {ok:true,mode:'diagnostic',publishing:'facebook-x-instagram-live',instagram:'live-with-required-image',bufferConnected:true,organization:info.organization?{id:info.organization.id,name:info.organization.name}:null,channels:(info.channels||[]).map(c=>({id:c.id,name:c.displayName||c.name,service:c.service,isQueuePaused:!!c.isQueuePaused})),targets:Object.fromEntries(Object.entries(targets).map(([k,v])=>[k,v?{id:v.id,name:v.displayName||v.name}:null])),storyCount:items.length,selectedStory:selected?{title:selected.title,type:selected.type,stage:selected.stage||null,relevance:selected.relevance||0,publishedAt:selected.publishedAt||null,image:imageUrl(selected),facebookPreview:facebookText(selected),instagramPreview:instagramText(selected),xPreview:xText(selected)}:null,recentEligibility:sample};
 }
 module.exports=async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
