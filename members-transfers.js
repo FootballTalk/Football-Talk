@@ -3,6 +3,7 @@
   const updated = document.getElementById('members-transfer-updated');
   if (!feed) return;
   const KEY = 'football-talk-member-session';
+  const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
   let timer;
 
   function session() {
@@ -18,15 +19,24 @@
   }
   function cleanTickerText(value) {
     return String(value || '')
-      .replace(/^\s*RT\s+@?FabrizioRomano\s*:?\s*/gi, '')
-      .replace(/@FabrizioRomano\b/gi, '')
+      .replace(/^\s*RT\s+@?[A-Za-z0-9_]+\s*:?\s*/gi, '')
+      .replace(/https?:\/\/\S+/gi, '')
+      .replace(/@[A-Za-z0-9_]+/g, '')
+      .replace(/#[A-Za-z0-9_]+/g, '')
       .replace(/\bFabrizio\s+Romano\b/gi, '')
       .replace(/\bRomano\b/gi, '')
-      .replace(/^\s*RT\s*@?\s*:?\s*/gi, '')
       .replace(/^\s*[-–—:|]+\s*/, '')
       .replace(/\s+([,.;!?])/g, '$1')
       .replace(/\s{2,}/g, ' ')
       .trim();
+  }
+  function isValidItem(item) {
+    const text = String(item?.text || '');
+    const ts = Date.parse(item?.publishedAt || '');
+    if (!text || !Number.isFinite(ts) || Date.now() - ts > MAX_AGE_MS) return false;
+    if (!/\bhere we go\b/i.test(text)) return false;
+    if (/\b(podcast|youtube|twitch|giveaway|sponsor(?:ed)?|betting|episode|interview|merch|subscribe)\b/i.test(text)) return false;
+    return /\b(to|join(?:s|ed|ing)?|sign(?:s|ed|ing)?|move(?:s|d|ing)?|loan|deal|agreement|transfer|contract|extension)\b/i.test(text);
   }
   function status(message) {
     feed.innerHTML = '<div class="itsago-status">' + escapeHtml(message) + '</div>';
@@ -65,11 +75,13 @@
   }
   function render(items) {
     addStyles();
-    if (!items.length) {
+    const valid = (items || []).filter(isValidItem).slice(0, 20);
+    if (!valid.length) {
       status('No fresh IT’S A GO! confirmations right now — watching live for the next confirmed transfer.');
+      if (updated) updated.textContent = 'Watching live';
       return;
     }
-    const parts = items.slice(0, 20).map(item => {
+    const parts = valid.map(item => {
       const when = item.publishedAt ? new Date(item.publishedAt).toLocaleString('en-GB', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
       const text = cleanTickerText(item.text) || 'Transfer confirmed';
       return '<span class="itsago-live-item">🚨 ' + escapeHtml(text) + (when ? '<span class="itsago-live-time">' + escapeHtml(when) + '</span>' : '') + '</span>';
