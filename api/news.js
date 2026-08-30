@@ -52,13 +52,51 @@ function imageFromBlock(block = '') {
 }
 
 function classify(title = '', description = '') {
-  const lower = `${title} ${description}`.toLowerCase();
-  const transferWords = [
-    'transfer', 'sign', 'signing', 'joins', 'join ', 'deal', 'bid', 'move',
-    'medical', 'talks', 'fee', 'target', 'loan', 'agrees', 'agreed', 'set to leave',
-    'interest', 'linked', 'offer', 'approach', 'wanted', 'window'
+  const text = `${title} ${description}`.toLowerCase().replace(/\s+/g, ' ').trim();
+
+  // Strong transfer language: these phrases are sufficiently specific on their own.
+  const strongTransferPatterns = [
+    /\btransfer(s| window| target| news| latest| update| fee)?\b/,
+    /\b(signs|signed|signing|joins|joined)\b/,
+    /\bloan (move|deal|switch|agreement)\b/,
+    /\b(on loan|loaned to|loaned from)\b/,
+    /\bmedical (booked|scheduled|completed|underway|set)\b/,
+    /\bpersonal terms\b/,
+    /\bfee agreed\b/,
+    /\bdeal agreed\b/,
+    /\bagree(?:d|s)? (?:a )?deal\b/,
+    /\bagreement reached\b/,
+    /\bbid (?:accepted|rejected|submitted|made)\b/,
+    /\boffer (?:accepted|rejected|submitted|made)\b/,
+    /\bset to sign\b/,
+    /\bset to join\b/,
+    /\bset to leave\b/,
+    /\bclose to (?:signing|joining|leaving)\b/,
+    /\bin talks (?:to|with|over|for)\b/,
+    /\badvanced talks\b/,
+    /\bnegotiations? (?:with|over|for|to sign|to join)\b/,
+    /\btarget(?:ing|s|ed)? [a-z]/,
+    /\blinked with (?:a )?(?:move|switch|transfer)\b/,
+    /\binterest in signing\b/,
+    /\bapproach (?:made|for)\b/,
+    /\brelease clause\b/,
+    /\bcontract offer\b/,
+    /\bfree agent\b/
   ];
-  return transferWords.some(word => lower.includes(word)) ? 'TRANSFER' : 'NEWS';
+  if (strongTransferPatterns.some(pattern => pattern.test(text))) return 'TRANSFER';
+
+  // Generic words such as "deal", "move", "interest" and "window" occur in lots of
+  // non-transfer stories, so only treat them as transfer signals in a clear football
+  // recruitment context.
+  const contextualTransferPatterns = [
+    /\b(?:club|side|team) (?:want|wants|wanted|keen|interested) (?:to sign|in signing)\b/,
+    /\b(?:move|switch) to [a-z][a-z .'-]{2,}\b/,
+    /\b(?:move|switch) from [a-z][a-z .'-]{2,}\b/,
+    /\bdeal (?:for|to sign|to join|worth|with)\b/,
+    /\b(?:summer|winter|january) window\b.*\b(?:sign|transfer|deal|target)\b/,
+    /\b(?:sign|join|leave) [a-z][a-z .'-]{2,}\b/
+  ];
+  return contextualTransferPatterns.some(pattern => pattern.test(text)) ? 'TRANSFER' : 'NEWS';
 }
 
 function transferStage(title = '', description = '') {
