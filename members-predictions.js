@@ -5,7 +5,7 @@
 
   const PREFIX='member-prediction:';
   const headers={apikey:cfg.SUPABASE_ANON_KEY,Authorization:`Bearer ${cfg.SUPABASE_ANON_KEY}`};
-  const esc=(v='')=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'}[c]));
+  const esc=(v='')=>String(v).replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[c]));
   const readSession=()=>{try{return JSON.parse(localStorage.getItem('football-talk-member-session')||'null')}catch{return null}};
   const user=()=>readSession()?.user||null;
   const username=()=>user()?.user_metadata?.username||user()?.user_metadata?.display_name||user()?.email?.split('@')[0]||'Football fan';
@@ -17,7 +17,7 @@
   function addStyles(){
     if(document.getElementById('members-prediction-styles'))return;
     const s=document.createElement('style');s.id='members-prediction-styles';s.textContent=`
-      .pred-wrap{margin-top:24px;background:#151518;border:1px solid #2c2c31;border-radius:14px;padding:24px}.pred-head{display:flex;justify-content:space-between;gap:15px;align-items:end;margin-bottom:16px}.pred-head h2{margin:0;font-size:22px}.pred-head p{margin:5px 0 0;color:#b7b7bd}.pred-rules{font-size:12px;color:#f7c600;font-weight:900}.pred-grid{display:grid;gap:10px}.pred-card{background:#101013;border:1px solid #34343a;border-left:5px solid #f7c600;border-radius:12px;padding:15px}.pred-time{font-size:11px;color:#999;margin-bottom:9px}.pred-match{display:grid;grid-template-columns:minmax(0,1fr) 52px 22px 52px minmax(0,1fr);gap:8px;align-items:center}.pred-home{text-align:right;font-weight:900}.pred-away{font-weight:900}.pred-score{width:52px;border:2px solid #555;background:#fff;color:#111;padding:8px 4px;text-align:center;font-size:18px;font-weight:1000}.pred-v{font-weight:900;text-align:center;color:#777}.pred-save{margin-top:14px;border:0;background:#f7c600;color:#09090b;font-weight:1000;padding:12px 17px;border-radius:8px;cursor:pointer}.pred-save:disabled{opacity:.6}.pred-status{margin-left:10px;font-size:12px;color:#b7b7bd}.pred-locked{font-size:12px;color:#ffcf40;font-weight:800;margin-top:8px}.leaderboard{margin-top:24px}.leaderboard h3{margin:0 0 10px}.leader-table{width:100%;border-collapse:collapse;background:#101013}.leader-table th,.leader-table td{padding:11px 10px;border-bottom:1px solid #2b2b31;text-align:left}.leader-table th{font-size:11px;text-transform:uppercase;color:#aaa}.leader-table td:last-child,.leader-table th:last-child{text-align:right;font-weight:1000}.leader-you{background:#211d08}.pred-empty{padding:18px;border:1px dashed #444;border-radius:10px;color:#bbb}.points-key{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0 0;font-size:12px;color:#bbb}@media(max-width:700px){.pred-wrap{padding:17px}.pred-head{align-items:flex-start;flex-direction:column}.pred-match{grid-template-columns:1fr 44px 16px 44px 1fr;gap:5px}.pred-score{width:44px}.pred-home,.pred-away{font-size:13px}.leader-table th,.leader-table td{padding:9px 6px;font-size:13px}}
+      .pred-wrap{margin-top:24px;background:#151518;border:1px solid #2c2c31;border-radius:14px;padding:24px}.pred-head{display:flex;justify-content:space-between;gap:15px;align-items:end;margin-bottom:16px}.pred-head h2{margin:0;font-size:22px}.pred-head p{margin:5px 0 0;color:#b7b7bd}.pred-rules{font-size:12px;color:#f7c600;font-weight:900}.pred-grid{display:grid;gap:10px}.pred-card{background:#101013;border:1px solid #34343a;border-left:5px solid #f7c600;border-radius:12px;padding:15px}.pred-time{font-size:11px;color:#999;margin-bottom:6px}.pred-comp{font-size:11px;color:#f7c600;font-weight:900;margin-bottom:9px;text-transform:uppercase}.pred-match{display:grid;grid-template-columns:minmax(0,1fr) 52px 22px 52px minmax(0,1fr);gap:8px;align-items:center}.pred-home{text-align:right;font-weight:900}.pred-away{font-weight:900}.pred-score{width:52px;border:2px solid #555;background:#fff;color:#111;padding:8px 4px;text-align:center;font-size:18px;font-weight:1000}.pred-v{font-weight:900;text-align:center;color:#777}.pred-save{margin-top:14px;border:0;background:#f7c600;color:#09090b;font-weight:1000;padding:12px 17px;border-radius:8px;cursor:pointer}.pred-save:disabled{opacity:.6}.pred-status{margin-left:10px;font-size:12px;color:#b7b7bd}.pred-locked{font-size:12px;color:#ffcf40;font-weight:800;margin-top:8px}.leaderboard{margin-top:24px}.leaderboard h3{margin:0 0 10px}.leader-table{width:100%;border-collapse:collapse;background:#101013}.leader-table th,.leader-table td{padding:11px 10px;border-bottom:1px solid #2b2b31;text-align:left}.leader-table th{font-size:11px;text-transform:uppercase;color:#aaa}.leader-table td:last-child,.leader-table th:last-child{text-align:right;font-weight:1000}.leader-you{background:#211d08}.pred-empty{padding:18px;border:1px dashed #444;border-radius:10px;color:#bbb}.points-key{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0 0;font-size:12px;color:#bbb}@media(max-width:700px){.pred-wrap{padding:17px}.pred-head{align-items:flex-start;flex-direction:column}.pred-match{grid-template-columns:1fr 44px 16px 44px 1fr;gap:5px}.pred-score{width:44px}.pred-home,.pred-away{font-size:13px}.leader-table th,.leader-table td{padding:9px 6px;font-size:13px}}
     `;document.head.appendChild(s);
   }
 
@@ -36,7 +36,7 @@
   }
   async function savePrediction(fixture,home,away){
     const u=user();if(!u)throw new Error('Sign in required');
-    const payload={kind:'member-prediction',fixtureId:String(fixture.id),home:fixture.home,away:fixture.away,kickoff:fixture.date,predHome:home,predAway:away,userId:u.id,username:username(),updatedAt:new Date().toISOString()};
+    const payload={kind:'member-prediction',fixtureId:String(fixture.id),competition:fixture.competition||'Football',home:fixture.home,away:fixture.away,kickoff:fixture.date,predHome:home,predAway:away,userId:u.id,username:username(),updatedAt:new Date().toISOString()};
     const r=await fetch(`${cfg.SUPABASE_URL}/rest/v1/poll_responses`,{method:'POST',headers:{...headers,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({poll_id:predictionKey(fixture.id),answer:JSON.stringify(payload)})});
     if(!r.ok)throw new Error('Could not save prediction');
   }
@@ -50,15 +50,15 @@
   function renderFixtures(){
     const list=mount.querySelector('#pred-list');
     const mine=new Map(predictions.filter(p=>p.userId===user()?.id).map(p=>[String(p.fixtureId),p]));
-    if(!fixtures.length){list.innerHTML='<div class="pred-empty">No Premier League fixtures are available to predict right now. Check back when the next prediction block opens.</div>';return;}
-    list.innerHTML=fixtures.map(f=>{const p=mine.get(String(f.id));const locked=Date.now()>=new Date(f.date).getTime();return `<div class="pred-card" data-fixture="${esc(f.id)}"><div class="pred-time">${esc(fmt(f.date))}</div><div class="pred-match"><span class="pred-home">${esc(f.home)}</span><input class="pred-score home" type="number" min="0" max="20" inputmode="numeric" value="${p?.predHome??''}" ${locked?'disabled':''} aria-label="${esc(f.home)} score"><span class="pred-v">v</span><input class="pred-score away" type="number" min="0" max="20" inputmode="numeric" value="${p?.predAway??''}" ${locked?'disabled':''} aria-label="${esc(f.away)} score"><span class="pred-away">${esc(f.away)}</span></div>${locked?'<div class="pred-locked">🔒 Prediction locked at kick-off</div>':''}</div>`}).join('');
+    if(!fixtures.length){list.innerHTML='<div class="pred-empty">No eligible fixtures are available to predict right now. Check back when the next prediction block opens.</div>';return;}
+    list.innerHTML=fixtures.map(f=>{const p=mine.get(String(f.id));const locked=Date.now()>=new Date(f.date).getTime();return `<div class="pred-card" data-fixture="${esc(f.id)}"><div class="pred-time">${esc(fmt(f.date))}</div><div class="pred-comp">${esc(f.competition||'Football')}</div><div class="pred-match"><span class="pred-home">${esc(f.home)}</span><input class="pred-score home" type="number" min="0" max="20" inputmode="numeric" value="${p?.predHome??''}" ${locked?'disabled':''} aria-label="${esc(f.home)} score"><span class="pred-v">v</span><input class="pred-score away" type="number" min="0" max="20" inputmode="numeric" value="${p?.predAway??''}" ${locked?'disabled':''} aria-label="${esc(f.away)} score"><span class="pred-away">${esc(f.away)}</span></div>${locked?'<div class="pred-locked">🔒 Prediction locked at kick-off</div>':''}</div>`}).join('');
   }
   async function renderLeaderboard(){
     const body=mount.querySelector('#leader-body');
     const allFixtures=[...fixtures];
     try{
-      const results=await fetch('/api/fixtures?results=1',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject());
-      (results.leagues||[]).forEach(l=>(l.fixtures||[]).forEach(f=>allFixtures.push(f)));
+      const results=await fetch('/api/fixtures?results=1&predictions=1',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject());
+      (results.leagues||[]).forEach(l=>(l.fixtures||[]).forEach(f=>allFixtures.push({...f,competition:l.name})));
     }catch(_){ }
     const fixtureMap=new Map(allFixtures.map(f=>[String(f.id),f]));
     const totals=new Map();
@@ -96,14 +96,14 @@
   }
   async function loadPredictionFixtures(){
     try{
-      const data=await fetch('/api/fixtures',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject());
-      const pl=(data.leagues||[]).find(l=>Number(l.id)===39);
-      const primary=selectPredictionWindow(pl?.fixtures||[]);
+      const data=await fetch('/api/fixtures?predictions=1',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject());
+      const all=(data.leagues||[]).flatMap(l=>(l.fixtures||[]).map(f=>({...f,competition:l.name})));
+      const primary=selectPredictionWindow(all);
       if(primary.length)return primary;
     }catch(_){ }
 
     const fallback=await fetch('/api/next-premier',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject());
-    return selectPredictionWindow(fallback.fixtures||fallback.group||[]);
+    return selectPredictionWindow((fallback.fixtures||fallback.group||[]).map(f=>({...f,competition:'Premier League'})));
   }
   async function refreshPredictionWindow(){
     try{
@@ -147,7 +147,7 @@
     }catch(_){status.textContent='Could not save those predictions just now.';}finally{button.disabled=false;button.textContent='SAVE MY PREDICTIONS';}
   }
   addStyles();
-  mount.innerHTML=`<div class="pred-head"><div><h2>🎯 Members Match Predictions</h2><p>Predict the current Premier League fixture block and climb the Football Talk table.</p><div class="points-key"><span>🎯 Exact score = 3 pts</span><span>✅ Correct result = 1 pt</span><span>❌ Wrong = 0 pts</span></div></div><div class="pred-rules">FRI–MON / TUE–THU · LOCKS AT KICK-OFF</div></div><div id="pred-list"><div class="pred-empty">Loading the next fixtures…</div></div><button class="pred-save" id="pred-save" type="button">SAVE MY PREDICTIONS</button><span class="pred-status" id="pred-status" aria-live="polite"></span><div class="leaderboard"><h3>🏆 Football Talk Members Leaderboard</h3><table class="leader-table"><thead><tr><th>#</th><th>Member</th><th>Exact</th><th>Points</th></tr></thead><tbody id="leader-body"><tr><td colspan="4">Loading leaderboard…</td></tr></tbody></table></div>`;
+  mount.innerHTML=`<div class="pred-head"><div><h2>🎯 Members Match Predictions</h2><p>Predict the current Premier League, FA Cup, Carabao Cup, Champions League and Europa League block and climb the Football Talk table.</p><div class="points-key"><span>🎯 Exact score = 3 pts</span><span>✅ Correct result = 1 pt</span><span>❌ Wrong = 0 pts</span></div></div><div class="pred-rules">FRI–MON / TUE–THU · LOCKS AT KICK-OFF</div></div><div id="pred-list"><div class="pred-empty">Loading the next fixtures…</div></div><button class="pred-save" id="pred-save" type="button">SAVE MY PREDICTIONS</button><span class="pred-status" id="pred-status" aria-live="polite"></span><div class="leaderboard"><h3>🏆 Football Talk Members Leaderboard</h3><table class="leader-table"><thead><tr><th>#</th><th>Member</th><th>Exact</th><th>Points</th></tr></thead><tbody id="leader-body"><tr><td colspan="4">Loading leaderboard…</td></tr></tbody></table></div>`;
   mount.querySelector('#pred-save').addEventListener('click',saveAll);
   load();
   setInterval(refreshPredictionWindow,30000);
