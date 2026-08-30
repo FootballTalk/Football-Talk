@@ -1,3 +1,5 @@
+import { getPredictionFallback } from './prediction-fixtures-fallback.js';
+
 const API_BASE = 'https://v3.football.api-sports.io';
 const LEAGUES = [
   { id: 39, name: 'Premier League' },
@@ -174,15 +176,23 @@ async function fetchResults(apiKey, now, season, leagues = LEAGUES) {
   return { from, to, leagues: results };
 }
 
+async function servePredictionFallback(res, resultsOnly, reason='') {
+  const payload = await getPredictionFallback(resultsOnly);
+  res.setHeader('Cache-Control', resultsOnly
+    ? 'public, s-maxage=120, stale-while-revalidate=300'
+    : 'public, s-maxage=60, stale-while-revalidate=120');
+  return res.status(200).json({
+    ...payload,
+    predictions: true,
+    fallback: true,
+    reason,
+  });
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const apiKey = process.env.API_FOOTBALL_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'API_FOOTBALL_KEY is not configured' });
   }
 
   const now = new Date();
@@ -194,6 +204,19 @@ export default async function handler(req, res) {
   const resultsOnly = String(req.query?.results || '') === '1';
   const predictionsOnly = String(req.query?.predictions || '') === '1';
   const requestedDate = String(req.query?.date || '').trim();
+  const apiKey = process.env.API_FOOTBALL_KEY;
+
+  if (!apiKey) {
+    if (predictionsOnly) {
+      try {
+        return await servePredictionFallback(res, resultsOnly, 'API_FOOTBALL_KEY is not configured');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return res.status(502).json({ error: 'Prediction fixture fallback unavailable', detail: message });
+      }
+    }
+    return res.status(500).json({ error: 'API_FOOTBALL_KEY is not configured' });
+  }
 
   try {
     if (requestedDate) {
@@ -239,6 +262,13 @@ export default async function handler(req, res) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('API-Football fixtures error:', message);
+    if (predictionsOnly) {
+      try {
+        return await servePredictionFallback(res, resultsOnly, message);
+      } catch (fallbackError) {
+        console.error('Prediction fallback error:', fallbackError);
+      }
+    }
     res.setHeader('Cache-Control', 'no-store');
     return res.status(502).json({
       error: 'Unable to load fixtures right now',
