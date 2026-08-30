@@ -57,17 +57,10 @@ async function fetchCompetition(competition,from,to){
   return (data.events||[]).map(event=>mapEvent(event,competition)).filter(f=>f.date&&f.home&&f.away);
 }
 
-export default async function handler(req,res){
-  if(req.method!=='GET'){
-    res.setHeader('Allow','GET');
-    return res.status(405).json({error:'Method not allowed'});
-  }
-
+export async function getPredictionFallback(results=false){
   const now=new Date();
-  const results=String(req.query?.results||'')==='1';
   const from=results?new Date(now.getTime()-40*24*60*60*1000):new Date(now.getTime()-6*60*60*1000);
   const to=results?new Date(now.getTime()+24*60*60*1000):new Date(now.getTime()+28*24*60*60*1000);
-
   const settled=await Promise.allSettled(COMPETITIONS.map(c=>fetchCompetition(c,from,to)));
   const leagues=[];
   const errors=[];
@@ -85,14 +78,25 @@ export default async function handler(req,res){
     }
   });
 
-  const total=leagues.reduce((n,l)=>n+l.fixtures.length,0);
-  res.setHeader('Cache-Control',results?'public, s-maxage=120, stale-while-revalidate=300':'public, s-maxage=60, stale-while-revalidate=120');
-  return res.status(total?200:502).json({
+  return {
     source:'public-fallback',
     results,
     from:from.toISOString(),
     to:to.toISOString(),
     leagues,
     errors,
-  });
+  };
+}
+
+export default async function handler(req,res){
+  if(req.method!=='GET'){
+    res.setHeader('Allow','GET');
+    return res.status(405).json({error:'Method not allowed'});
+  }
+
+  const results=String(req.query?.results||'')==='1';
+  const payload=await getPredictionFallback(results);
+  const total=payload.leagues.reduce((n,l)=>n+l.fixtures.length,0);
+  res.setHeader('Cache-Control',results?'public, s-maxage=120, stale-while-revalidate=300':'public, s-maxage=60, stale-while-revalidate=120');
+  return res.status(total?200:502).json(payload);
 }
