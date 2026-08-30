@@ -55,9 +55,6 @@ function classify(title = '', description = '') {
   const headline = String(title).toLowerCase().replace(/\s+/g, ' ').trim();
   const detail = String(description).toLowerCase().replace(/\s+/g, ' ').trim();
 
-  // Headline wording is the strongest signal. Do not use vague words such as
-  // "sign", "interest", "move" or "fee" as simple substring matches because
-  // they also occur constantly in match analysis and opinion pieces.
   const headlineTransferPatterns = [
     /\btransfer(?:s| news| update| latest| window)?\b/,
     /\bgossip\b/,
@@ -79,14 +76,16 @@ function classify(title = '', description = '') {
   ];
   if (headlineTransferPatterns.some(pattern => pattern.test(headline))) return 'TRANSFER';
 
-  // Descriptions need a clear transaction phrase. This deliberately avoids
-  // standalone mentions such as "transfer strategy", "transfer fees" or
-  // "a sign the striker is low in confidence".
+  // Analysis, match coverage and player-rating pieces stay NEWS unless the headline
+  // itself is explicitly about a transfer. This prevents incidental transfer wording
+  // in long descriptions from polluting the Transfer Centre.
+  if (/^(why|how)\b|\bplayer ratings?\b|\bmatch report\b|\bpreview\b|\bopinion\b|\blife after\b/.test(headline)) return 'NEWS';
+
   const detailTransferPatterns = [
     /\b(?:club|side|team) (?:want|wants|wanted|keen|interested) (?:to sign|in signing)\b/,
     /\b(?:show|shows|shown|expressed|have|has) interest in (?:signing|buying)\b/,
     /\binterest in [a-z][a-z .'-]{2,} (?:winger|striker|midfielder|defender|goalkeeper|forward)\b/,
-    /\b(?:sign|signs|signed) [a-z][a-z .'-]{2,} (?:from|for|on|in)\b/,
+    /\b(?:sign|signs|signed) (?:a |an )?(?:defender|midfielder|striker|winger|forward|goalkeeper|player)\b.*\bfrom\b/,
     /\b(?:join|joins|joined) [a-z][a-z .'-]{2,} (?:from|for|on)\b/,
     /\b(?:move|moves|moved|switch|switches|switched) (?:to|from) [a-z]/,
     /\bmove for [a-z][a-z .'-]{2,}\b/,
