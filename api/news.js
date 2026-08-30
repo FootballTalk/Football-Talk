@@ -30,6 +30,27 @@ function tagValue(block, tag) {
   return match ? decodeXml(match[1]) : '';
 }
 
+function attrValue(tag = '', attr = '') {
+  const match = String(tag).match(new RegExp(`\\b${attr}=["']([^"']+)["']`, 'i'));
+  return match ? decodeXml(match[1]) : '';
+}
+
+function imageFromBlock(block = '') {
+  const tags = [
+    ...(block.match(/<media:content\b[^>]*>/gi) || []),
+    ...(block.match(/<media:thumbnail\b[^>]*>/gi) || []),
+    ...(block.match(/<enclosure\b[^>]*>/gi) || [])
+  ];
+  for (const tag of tags) {
+    const url = attrValue(tag, 'url');
+    const type = attrValue(tag, 'type').toLowerCase();
+    if (/^https:\/\//i.test(url) && (!type || type.startsWith('image/'))) return url;
+  }
+  const htmlImage = block.match(/<img\b[^>]*\bsrc=["']([^"']+)["']/i);
+  if (htmlImage && /^https:\/\//i.test(htmlImage[1])) return decodeXml(htmlImage[1]);
+  return '';
+}
+
 function classify(title = '', description = '') {
   const lower = `${title} ${description}`.toLowerCase();
   const transferWords = [
@@ -107,11 +128,12 @@ function parseFeed(xml, source) {
     const title = tagValue(block, 'title');
     const link = tagValue(block, 'link');
     const description = tagValue(block, 'description');
+    const image = imageFromBlock(block);
     const publishedRaw = tagValue(block, 'pubDate');
     const published = publishedRaw ? Date.parse(publishedRaw) : 0;
     const type = classify(title, description);
     const stage = type === 'TRANSFER' ? transferStage(title, description) : null;
-    return { title, link, description, published, source, type, stage };
+    return { title, link, description, image, published, source, type, stage };
   }).filter(item => item.title);
 }
 
@@ -131,9 +153,6 @@ module.exports = async function handler(req, res) {
       deduped.push(item);
     }
 
-    // Keep the API chronological so genuinely new stories can never be pushed out
-    // by an older high-relevance story. Individual UI sections can rank their own
-    // transfer/debate subsets after receiving the fresh wire.
     deduped.sort((a, b) => b.published - a.published);
 
     const items = deduped.slice(0, 60).map(item => ({
