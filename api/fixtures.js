@@ -24,23 +24,24 @@ async function fotmobFallback(req,res,reason=''){
   const liveOnly=String(req.query?.live||'')==='1';
   const resultsOnly=String(req.query?.results||'')==='1';
   const predictionsOnly=String(req.query?.predictions||'')==='1';
+  const fallback=Boolean(reason);
 
   if(predictionsOnly){
     const payload=await getPredictionFallback(resultsOnly);
     res.setHeader('Cache-Control',resultsOnly?'public, s-maxage=300, stale-while-revalidate=900':'public, s-maxage=180, stale-while-revalidate=600');
-    return res.status(200).json({...payload,season,predictions:true,fallback:true,reason});
+    return res.status(200).json({...payload,season,predictions:true,fallback,reason});
   }
   if(requestedDate){
     if(!/^\d{4}-\d{2}-\d{2}$/.test(requestedDate))return res.status(400).json({error:'Invalid date. Use YYYY-MM-DD.'});
     const leagues=await getFotmobMatchesByDate(requestedDate);
     res.setHeader('Cache-Control',requestedDate===fotmobDate(now)?'public, s-maxage=45, stale-while-revalidate=90':'public, s-maxage=900, stale-while-revalidate=1800');
-    return res.status(200).json({date:requestedDate,allCompetitions:true,provider:'FotMob',fallback:true,reason,leagues});
+    return res.status(200).json({date:requestedDate,allCompetitions:true,provider:'FotMob',fallback,reason,leagues});
   }
   if(liveOnly){
     const all=await getFotmobMatchesByDate(fotmobDate(now));
     const leagues=LEAGUES.map(league=>{const source=all.find(x=>Number(x.id)===league.id);return{...league,fixtures:(source?.fixtures||[]).filter(f=>LIVE.has(f.status))};});
     res.setHeader('Cache-Control','public, s-maxage=30, stale-while-revalidate=60');
-    return res.status(200).json({season,live:true,provider:'FotMob',fallback:true,reason,leagues});
+    return res.status(200).json({season,live:true,provider:'FotMob',fallback,reason,leagues});
   }
   const sourceLeagues=[FOTMOB_LEAGUES.premier,FOTMOB_LEAGUES.championship];
   const fetched=await Promise.all(sourceLeagues.map(async league=>({league,fixtures:await getFotmobLeagueMatches(league)})));
@@ -48,18 +49,18 @@ async function fotmobFallback(req,res,reason=''){
     const fromMs=now.getTime()-30*24*60*60*1000;
     const leagues=fetched.map(({league,fixtures})=>({id:league.siteId,name:league.name,fixtures:withinRange(fixtures,fromMs,now.getTime()).filter(f=>FINISHED.has(f.status)).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))}));
     res.setHeader('Cache-Control','public, s-maxage=180, stale-while-revalidate=300');
-    return res.status(200).json({season,results:true,provider:'FotMob',fallback:true,reason,leagues});
+    return res.status(200).json({season,results:true,provider:'FotMob',fallback,reason,leagues});
   }
   const fromMs=now.getTime()-6*60*60*1000,toMs=now.getTime()+14*24*60*60*1000;
   const leagues=fetched.map(({league,fixtures})=>({id:league.siteId,name:league.name,fixtures:withinRange(fixtures,fromMs,toMs).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0))}));
   res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=600');
-  return res.status(200).json({from:londonDateString(now),to:londonDateString(new Date(toMs)),season,provider:'FotMob',fallback:true,reason,leagues});
+  return res.status(200).json({from:londonDateString(now),to:londonDateString(new Date(toMs)),season,provider:'FotMob',fallback,reason,leagues});
 }
 
 export default async function handler(req,res){
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({error:'Method not allowed'});}
   const now=new Date();const end=new Date(now.getTime()+14*24*60*60*1000);const from=londonDateString(now);const to=londonDateString(end);const season=seasonFor(now);const liveOnly=String(req.query?.live||'')==='1';const resultsOnly=String(req.query?.results||'')==='1';const predictionsOnly=String(req.query?.predictions||'')==='1';const requestedDate=String(req.query?.date||'').trim();const apiKey=(process.env.API_FOOTBALL_KEY||'').trim();
-  if(!apiKey){try{return await fotmobFallback(req,res,'API_FOOTBALL_KEY is not configured');}catch(error){return res.status(502).json({error:'Unable to load fixtures right now',detail:String(error.message||error),season,from,to});}}
+  if(!apiKey){try{return await fotmobFallback(req,res);}catch(error){return res.status(502).json({error:'Unable to load fixtures right now',detail:String(error.message||error),season,from,to});}}
   try{
     if(requestedDate){if(!/^\d{4}-\d{2}-\d{2}$/.test(requestedDate))return res.status(400).json({error:'Invalid date. Use YYYY-MM-DD.'});const leagues=await fetchDate(apiKey,requestedDate);const today=londonDateString(now);res.setHeader('Cache-Control',requestedDate===today?'public, s-maxage=30, stale-while-revalidate=30':requestedDate<today?'public, s-maxage=3600, stale-while-revalidate=86400':'public, s-maxage=900, stale-while-revalidate=1800');return res.status(200).json({date:requestedDate,allCompetitions:true,leagues});}
     if(resultsOnly){const resultData=await fetchResults(apiKey,now,season,predictionsOnly?PREDICTION_LEAGUES:LEAGUES);res.setHeader('Cache-Control','public, s-maxage=120, stale-while-revalidate=120');return res.status(200).json({from:resultData.from,to:resultData.to,season,results:true,predictions:predictionsOnly,leagues:resultData.leagues});}
