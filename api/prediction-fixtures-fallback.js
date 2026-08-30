@@ -1,4 +1,5 @@
 const ESPN_BASE='https://site.api.espn.com/apis/site/v2/sports/soccer';
+const PROXY_BASE='https://api.allorigins.win/raw?url=';
 
 const COMPETITIONS=[
   {slug:'eng.1',name:'Premier League'},
@@ -47,13 +48,23 @@ function mapEvent(event,competition){
   };
 }
 
+async function readJson(url){
+  const headers={accept:'application/json','user-agent':'Mozilla/5.0 FootballTalk/1.0'};
+  let response=await fetch(url,{headers});
+  if(response.ok)return response.json();
+
+  const directStatus=response.status;
+  response=await fetch(`${PROXY_BASE}${encodeURIComponent(url)}`,{headers:{accept:'application/json'}});
+  if(response.ok)return response.json();
+
+  throw new Error(`Direct HTTP ${directStatus}; proxy HTTP ${response.status}`);
+}
+
 async function fetchCompetition(competition,from,to){
   const url=new URL(`${ESPN_BASE}/${competition.slug}/scoreboard`);
   url.searchParams.set('dates',`${ymd(from)}-${ymd(to)}`);
   url.searchParams.set('limit','1000');
-  const response=await fetch(url,{headers:{accept:'application/json','user-agent':'FootballTalk/1.0'}});
-  if(!response.ok)throw new Error(`${competition.name}: HTTP ${response.status}`);
-  const data=await response.json();
+  const data=await readJson(url.toString());
   return (data.events||[]).map(event=>mapEvent(event,competition)).filter(f=>f.date&&f.home&&f.away);
 }
 
