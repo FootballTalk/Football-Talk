@@ -9,6 +9,10 @@
       "schedule": "5 * * * *"
     },
     {
+      "path": "/api/threads",
+      "schedule": "20 * * * *"
+    },
+    {
       "path": "/api/buffer-manual",
       "schedule": "35 * * * *"
     }
