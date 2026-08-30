@@ -66,6 +66,17 @@
     const rows=[...totals.entries()].map(([id,x])=>({id,...x})).sort((a,b)=>b.points-a.points||b.exact-a.exact||a.name.localeCompare(b.name));
     body.innerHTML=rows.length?rows.slice(0,50).map((r,i)=>`<tr class="${r.id===user()?.id?'leader-you':''}"><td>${i+1}</td><td>${esc(r.name)}${r.id===user()?.id?' · YOU':''}</td><td>${r.exact}</td><td>${r.points}</td></tr>`).join(''):'<tr><td colspan="4">No scores yet — the table will come alive as members make predictions.</td></tr>';
   }
+  async function loadPredictionFixtures(){
+    try{
+      const data=await fetch('/api/fixtures',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject());
+      const pl=(data.leagues||[]).find(l=>Number(l.id)===39);
+      const primary=(pl?.fixtures||[]).filter(f=>!finished.has(f.status)).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));
+      if(primary.length)return primary.slice(0,10);
+    }catch(_){ }
+
+    const fallback=await fetch('/api/next-premier',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject());
+    return (fallback.fixtures||fallback.group||[]).filter(f=>!finished.has(f.status)).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0)).slice(0,10);
+  }
   async function load(){
     const list=mount.querySelector('#pred-list');
     const leader=mount.querySelector('#leader-body');
@@ -79,9 +90,7 @@
     }
 
     try{
-      const data=await fetch('/api/fixtures',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject());
-      const pl=(data.leagues||[]).find(l=>Number(l.id)===39);
-      fixtures=(pl?.fixtures||[]).filter(f=>!finished.has(f.status)).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0)).slice(0,10);
+      fixtures=await loadPredictionFixtures();
       renderFixtures();
       if(predictions.length)await renderLeaderboard();
     }catch(err){
