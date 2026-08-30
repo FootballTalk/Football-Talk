@@ -66,13 +66,13 @@ async function fotmobFallback(date,season,reason=''){
     try{lineups=parseFotmobLineups(await getFotmobMatchDetails(fixture.fixtureId),fixture);}catch(error){lineupErrors.push({fixtureId:fixture.fixtureId,match:`${fixture.home} v ${fixture.away}`,detail:String(error.message||error)});}
     enriched.push({...fixture,lineups});
   }
-  return{date,season,updatedAt:new Date().toISOString(),fixtureCount:fixtures.length,lineupErrors,fixtures:enriched,provider:'FotMob',fallback:true,reason};
+  return{date,season,updatedAt:new Date().toISOString(),fixtureCount:fixtures.length,lineupErrors,fixtures:enriched,provider:'FotMob',fallback:Boolean(reason),reason};
 }
 
 export default async function handler(req,res){
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({error:'Method not allowed'});}
   const key=(process.env.API_FOOTBALL_KEY||'').trim();const now=new Date();const date=londonDateString(now);const season=seasonFor(now);
-  if(!key){try{const payload=await fotmobFallback(date,season,'API_FOOTBALL_KEY is not configured');res.setHeader('Cache-Control','public, s-maxage=60, stale-while-revalidate=120');return res.status(200).json(payload);}catch(error){return res.status(502).json({error:'Unable to load lineups right now',detail:String(error.message||error),date,season});}}
+  if(!key){try{const payload=await fotmobFallback(date,season);res.setHeader('Cache-Control','public, s-maxage=60, stale-while-revalidate=120');return res.status(200).json(payload);}catch(error){return res.status(502).json({error:'Unable to load lineups right now',detail:String(error.message||error),date,season});}}
   try{const fixtures=await fixturesForToday(key,date);const enriched=[];const lineupErrors=[];for(const fixture of fixtures){let lineups=[];try{lineups=await lineupForFixture(fixture,key);}catch(error){lineupErrors.push({fixtureId:fixture.fixtureId,match:`${fixture.home} v ${fixture.away}`,detail:error instanceof Error?error.message:String(error)});}enriched.push({...fixture,lineups});}res.setHeader('Cache-Control','public, s-maxage=60, stale-while-revalidate=60');return res.status(200).json({date,season,updatedAt:new Date().toISOString(),fixtureCount:fixtures.length,lineupErrors,fixtures:enriched,provider:'API-Football'});}
   catch(error){const message=error instanceof Error?error.message:String(error);try{const payload=await fotmobFallback(fotmobDate(now),season,message);res.setHeader('Cache-Control','public, s-maxage=60, stale-while-revalidate=120');return res.status(200).json(payload);}catch(fallbackError){res.setHeader('Cache-Control','no-store');return res.status(502).json({error:'Unable to load lineups right now',detail:`${message}; fallback: ${String(fallbackError.message||fallbackError)}`,date,season});}}
 }
