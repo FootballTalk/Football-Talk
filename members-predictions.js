@@ -68,13 +68,26 @@
   }
   async function load(){
     const list=mount.querySelector('#pred-list');
+    const leader=mount.querySelector('#leader-body');
+
+    try{
+      predictions=latestByUserFixture(parseRows(await getRows()));
+      await renderLeaderboard();
+    }catch(err){
+      console.warn('Members leaderboard load failed',err);
+      leader.innerHTML='<tr><td colspan="4">Leaderboard temporarily unavailable. Please refresh shortly.</td></tr>';
+    }
+
     try{
       const data=await fetch('/api/fixtures',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject());
       const pl=(data.leagues||[]).find(l=>Number(l.id)===39);
       fixtures=(pl?.fixtures||[]).filter(f=>!finished.has(f.status)).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0)).slice(0,10);
-      predictions=latestByUserFixture(parseRows(await getRows()));
-      renderFixtures();await renderLeaderboard();
-    }catch(_){list.innerHTML='<div class="pred-empty">Predictions are temporarily unavailable. Please try again shortly.</div>';}
+      renderFixtures();
+      if(predictions.length)await renderLeaderboard();
+    }catch(err){
+      console.warn('Members prediction fixtures load failed',err);
+      list.innerHTML='<div class="pred-empty">Predictions are temporarily unavailable. Please try again shortly.</div>';
+    }
   }
   async function saveAll(){
     const button=mount.querySelector('#pred-save');const status=mount.querySelector('#pred-status');const cards=[...mount.querySelectorAll('.pred-card')];
