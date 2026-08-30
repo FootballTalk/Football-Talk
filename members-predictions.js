@@ -50,7 +50,7 @@
   function renderFixtures(){
     const list=mount.querySelector('#pred-list');
     const mine=new Map(predictions.filter(p=>p.userId===user()?.id).map(p=>[String(p.fixtureId),p]));
-    if(!fixtures.length){list.innerHTML='<div class="pred-empty">No Premier League fixtures are available to predict right now. Check back when the next matchweek is loaded.</div>';return;}
+    if(!fixtures.length){list.innerHTML='<div class="pred-empty">No Premier League fixtures are available to predict right now. Check back when the next prediction window opens.</div>';return;}
     list.innerHTML=fixtures.map(f=>{const p=mine.get(String(f.id));const locked=Date.now()>=new Date(f.date).getTime();return `<div class="pred-card" data-fixture="${esc(f.id)}"><div class="pred-time">${esc(fmt(f.date))}</div><div class="pred-match"><span class="pred-home">${esc(f.home)}</span><input class="pred-score home" type="number" min="0" max="20" inputmode="numeric" value="${p?.predHome??''}" ${locked?'disabled':''} aria-label="${esc(f.home)} score"><span class="pred-v">v</span><input class="pred-score away" type="number" min="0" max="20" inputmode="numeric" value="${p?.predAway??''}" ${locked?'disabled':''} aria-label="${esc(f.away)} score"><span class="pred-away">${esc(f.away)}</span></div>${locked?'<div class="pred-locked">🔒 Prediction locked at kick-off</div>':''}</div>`}).join('');
   }
   async function renderLeaderboard(){
@@ -66,16 +66,36 @@
     const rows=[...totals.entries()].map(([id,x])=>({id,...x})).sort((a,b)=>b.points-a.points||b.exact-a.exact||a.name.localeCompare(b.name));
     body.innerHTML=rows.length?rows.slice(0,50).map((r,i)=>`<tr class="${r.id===user()?.id?'leader-you':''}"><td>${i+1}</td><td>${esc(r.name)}${r.id===user()?.id?' · YOU':''}</td><td>${r.exact}</td><td>${r.points}</td></tr>`).join(''):'<tr><td colspan="4">No scores yet — the table will come alive as members make predictions.</td></tr>';
   }
+
+  function londonDateParts(value){
+    const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(value));
+    return Object.fromEntries(parts.map(p=>[p.type,p.value]));
+  }
+  function predictionWindowKey(fixture){
+    const p=londonDateParts(fixture.date||((fixture.timestamp||0)*1000));
+    const base=new Date(`${p.year}-${p.month}-${p.day}T12:00:00Z`);
+    const day=base.getUTCDay();
+    const weekend=day===5||day===6||day===0;
+    const offset=weekend?(day===0?-2:5-day):(1-day);
+    base.setUTCDate(base.getUTCDate()+offset);
+    return `${weekend?'weekend':'midweek'}:${base.toISOString().slice(0,10)}`;
+  }
+  function selectPredictionWindow(items){
+    const sorted=(items||[]).filter(f=>!finished.has(f.status)&&f.date).sort((a,b)=>(a.timestamp||new Date(a.date).getTime()/1000)-(b.timestamp||new Date(b.date).getTime()/1000));
+    if(!sorted.length)return [];
+    const key=predictionWindowKey(sorted[0]);
+    return sorted.filter(f=>predictionWindowKey(f)===key);
+  }
   async function loadPredictionFixtures(){
     try{
       const data=await fetch('/api/fixtures',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject());
       const pl=(data.leagues||[]).find(l=>Number(l.id)===39);
-      const primary=(pl?.fixtures||[]).filter(f=>!finished.has(f.status)).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));
-      if(primary.length)return primary.slice(0,10);
+      const primary=selectPredictionWindow(pl?.fixtures||[]);
+      if(primary.length)return primary;
     }catch(_){ }
 
     const fallback=await fetch('/api/next-premier',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject());
-    return (fallback.fixtures||fallback.group||[]).filter(f=>!finished.has(f.status)).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0)).slice(0,10);
+    return selectPredictionWindow(fallback.fixtures||fallback.group||[]);
   }
   async function load(){
     const list=mount.querySelector('#pred-list');
@@ -108,7 +128,7 @@
     }catch(_){status.textContent='Could not save those predictions just now.';}finally{button.disabled=false;button.textContent='SAVE MY PREDICTIONS';}
   }
   addStyles();
-  mount.innerHTML=`<div class="pred-head"><div><h2>🎯 Members Match Predictions</h2><p>Predict the next Premier League fixtures and climb the Football Talk table.</p><div class="points-key"><span>🎯 Exact score = 3 pts</span><span>✅ Correct result = 1 pt</span><span>❌ Wrong = 0 pts</span></div></div><div class="pred-rules">LOCKS AT KICK-OFF</div></div><div id="pred-list"><div class="pred-empty">Loading the next fixtures…</div></div><button class="pred-save" id="pred-save" type="button">SAVE MY PREDICTIONS</button><span class="pred-status" id="pred-status" aria-live="polite"></span><div class="leaderboard"><h3>🏆 Football Talk Members Leaderboard</h3><table class="leader-table"><thead><tr><th>#</th><th>Member</th><th>Exact</th><th>Points</th></tr></thead><tbody id="leader-body"><tr><td colspan="4">Loading leaderboard…</td></tr></tbody></table></div>`;
+  mount.innerHTML=`<div class="pred-head"><div><h2>🎯 Members Match Predictions</h2><p>Predict the current Premier League fixture window and climb the Football Talk table.</p><div class="points-key"><span>🎯 Exact score = 3 pts</span><span>✅ Correct result = 1 pt</span><span>❌ Wrong = 0 pts</span></div></div><div class="pred-rules">LOCKS AT KICK-OFF</div></div><div id="pred-list"><div class="pred-empty">Loading the next fixtures…</div></div><button class="pred-save" id="pred-save" type="button">SAVE MY PREDICTIONS</button><span class="pred-status" id="pred-status" aria-live="polite"></span><div class="leaderboard"><h3>🏆 Football Talk Members Leaderboard</h3><table class="leader-table"><thead><tr><th>#</th><th>Member</th><th>Exact</th><th>Points</th></tr></thead><tbody id="leader-body"><tr><td colspan="4">Loading leaderboard…</td></tr></tbody></table></div>`;
   mount.querySelector('#pred-save').addEventListener('click',saveAll);
   load();setInterval(load,180000);
 })();
