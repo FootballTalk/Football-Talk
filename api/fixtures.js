@@ -3,6 +3,13 @@ const LEAGUES = [
   { id: 39, name: 'Premier League' },
   { id: 40, name: 'EFL Championship' },
 ];
+const PREDICTION_LEAGUES = [
+  { id: 39, name: 'Premier League' },
+  { id: 45, name: 'FA Cup' },
+  { id: 48, name: 'Carabao Cup' },
+  { id: 2, name: 'UEFA Champions League' },
+  { id: 3, name: 'UEFA Europa League' },
+];
 
 function londonDateString(date) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -146,14 +153,14 @@ async function fetchLive(apiKey) {
   }));
 }
 
-async function fetchResults(apiKey, now, season) {
+async function fetchResults(apiKey, now, season, leagues = LEAGUES) {
   const fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const from = londonDateString(fromDate);
   const to = londonDateString(now);
   const finished = new Set(['FT', 'AET', 'PEN']);
 
-  const leagues = await Promise.all(
-    LEAGUES.map(async (league) => {
+  const results = await Promise.all(
+    leagues.map(async (league) => {
       const result = await fetchLeague(league, apiKey, from, to, season);
       return {
         ...result,
@@ -164,7 +171,7 @@ async function fetchResults(apiKey, now, season) {
     })
   );
 
-  return { from, to, leagues };
+  return { from, to, leagues: results };
 }
 
 export default async function handler(req, res) {
@@ -185,6 +192,7 @@ export default async function handler(req, res) {
   const season = seasonFor(now);
   const liveOnly = String(req.query?.live || '') === '1';
   const resultsOnly = String(req.query?.results || '') === '1';
+  const predictionsOnly = String(req.query?.predictions || '') === '1';
   const requestedDate = String(req.query?.date || '').trim();
 
   try {
@@ -204,20 +212,22 @@ export default async function handler(req, res) {
     }
 
     if (resultsOnly) {
-      const resultData = await fetchResults(apiKey.trim(), now, season);
+      const resultData = await fetchResults(apiKey.trim(), now, season, predictionsOnly ? PREDICTION_LEAGUES : LEAGUES);
       res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=120');
       return res.status(200).json({
         from: resultData.from,
         to: resultData.to,
         season,
         results: true,
+        predictions: predictionsOnly,
         leagues: resultData.leagues,
       });
     }
 
+    const selectedLeagues = predictionsOnly ? PREDICTION_LEAGUES : LEAGUES;
     const results = liveOnly
       ? await fetchLive(apiKey.trim())
-      : await Promise.all(LEAGUES.map((league) => fetchLeague(league, apiKey.trim(), from, to, season)));
+      : await Promise.all(selectedLeagues.map((league) => fetchLeague(league, apiKey.trim(), from, to, season)));
 
     res.setHeader(
       'Cache-Control',
@@ -225,7 +235,7 @@ export default async function handler(req, res) {
         ? 'public, s-maxage=30, stale-while-revalidate=30'
         : 'public, s-maxage=900, stale-while-revalidate=1800'
     );
-    return res.status(200).json({ from, to, season, live: liveOnly, leagues: results });
+    return res.status(200).json({ from, to, season, live: liveOnly, predictions: predictionsOnly, leagues: results });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('API-Football fixtures error:', message);
