@@ -5,7 +5,7 @@
 
   const PREFIX='member-prediction:';
   const headers={apikey:cfg.SUPABASE_ANON_KEY,Authorization:`Bearer ${cfg.SUPABASE_ANON_KEY}`};
-  const esc=(v='')=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  const esc=(v='')=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'}[c]));
   const readSession=()=>{try{return JSON.parse(localStorage.getItem('football-talk-member-session')||'null')}catch{return null}};
   const user=()=>readSession()?.user||null;
   const username=()=>user()?.user_metadata?.username||user()?.user_metadata?.display_name||user()?.email?.split('@')[0]||'Football fan';
@@ -50,7 +50,7 @@
   function renderFixtures(){
     const list=mount.querySelector('#pred-list');
     const mine=new Map(predictions.filter(p=>p.userId===user()?.id).map(p=>[String(p.fixtureId),p]));
-    if(!fixtures.length){list.innerHTML='<div class="pred-empty">No Premier League fixtures are available to predict right now. Check back when the next prediction window opens.</div>';return;}
+    if(!fixtures.length){list.innerHTML='<div class="pred-empty">No Premier League fixtures are available to predict right now. Check back when the next prediction block opens.</div>';return;}
     list.innerHTML=fixtures.map(f=>{const p=mine.get(String(f.id));const locked=Date.now()>=new Date(f.date).getTime();return `<div class="pred-card" data-fixture="${esc(f.id)}"><div class="pred-time">${esc(fmt(f.date))}</div><div class="pred-match"><span class="pred-home">${esc(f.home)}</span><input class="pred-score home" type="number" min="0" max="20" inputmode="numeric" value="${p?.predHome??''}" ${locked?'disabled':''} aria-label="${esc(f.home)} score"><span class="pred-v">v</span><input class="pred-score away" type="number" min="0" max="20" inputmode="numeric" value="${p?.predAway??''}" ${locked?'disabled':''} aria-label="${esc(f.away)} score"><span class="pred-away">${esc(f.away)}</span></div>${locked?'<div class="pred-locked">🔒 Prediction locked at kick-off</div>':''}</div>`}).join('');
   }
   async function renderLeaderboard(){
@@ -75,8 +75,16 @@
     const p=londonDateParts(fixture.date||((fixture.timestamp||0)*1000));
     const base=new Date(`${p.year}-${p.month}-${p.day}T12:00:00Z`);
     const day=base.getUTCDay();
-    const weekend=day===5||day===6||day===0;
-    const offset=weekend?(day===0?-2:5-day):(1-day);
+    const weekend=day===5||day===6||day===0||day===1;
+    let offset;
+    if(weekend){
+      if(day===5)offset=0;
+      else if(day===6)offset=-1;
+      else if(day===0)offset=-2;
+      else offset=-3;
+    }else{
+      offset=2-day;
+    }
     base.setUTCDate(base.getUTCDate()+offset);
     return `${weekend?'weekend':'midweek'}:${base.toISOString().slice(0,10)}`;
   }
@@ -96,6 +104,17 @@
 
     const fallback=await fetch('/api/next-premier',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject());
     return selectPredictionWindow(fallback.fixtures||fallback.group||[]);
+  }
+  async function refreshPredictionWindow(){
+    try{
+      const next=await loadPredictionFixtures();
+      const before=fixtures.map(f=>String(f.id)).join('|');
+      const after=next.map(f=>String(f.id)).join('|');
+      fixtures=next;
+      if(before!==after)renderFixtures();
+    }catch(err){
+      console.warn('Members prediction window refresh failed',err);
+    }
   }
   async function load(){
     const list=mount.querySelector('#pred-list');
@@ -128,7 +147,9 @@
     }catch(_){status.textContent='Could not save those predictions just now.';}finally{button.disabled=false;button.textContent='SAVE MY PREDICTIONS';}
   }
   addStyles();
-  mount.innerHTML=`<div class="pred-head"><div><h2>🎯 Members Match Predictions</h2><p>Predict the current Premier League fixture window and climb the Football Talk table.</p><div class="points-key"><span>🎯 Exact score = 3 pts</span><span>✅ Correct result = 1 pt</span><span>❌ Wrong = 0 pts</span></div></div><div class="pred-rules">LOCKS AT KICK-OFF</div></div><div id="pred-list"><div class="pred-empty">Loading the next fixtures…</div></div><button class="pred-save" id="pred-save" type="button">SAVE MY PREDICTIONS</button><span class="pred-status" id="pred-status" aria-live="polite"></span><div class="leaderboard"><h3>🏆 Football Talk Members Leaderboard</h3><table class="leader-table"><thead><tr><th>#</th><th>Member</th><th>Exact</th><th>Points</th></tr></thead><tbody id="leader-body"><tr><td colspan="4">Loading leaderboard…</td></tr></tbody></table></div>`;
+  mount.innerHTML=`<div class="pred-head"><div><h2>🎯 Members Match Predictions</h2><p>Predict the current Premier League fixture block and climb the Football Talk table.</p><div class="points-key"><span>🎯 Exact score = 3 pts</span><span>✅ Correct result = 1 pt</span><span>❌ Wrong = 0 pts</span></div></div><div class="pred-rules">FRI–MON / TUE–THU · LOCKS AT KICK-OFF</div></div><div id="pred-list"><div class="pred-empty">Loading the next fixtures…</div></div><button class="pred-save" id="pred-save" type="button">SAVE MY PREDICTIONS</button><span class="pred-status" id="pred-status" aria-live="polite"></span><div class="leaderboard"><h3>🏆 Football Talk Members Leaderboard</h3><table class="leader-table"><thead><tr><th>#</th><th>Member</th><th>Exact</th><th>Points</th></tr></thead><tbody id="leader-body"><tr><td colspan="4">Loading leaderboard…</td></tr></tbody></table></div>`;
   mount.querySelector('#pred-save').addEventListener('click',saveAll);
-  load();setInterval(load,180000);
+  load();
+  setInterval(refreshPredictionWindow,30000);
+  setInterval(load,180000);
 })();
