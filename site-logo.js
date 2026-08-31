@@ -17,10 +17,32 @@
       const header=document.querySelector('header.top,.top');
       if(!header) return;
 
+      const params=new URLSearchParams(location.search);
+      const main=(params.get('main')||'').toLowerCase();
+      const stat=(params.get('stat')||'').toLowerCase();
+      const active=(main==='leaders'&&stat==='goals')?'scorers':(main==='form'?'form':'zone');
+
+      const items=[
+        ['Tables','/tables.html','tables'],
+        ['Stats Zone','/api/stats-zone','zone'],
+        ['Top Scorers','/api/stats-zone?main=leaders&stat=goals','scorers'],
+        ['Form & Results','/api/stats-zone?main=form','form']
+      ];
+
       const bar=document.createElement('nav');
       bar.className='ft-stats-hub-bar';
       bar.setAttribute('aria-label','Stats Hub');
-      bar.innerHTML='<span class="ft-stats-hub-label">STATS HUB</span><a href="/tables.html">Tables</a><a class="context-active" href="/api/stats-zone">Stats Zone</a><a href="/api/stats-zone?main=leaders&stat=goals">Top Scorers</a><a href="/api/stats-zone?main=form">Form & Results</a>';
+      const label=document.createElement('span');
+      label.className='ft-stats-hub-label';
+      label.textContent='STATS HUB';
+      bar.appendChild(label);
+      items.forEach(([text,href,id])=>{
+        const a=document.createElement('a');
+        a.href=href;
+        a.textContent=text;
+        if(id===active) a.classList.add('context-active');
+        bar.appendChild(a);
+      });
       header.insertAdjacentElement('afterend',bar);
 
       const style=document.createElement('style');
