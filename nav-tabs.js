@@ -52,31 +52,16 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   const toolsFor={
     match:[['TODAY','match-centre.html'],['Fixtures & Results','fixtures.html'],['Lineups','lineups.html'],['Domestic Cups','cups.html'],['Europe','european.html'],['Predictions','members.html']],
-    stats:[['Tables','tables.html'],['Stats Zone','/api/stats-zone'],['Top Scorers','/api/top-scorers'],['Form & Results','fixtures.html']]
+    stats:[['Tables','tables.html'],['Stats Zone','/api/stats-zone'],['Top Scorers','/api/stats-zone?main=leaders&stat=goals'],['Form & Results','/api/stats-zone?main=form']]
   };
   if(toolsFor[active]&&quick&&!document.querySelector('.section-tools')){
     const bar=document.createElement('nav');bar.className='section-tools';bar.setAttribute('aria-label',active==='match'?'Match Centre tools':'Tables and stats tools');
     const label=document.createElement('span');label.className='section-tools-label';label.textContent=active==='match'?'MATCH HUB':'STATS HUB';bar.appendChild(label);
-    toolsFor[active].forEach(([text,href])=>{const a=document.createElement('a');a.href=href;a.textContent=text;const target=(href.split('/').pop()||'').toLowerCase();if((path&&target===path)||(href==='match-centre.html'&&path==='match-centre.html')||(href==='fixtures.html'&&path==='fixtures.html')||(href==='tables.html'&&path==='tables.html')||location.pathname.includes(href.replace(/^\//,'')))a.classList.add('context-active');bar.appendChild(a)});
+    const main=params.get('main')||'',stat=params.get('stat')||'';
+    toolsFor[active].forEach(([text,href])=>{const a=document.createElement('a');a.href=href;a.textContent=text;let on=false;if(active==='stats'){if(text==='Tables')on=path==='tables.html';else if(text==='Form & Results')on=location.pathname.includes('/api/stats-zone')&&main==='form';else if(text==='Top Scorers')on=location.pathname.includes('/api/stats-zone')&&main==='leaders'&&stat==='goals';else if(text==='Stats Zone')on=location.pathname.includes('/api/stats-zone')&&!main&&!stat;}else{const target=(href.split('/').pop()||'').toLowerCase();on=(path&&target===path)||(href==='match-centre.html'&&path==='match-centre.html')||(href==='fixtures.html'&&path==='fixtures.html')}if(on)a.classList.add('context-active');bar.appendChild(a)});
     quick.insertAdjacentElement('afterend',bar);
   }
 
   const menu=document.querySelector('.menu-button');
   if(menu&&nav&&!menu.dataset.mainNavBound){menu.dataset.mainNavBound='1';menu.addEventListener('click',()=>{nav.classList.toggle('open');menu.setAttribute('aria-expanded',nav.classList.contains('open')?'true':'false')});}
-
-  const transfers=document.getElementById('transfers');
-  if(transfers)transfers.querySelectorAll('.transfer-update-grid,.transfer-live-head,.latest-transfer-head,#transfer-stories').forEach(el=>el.remove());
-  const matchday=document.getElementById('matchday');
-  if(matchday){const strong=matchday.querySelector('.scoreboard strong'),heading=matchday.querySelector('.scoreboard h3'),copy=matchday.querySelector('.scoreboard p');if(strong)strong.textContent='FT LIVE Matchday Centre';if(heading)heading.textContent='Live scores, match status & results';if(copy)copy.textContent='Live coverage for the Premier League, Championship, Carabao Cup and FA Cup, updated automatically throughout matchdays.';}
-
-  const staleDebateTitles=new Set(['Who wins the Premier League this season?','Poll: Which summer signing will make the biggest impact?','VAR: improving football or still causing too much frustration?']);
-  const removeStaleDebates=()=>{const box=document.getElementById('debate-posts');if(!box)return;box.querySelectorAll('.post-card').forEach(card=>{const title=card.querySelector('h3')?.textContent?.trim();if(staleDebateTitles.has(title))card.remove();});};
-  removeStaleDebates();const debatePosts=document.getElementById('debate-posts');if(debatePosts)new MutationObserver(removeStaleDebates).observe(debatePosts,{childList:true,subtree:true});
-  document.querySelectorAll('.ticker-track span').forEach(span=>{span.textContent='⚽ FT LIVE — Loading the latest football news, transfers and live match scores…';});
 });
-
-document.addEventListener('click',e=>{
-  const link=e.target.closest('a[href*="section.html?view="]');if(!link)return;
-  const url=new URL(link.href,window.location.href);const view=url.searchParams.get('view');if(!view)return;
-  e.preventDefault();window.location.href=`section.html?view=${encodeURIComponent(view)}`;
-},true);
