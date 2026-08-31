@@ -215,3 +215,14 @@
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initFtLive,{once:true});
   else initFtLive();
 })();
+
+(()=>{
+  function loadTransferCentre(){
+    if(!document.getElementById('transfers')||document.querySelector('script[data-ft-transfer-centre]'))return;
+    const s=document.createElement('script');
+    s.src='transfer-centre.js?v=20260831-1';
+    s.dataset.ftTransferCentre='1';
+    document.body.appendChild(s);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadTransferCentre,{once:true});else loadTransferCentre();
+})();
