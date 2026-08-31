@@ -6,7 +6,11 @@ const seededMatchdayStories=[{type:'Matchday',published_at:'2026-08-24T15:45:00+
   if(!latest||document.getElementById('ft-live-now'))return;
   const LIVE=new Set(['1H','2H','ET','BT','P','LIVE','HT','INT']);
   const FINISHED=new Set(['FT','AET','PEN']);
-  const priorityIds=new Set([39,40,41,42,45,48,2,3,848,61,71,87,55,78,135]);
+  const approvedNames=new Map([
+    [39,/^premier league$/i],[40,/^(efl )?championship$/i],[41,/^(efl )?league one$/i],[42,/^(efl )?league two$/i],
+    [45,/^fa cup$/i],[48,/^(carabao cup|efl cup)$/i],[2,/^(uefa )?champions league$/i],[3,/^(uefa )?europa league$/i],[848,/^(uefa )?conference league$/i],
+    [61,/^ligue 1$/i],[71,/^serie a$/i],[87,/^laliga$/i],[78,/^bundesliga$/i],[55,/^liga portugal$/i],[135,/^serie a$/i]
+  ]);
   let loading=false;
 
   const styles=document.createElement('style');
@@ -24,27 +28,29 @@ const seededMatchdayStories=[{type:'Matchday',published_at:'2026-08-24T15:45:00+
   const list=document.getElementById('ft-ln-list'),title=document.getElementById('ft-ln-title'),sub=document.getElementById('ft-ln-sub'),kicker=document.getElementById('ft-ln-kicker'),state=document.getElementById('ft-ln-state'),updated=document.getElementById('ft-ln-updated');
   const londonDate=d=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
   const kickOff=v=>new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(v));
-  const leagueWanted=l=>priorityIds.has(Number(l.id));
+  const leagueWanted=l=>{const rule=approvedNames.get(Number(l.id));return Boolean(rule&&rule.test(String(l.name||'').trim()))};
   const statusText=f=>{const s=String(f.status||'NS').toUpperCase();if(s==='HT')return'HT';if(LIVE.has(s))return f.elapsed?`LIVE · ${f.elapsed}′`:'LIVE';if(FINISHED.has(s))return s==='FT'?'FT':s;return kickOff(f.date)};
   const scoreText=f=>{const s=String(f.status||'NS').toUpperCase();return (LIVE.has(s)||FINISHED.has(s))?`${f.homeGoals??0}–${f.awayGoals??0}`:kickOff(f.date)};
+  const mergeLeagues=(...sets)=>{const map=new Map();sets.flat().forEach(l=>{if(!l)return;const key=`${Number(l.id)||0}:${String(l.name||'').toLowerCase()}`;if(!map.has(key))map.set(key,{...l,fixtures:[]});const out=map.get(key),seen=new Set(out.fixtures.map(f=>String(f.id||`${f.date}-${f.home}-${f.away}`)));(l.fixtures||[]).forEach(f=>{const fk=String(f.id||`${f.date}-${f.home}-${f.away}`);if(!seen.has(fk)){seen.add(fk);out.fixtures.push(f)}})});return[...map.values()]};
 
   function render(leagues){
     const now=Date.now();
     const filtered=(leagues||[]).filter(leagueWanted).map(l=>({...l,fixtures:(l.fixtures||[]).filter(f=>f.date)})).filter(l=>l.fixtures.length);
     const live=filtered.map(l=>({...l,fixtures:l.fixtures.filter(f=>LIVE.has(String(f.status||'').toUpperCase()))})).filter(l=>l.fixtures.length);
-    const upcoming=filtered.map(l=>({...l,fixtures:l.fixtures.filter(f=>!LIVE.has(String(f.status||'').toUpperCase())&&!FINISHED.has(String(f.status||'').toUpperCase())&&new Date(f.date).getTime()>=now).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0)).slice(0,4)})).filter(l=>l.fixtures.length);
+    const upcoming=filtered.map(l=>({...l,fixtures:l.fixtures.filter(f=>!LIVE.has(String(f.status||'').toUpperCase())&&!FINISHED.has(String(f.status||'').toUpperCase())&&new Date(f.date).getTime()>=now).sort((a,b)=>(a.timestamp||new Date(a.date).getTime()/1000)-(b.timestamp||new Date(b.date).getTime()/1000)).slice(0,4)})).filter(l=>l.fixtures.length);
     const finished=filtered.map(l=>({...l,fixtures:l.fixtures.filter(f=>FINISHED.has(String(f.status||'').toUpperCase())).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).slice(0,3)})).filter(l=>l.fixtures.length);
     let showing=[];
     if(live.length){showing=live;kicker.innerHTML='<span class="ft-ln-live-dot"></span>FT LIVE';title.textContent='LIVE NOW';sub.textContent='Football is live — scores and match status update automatically.';state.textContent='LIVE NOW stays on top while relevant football is being played.';}
-    else if(upcoming.length){showing=upcoming;kicker.textContent='COMING UP';title.textContent='COMING UP';sub.textContent='No featured match is live right now. Here are the next kick-offs today.';state.textContent='This automatically switches to LIVE NOW as soon as a featured match starts.';}
+    else if(upcoming.length){showing=upcoming;kicker.textContent='COMING UP';title.textContent='COMING UP';sub.textContent='No featured match is live right now. Here are the next featured kick-offs.';state.textContent='This automatically switches to LIVE NOW as soon as a featured match starts.';}
     else if(finished.length){showing=finished;kicker.textContent='RESULTS & REACTION';title.textContent='TODAY’S RESULTS';sub.textContent='Today’s featured programme has finished.';state.textContent='The live programme is complete — results now take priority.';}
-    else{showing=[];kicker.textContent='FT LIVE';title.textContent='LIVE NOW';sub.textContent='No featured football is currently listed.';state.textContent='This section will wake up automatically when today’s programme begins.';}
+    else{showing=[];kicker.textContent='COMING UP';title.textContent='COMING UP';sub.textContent='No featured match is live right now.';state.textContent='The next featured fixtures will appear here automatically.';}
     list.replaceChildren();
-    if(!showing.length){const e=document.createElement('div');e.className='ft-ln-empty';e.textContent='No featured matches are available right now. Open the Match Centre for the full schedule.';list.appendChild(e);}
+    if(!showing.length){const e=document.createElement('div');e.className='ft-ln-empty';e.textContent='No featured fixtures are currently available. Open the Match Centre for the full schedule.';list.appendChild(e);}
     showing.slice(0,6).forEach(l=>{const box=document.createElement('div');box.className='ft-ln-league';const h=document.createElement('div');h.className='ft-ln-league-title';h.textContent=l.name||'Football';box.appendChild(h);l.fixtures.slice(0,6).forEach(f=>{const s=String(f.status||'NS').toUpperCase();const row=document.createElement('div');row.className='ft-ln-game';row.innerHTML=`<div class="ft-ln-team ft-ln-home"></div><div class="ft-ln-centre"><span class="ft-ln-score"></span><span class="ft-ln-status${LIVE.has(s)?' live':''}"></span></div><div class="ft-ln-team ft-ln-away"></div>`;row.children[0].textContent=f.home||'';row.querySelector('.ft-ln-score').textContent=scoreText(f);row.querySelector('.ft-ln-status').textContent=statusText(f);row.children[2].textContent=f.away||'';box.appendChild(row)});list.appendChild(box)});
     updated.textContent=`UPDATED ${new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date())}`;
   }
 
-  async function load(){if(loading)return;loading=true;try{const today=londonDate(new Date());const r=await fetch(`/api/fixtures?date=${today}&_=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);const data=await r.json();render(data.leagues||[]);}catch(e){if(!list.querySelector('.ft-ln-game')){list.innerHTML='<div class="ft-ln-empty">Live match data is temporarily unavailable. The full Fixtures page remains available.</div>';}}finally{loading=false}}
+  async function getJson(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json()}
+  async function load(){if(loading)return;loading=true;try{const today=londonDate(new Date());const results=await Promise.allSettled([getJson(`/api/fixtures?date=${today}`),getJson('/api/fixtures'),getJson('/api/fixtures?predictions=1')]);const leagues=[];results.forEach(r=>{if(r.status==='fulfilled')leagues.push(...(r.value.leagues||[]))});if(!leagues.length)throw new Error('No fixture data');render(mergeLeagues(leagues));}catch(e){if(!list.querySelector('.ft-ln-game')){list.innerHTML='<div class="ft-ln-empty">Live match data is temporarily unavailable. The full Fixtures page remains available.</div>';}}finally{loading=false}}
   load();setInterval(load,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
 })();
