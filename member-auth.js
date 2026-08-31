@@ -36,7 +36,33 @@
     if(next) setTimeout(()=>location.replace(next),250);
     return true;
   }
-  const existing=readSession();if(existing)showAccount(existing);
+
+  async function validateSession(session){
+    if(!session?.access_token)return null;
+    try{
+      const r=await fetch(`${base}/user`,{headers:{apikey:cfg.SUPABASE_ANON_KEY,Authorization:`Bearer ${session.access_token}`}});
+      if(r.ok){
+        const user=await r.json();
+        const valid={...session,user};saveSession(valid);return valid;
+      }
+    }catch(_){ }
+    if(session?.refresh_token){
+      try{
+        const r=await fetch(`${base}/token?grant_type=refresh_token`,{method:'POST',headers,body:JSON.stringify({refresh_token:session.refresh_token})});
+        const data=await r.json();
+        if(r.ok&&data?.access_token){saveSession(data);return data;}
+      }catch(_){ }
+    }
+    clearSession();
+    return null;
+  }
+
+  (async()=>{
+    const existing=readSession();
+    if(!existing){if(next)setMode('login');return;}
+    const valid=await validateSession(existing);
+    if(valid)showAccount(valid);else if(next)setMode('login');
+  })();
 
   joinForm.addEventListener('submit',async e=>{
     e.preventDefault();const status=document.getElementById('join-status');const button=joinForm.querySelector('button[type=submit]');
