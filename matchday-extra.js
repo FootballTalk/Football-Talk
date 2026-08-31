@@ -1,102 +1,51 @@
 const seededMatchdayStories=[{type:'Matchday',published_at:'2026-08-24T15:45:00+01:00',title:'Fulham v Chelsea: West London derby under the lights',summary:'Fulham host Chelsea at Craven Cottage tonight at 8pm as the Premier League opening round concludes.',body:'Fulham and Chelsea meet at Craven Cottage tonight in a West London derby to close out the opening round of Premier League fixtures.\n\nKick-off is at 8pm, with the game shown live on Sky Sports in the UK.\n\nBoth clubs begin the new league campaign with new managers in the dugout, adding another layer to an already fierce local rivalry. Chelsea make the short trip across West London looking to start strongly, while Fulham will be hoping home advantage can give them an early-season lift.\n\nThe derby has produced plenty of tight contests in recent meetings, so this one has all the ingredients for a lively Monday-night finish to the weekend.\n\nFootball Talk question: who are you backing tonight — Fulham, Chelsea or the draw?'}];
 (function addSeededMatchdayStories(){let tries=0;const timer=setInterval(()=>{tries++;try{if(typeof loadedPosts==='undefined'||typeof renderFeed==='undefined')return;const published=loadedPosts.filter(p=>['matchday','full time'].includes(String(p.type||'').toLowerCase()));seededMatchdayStories.forEach(s=>{if(!loadedPosts.some(p=>p.title===s.title))loadedPosts.push(s)});const combined=[...published,...seededMatchdayStories].filter((p,i,a)=>a.findIndex(x=>x.title===p.title)===i).sort((a,b)=>new Date(b.published_at)-new Date(a.published_at)).slice(0,6);renderFeed('matchday-posts',combined,'No matchday stories published yet.');clearInterval(timer)}catch(e){}if(tries>=12)clearInterval(timer)},500)})();
 
-(function setupLiveMatchdayCentre(){
-  const matchday=document.getElementById('matchday');
-  if(!matchday||document.getElementById('ft-matchday-live'))return;
+(function setupLiveNow(){
+  const latest=document.getElementById('latest');
+  if(!latest||document.getElementById('ft-live-now'))return;
+  const LIVE=new Set(['1H','2H','ET','BT','P','LIVE','HT','INT']);
+  const FINISHED=new Set(['FT','AET','PEN']);
+  const priorityIds=new Set([39,40,41,42,45,48,2,3,848,61,71,87,55,78,135]);
+  const priorityNames=/premier league|championship|league one|league two|fa cup|carabao|efl cup|champions league|europa league|conference league|la ?liga|serie a|bundesliga|ligue 1|liga portugal/i;
+  let loading=false;
 
   const styles=document.createElement('style');
   styles.textContent=`
-  #ft-matchday-live{margin:26px 0 34px;background:#0b0b0e;color:#fff;border-top:6px solid #f7c600;box-shadow:0 10px 28px rgba(0,0,0,.16)}
-  .ft-md-head{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:18px 20px;border-bottom:1px solid #2a2a30}
-  .ft-md-head h3{font-family:'Archivo Black',sans-serif;margin:0;font-size:28px}.ft-md-head p{margin:5px 0 0;color:#b8b8c2;font-size:13px}
-  .ft-md-refresh{flex:0 0 auto;background:#f7c600;color:#000;padding:7px 10px;font-size:11px;font-weight:1000;letter-spacing:.5px}
-  .ft-md-body{padding:16px}.ft-md-league{margin-bottom:22px}.ft-md-league:last-child{margin-bottom:0}.ft-md-league h4{margin:0 0 10px;font-size:16px;color:#f7c600}
-  .ft-md-game{background:#fff;color:#111;margin-bottom:10px;border-left:5px solid #f7c600}.ft-md-scoreline{display:grid;grid-template-columns:minmax(0,1fr) 78px minmax(0,1fr);gap:8px;align-items:center;padding:13px}
-  .ft-md-team{font-weight:900}.ft-md-home{text-align:right}.ft-md-away{text-align:left}.ft-md-score{text-align:center;background:#111;color:#fff;font-family:'Archivo Black',sans-serif;font-size:18px;padding:8px 5px}
-  .ft-md-status{text-align:center;font-size:11px;font-weight:1000;color:#666;padding:0 12px 11px}.ft-md-status.live{color:#c40000}.ft-md-events{border-top:1px solid #ececec;padding:9px 13px 11px;font-size:12px;color:#444}.ft-md-event{margin:4px 0}.ft-md-empty{background:#fff;color:#555;padding:18px;text-align:center}
-  @media(max-width:600px){.ft-md-head{align-items:flex-start;flex-direction:column}.ft-md-scoreline{grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr);padding:11px 8px}.ft-md-team{font-size:12px}.ft-md-score{font-size:16px}.ft-md-head h3{font-size:24px}}
+  #ft-live-now{max-width:1180px;margin:18px auto 8px;padding:0 20px}.ft-ln-shell{background:#0b0b0e;color:#fff;border-radius:18px;overflow:hidden;border-top:6px solid #f7c600;box-shadow:0 14px 34px rgba(0,0,0,.18)}
+  .ft-ln-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 20px;border-bottom:1px solid #29292f}.ft-ln-kicker{font-size:12px;font-weight:1000;letter-spacing:.12em;color:#f7c600}.ft-ln-head h2{margin:2px 0 4px;font-size:clamp(25px,4vw,38px)}.ft-ln-sub{margin:0;color:#b8b8c2;font-size:13px}.ft-ln-link{background:#f7c600;color:#090909!important;text-decoration:none;font-weight:1000;padding:11px 14px;border-radius:9px;white-space:nowrap}.ft-ln-list{padding:14px 16px 16px}.ft-ln-league{margin-bottom:16px}.ft-ln-league:last-child{margin-bottom:0}.ft-ln-league-title{color:#f7c600;font-size:12px;font-weight:1000;letter-spacing:.06em;margin:0 0 7px}.ft-ln-game{display:grid;grid-template-columns:minmax(0,1fr) 92px minmax(0,1fr);align-items:center;gap:9px;background:#fff;color:#111;padding:11px 12px;margin-bottom:8px;border-radius:10px}.ft-ln-team{font-weight:900}.ft-ln-home{text-align:right}.ft-ln-away{text-align:left}.ft-ln-centre{text-align:center}.ft-ln-score{display:block;font-family:'Archivo Black',sans-serif;background:#111;color:#fff;padding:7px 5px;border-radius:7px;font-size:16px}.ft-ln-status{display:block;font-size:10px;font-weight:1000;margin-top:4px;color:#777}.ft-ln-status.live{color:#c80000}.ft-ln-empty{background:#fff;color:#555;padding:18px;border-radius:10px;text-align:center}.ft-ln-footer{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:0 16px 16px;color:#aaa;font-size:11px}.ft-ln-live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#d90000;margin-right:6px;box-shadow:0 0 0 4px rgba(217,0,0,.15)}
+  @media(max-width:650px){#ft-live-now{padding:0 14px}.ft-ln-head{align-items:flex-start;flex-direction:column}.ft-ln-link{width:100%;text-align:center}.ft-ln-game{grid-template-columns:minmax(0,1fr) 68px minmax(0,1fr);padding:10px 7px}.ft-ln-team{font-size:12px}.ft-ln-score{font-size:14px}}
   `;
   document.head.appendChild(styles);
 
-  const live=document.createElement('section');
-  live.id='ft-matchday-live';
-  live.innerHTML=`<div class="ft-md-head"><div><h3>FT LIVE Matchday Centre</h3><p>Premier League, Championship, Carabao Cup & FA Cup coverage for today's matches.</p></div><div id="ft-md-refresh" class="ft-md-refresh">UPDATES EVERY 30 SEC</div></div><div id="ft-md-body" class="ft-md-body"><div class="ft-md-empty">Loading today's matches…</div></div>`;
-  const stories=matchday.querySelector('.category-feed');
-  matchday.insertBefore(live,stories||null);
+  const section=document.createElement('section');section.id='ft-live-now';
+  section.innerHTML=`<div class="ft-ln-shell"><div class="ft-ln-head"><div><div id="ft-ln-kicker" class="ft-ln-kicker">FT LIVE</div><h2 id="ft-ln-title">LIVE NOW</h2><p id="ft-ln-sub" class="ft-ln-sub">Checking today's football…</p></div><a class="ft-ln-link" href="match-centre.html">OPEN MATCH CENTRE →</a></div><div id="ft-ln-list" class="ft-ln-list"><div class="ft-ln-empty">Loading today’s matches…</div></div><div class="ft-ln-footer"><span id="ft-ln-state">Live match state drives this section automatically.</span><span id="ft-ln-updated"></span></div></div>`;
+  latest.parentNode.insertBefore(section,latest);
 
-  const body=document.getElementById('ft-md-body');
-  const refresh=document.getElementById('ft-md-refresh');
-  const LIVE=new Set(['1H','2H','ET','BT','P','LIVE','HT']);
-  const FINISHED=new Set(['FT','AET','PEN']);
-  let todayLeagues=[];
-  let liveLeagues=[];
-  let todayCups=[];
-  let liveCups=[];
+  const list=document.getElementById('ft-ln-list'),title=document.getElementById('ft-ln-title'),sub=document.getElementById('ft-ln-sub'),kicker=document.getElementById('ft-ln-kicker'),state=document.getElementById('ft-ln-state'),updated=document.getElementById('ft-ln-updated');
+  const londonDate=d=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+  const kickOff=v=>new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(v));
+  const leagueWanted=l=>priorityIds.has(Number(l.id))||priorityNames.test(`${l.country||''} ${l.name||''}`);
+  const statusText=f=>{const s=String(f.status||'NS').toUpperCase();if(s==='HT')return'HT';if(LIVE.has(s))return f.elapsed?`LIVE · ${f.elapsed}′`:'LIVE';if(FINISHED.has(s))return s==='FT'?'FT':s;return kickOff(f.date)};
+  const scoreText=f=>{const s=String(f.status||'NS').toUpperCase();return (LIVE.has(s)||FINISHED.has(s))?`${f.homeGoals??0}–${f.awayGoals??0}`:kickOff(f.date)};
 
-  function ukDateKey(value){return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));}
-  function kickOff(value){return new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(value));}
-  function eventLabel(e){const minute=e.elapsed?`${e.elapsed}${e.extra?`+${e.extra}`:''}'`:'';const who=e.player||e.team||'';if(e.type==='Goal')return `⚽ ${minute} ${who}${e.detail?` — ${e.detail}`:''}`;if(e.type==='Card')return `🟨 ${minute} ${who}${e.detail?` — ${e.detail}`:''}`;if(e.type==='subst')return `🔁 ${minute} ${who}`;return `${minute} ${who}${e.detail?` — ${e.detail}`:''}`.trim();}
-
-  function mergeCollection(base,live){
-    return base.map(comp=>{
-      const liveComp=live.find(l=>Number(l.id)===Number(comp.id));
-      const liveMap=new Map((liveComp?.fixtures||[]).map(f=>[String(f.id),f]));
-      return {...comp,fixtures:(comp.fixtures||[]).map(f=>liveMap.get(String(f.id))||f)};
-    });
+  function render(leagues){
+    const now=Date.now();
+    const filtered=(leagues||[]).filter(leagueWanted).map(l=>({...l,fixtures:(l.fixtures||[]).filter(f=>f.date)})).filter(l=>l.fixtures.length);
+    const live=filtered.map(l=>({...l,fixtures:l.fixtures.filter(f=>LIVE.has(String(f.status||'').toUpperCase()))})).filter(l=>l.fixtures.length);
+    const upcoming=filtered.map(l=>({...l,fixtures:l.fixtures.filter(f=>!LIVE.has(String(f.status||'').toUpperCase())&&!FINISHED.has(String(f.status||'').toUpperCase())&&new Date(f.date).getTime()>=now).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0)).slice(0,4)})).filter(l=>l.fixtures.length);
+    const finished=filtered.map(l=>({...l,fixtures:l.fixtures.filter(f=>FINISHED.has(String(f.status||'').toUpperCase())).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).slice(0,3)})).filter(l=>l.fixtures.length);
+    let showing=[];
+    if(live.length){showing=live;kicker.innerHTML='<span class="ft-ln-live-dot"></span>FT LIVE';title.textContent='LIVE NOW';sub.textContent='Football is live — scores and match status update automatically.';state.textContent='LIVE NOW stays on top while relevant football is being played.';}
+    else if(upcoming.length){showing=upcoming;kicker.textContent='COMING UP';title.textContent='COMING UP';sub.textContent='No featured match is live right now. Here are the next kick-offs today.';state.textContent='This automatically switches to LIVE NOW as soon as a featured match starts.';}
+    else if(finished.length){showing=finished;kicker.textContent='RESULTS & REACTION';title.textContent='TODAY’S RESULTS';sub.textContent='Today’s featured programme has finished.';state.textContent='The live programme is complete — results now take priority.';}
+    else{showing=[];kicker.textContent='FT LIVE';title.textContent='LIVE NOW';sub.textContent='No featured football is currently listed.';state.textContent='This section will wake up automatically when today’s programme begins.';}
+    list.replaceChildren();
+    if(!showing.length){const e=document.createElement('div');e.className='ft-ln-empty';e.textContent='No featured matches are available right now. Open the Match Centre for the full schedule.';list.appendChild(e);}
+    showing.slice(0,6).forEach(l=>{const box=document.createElement('div');box.className='ft-ln-league';const h=document.createElement('div');h.className='ft-ln-league-title';h.textContent=l.name||'Football';box.appendChild(h);l.fixtures.slice(0,6).forEach(f=>{const s=String(f.status||'NS').toUpperCase();const row=document.createElement('div');row.className='ft-ln-game';row.innerHTML=`<div class="ft-ln-team ft-ln-home"></div><div class="ft-ln-centre"><span class="ft-ln-score"></span><span class="ft-ln-status${LIVE.has(s)?' live':''}"></span></div><div class="ft-ln-team ft-ln-away"></div>`;row.children[0].textContent=f.home||'';row.querySelector('.ft-ln-score').textContent=scoreText(f);row.querySelector('.ft-ln-status').textContent=statusText(f);row.children[2].textContent=f.away||'';box.appendChild(row)});list.appendChild(box)});
+    updated.textContent=`UPDATED ${new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date())}`;
   }
 
-  function mergedLeagues(){
-    return [
-      ...mergeCollection(todayLeagues,liveLeagues),
-      ...mergeCollection(todayCups,liveCups)
-    ];
-  }
-
-  function statusText(f){
-    if(FINISHED.has(f.status))return f.status==='PEN'?'FULL TIME · PENALTIES':f.status==='AET'?'FULL TIME · AET':'FULL TIME';
-    if(f.status==='HT')return 'HALF TIME';
-    if(f.status==='ET')return f.elapsed?`EXTRA TIME · ${f.elapsed}'`:'EXTRA TIME';
-    if(f.status==='P')return 'PENALTIES';
-    if(LIVE.has(f.status))return f.elapsed?`LIVE · ${f.elapsed}'`:'LIVE';
-    return `KICK-OFF ${kickOff(f.date)}`;
-  }
-
-  function render(){
-    const leagues=mergedLeagues().map(l=>({...l,fixtures:(l.fixtures||[]).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0))})).filter(l=>l.fixtures.length);
-    body.replaceChildren();
-    if(!leagues.length){const empty=document.createElement('div');empty.className='ft-md-empty';empty.textContent='No Premier League, Championship, Carabao Cup or FA Cup matches are scheduled today.';body.appendChild(empty);return;}
-    leagues.forEach(league=>{
-      const section=document.createElement('div');section.className='ft-md-league';const h=document.createElement('h4');h.textContent=league.name;section.appendChild(h);
-      league.fixtures.forEach(f=>{
-        const game=document.createElement('article');game.className='ft-md-game';
-        const row=document.createElement('div');row.className='ft-md-scoreline';
-        const home=document.createElement('div');home.className='ft-md-team ft-md-home';home.textContent=f.home||'';
-        const score=document.createElement('div');score.className='ft-md-score';score.textContent=(LIVE.has(f.status)||FINISHED.has(f.status))?`${f.homeGoals??0}–${f.awayGoals??0}`:kickOff(f.date);
-        const away=document.createElement('div');away.className='ft-md-team ft-md-away';away.textContent=f.away||'';row.append(home,score,away);game.appendChild(row);
-        const st=document.createElement('div');st.className=`ft-md-status${LIVE.has(f.status)?' live':''}`;st.textContent=statusText(f);game.appendChild(st);
-        const events=(f.events||[]).filter(e=>['Goal','Card','subst'].includes(e.type)).slice(-4).reverse();
-        if(events.length){const box=document.createElement('div');box.className='ft-md-events';events.forEach(e=>{const line=document.createElement('div');line.className='ft-md-event';line.textContent=eventLabel(e);box.appendChild(line)});game.appendChild(box)}
-        section.appendChild(game);
-      });body.appendChild(section);
-    });
-    refresh.textContent=`UPDATED ${new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date())} · 30 SEC`;
-  }
-
-  async function loadToday(){
-    const today=ukDateKey(new Date());
-    try{const r=await fetch('/api/fixtures',{cache:'no-store'});if(r.ok){const data=await r.json();todayLeagues=(data.leagues||[]).map(l=>({...l,fixtures:(l.fixtures||[]).filter(f=>ukDateKey(f.date)===today)}));}}catch(_){}
-    try{const r=await fetch('/api/cups',{cache:'no-store'});if(r.ok){const data=await r.json();todayCups=(data.cups||[]).map(c=>({...c,fixtures:(c.fixtures||[]).filter(f=>ukDateKey(f.date)===today)}));}}catch(_){}
-    render();
-  }
-
-  async function loadLive(){
-    try{const r=await fetch('/api/fixtures?live=1',{cache:'no-store'});if(r.ok){const data=await r.json();liveLeagues=data.leagues||[];}}catch(_){}
-    try{const r=await fetch('/api/cups?live=1',{cache:'no-store'});if(r.ok){const data=await r.json();liveCups=data.cups||[];}}catch(_){}
-    render();
-  }
-
-  loadToday();loadLive();
-  setInterval(loadLive,30000);
-  setInterval(loadToday,5*60*1000);
+  async function load(){if(loading)return;loading=true;try{const today=londonDate(new Date());const r=await fetch(`/api/fixtures?date=${today}&_=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);const data=await r.json();render(data.leagues||[]);}catch(e){if(!list.querySelector('.ft-ln-game')){list.innerHTML='<div class="ft-ln-empty">Live match data is temporarily unavailable. The full Fixtures page remains available.</div>';}}finally{loading=false}}
+  load();setInterval(load,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
 })();
