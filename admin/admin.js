@@ -39,12 +39,26 @@ function renderAuth(session,firstLoad=false){
 async function loadAdvertisingCount(){
   const badge=document.getElementById('advertisingCount');
   if(!badge||!sb)return;
-  const{count,error}=await sb.from('advertising_enquiries').select('id',{count:'exact',head:true});
+
+  let result=await sb
+    .from('advertising_enquiries')
+    .select('id',{count:'exact',head:true})
+    .is('handled_at',null);
+
+  // Keep the admin usable until the handled_at database migration has been run.
+  if(result.error){
+    result=await sb
+      .from('advertising_enquiries')
+      .select('id',{count:'exact',head:true});
+  }
+
+  const{count,error}=result;
   if(error){
     badge.textContent='!';
     badge.classList.remove('zero');
     return;
   }
+
   const n=Number(count||0);
   badge.textContent=n>99?'99+':String(n);
   badge.classList.toggle('zero',n===0);
