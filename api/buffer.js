@@ -34,9 +34,15 @@ async function connectionInfo(){
   return {connected:true,organization,channels:channelResult.data?.channels||[],rateLimit:channelResult.rateLimit||orgResult.rateLimit};
 }
 function storyKey(item){return crypto.createHash('sha256').update(`${item.link||''}|${item.title||''}|${item.stage||''}`).digest('hex').slice(0,24);}
+function suspiciousOfficial(item){
+  if(item?.stage!=='OFFICIAL')return false;
+  const t=String(item.title||'').toLowerCase();
+  return /\b(?:rumou?r(?:s)?|to sign|could sign|may sign|might sign|want(?:s)? to sign|target(?:s|ing)?|eye(?:s|ing)?|linked with|interested in)\b/.test(t);
+}
 function eligibility(item){
   if(!item?.title)return {ok:false,reason:'missing-title'};
   if(item.type==='TRANSFER'&&!['OFFICIAL','DEVELOPING','ROMANO_CONFIRMED'].includes(item.stage))return {ok:false,reason:`transfer-stage-${item.stage||'none'}`};
+  if(item.type==='TRANSFER'&&suspiciousOfficial(item))return {ok:false,reason:'official-stage-suspect-rumour'};
   if(item.type!=='TRANSFER'&&item.type!=='NEWS')return {ok:false,reason:`unsupported-type-${item.type||'none'}`};
   if((item.relevance||0)<2)return {ok:false,reason:'low-relevance'};
   const age=Date.now()-new Date(item.publishedAt||0).getTime();
@@ -66,7 +72,7 @@ function detailFor(item,max=260){
   if(!detail||detail.toLowerCase()===title.toLowerCase()||detail.toLowerCase().startsWith(title.toLowerCase())){
     if(item.type==='TRANSFER'){
       if(item.stage==='ROMANO_CONFIRMED')detail='The deal is agreed and can be treated as confirmed. The official club announcement is still to follow.';
-      else if(item.stage==='OFFICIAL')detail='The club has now confirmed the move. Here’s the latest as the signing is made official.';
+      else if(item.stage==='OFFICIAL')detail='The move has now been officially confirmed. Here’s the latest as the signing is made official.';
       else detail='The move is developing and beginning to gather pace. Here’s the latest.';
     }else detail='The latest football story is developing. Here’s the key update from the live feed.';
   }
