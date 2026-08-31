@@ -36,6 +36,10 @@
     const script=document.createElement('script');
     script.src='script.js';
     script.onload=()=>{
+      const reactions=document.createElement('script');
+      reactions.src='fan-reactions.js?v=20260831-1';
+      reactions.dataset.ftFanReactions='1';
+      document.body.appendChild(reactions);
       if(view==='latest'){
         const draw=document.createElement('script');
         draw.src='draw-news.js?v=20260826-1';
