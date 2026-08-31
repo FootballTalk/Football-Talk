@@ -10,6 +10,8 @@
     .replace(/'/g, '&#039;');
 
   const clean = (value = '') => String(value).replace(/\s+/g, ' ').trim();
+  let inFlight = false;
+  let lastAttempt = 0;
 
   function needsFallback() {
     return !feed.querySelector('.post-card') || !!feed.querySelector('.empty-state');
@@ -26,11 +28,13 @@
   }
 
   function render(items) {
-    if (!needsFallback()) return;
+    if (!needsFallback()) return false;
+
     const useful = (items || [])
       .filter(item => clean(item.title) && Number(item.relevance ?? 1) > 0)
       .slice(0, 12);
-    if (!useful.length) return;
+
+    if (!useful.length) return false;
 
     feed.innerHTML = useful.map(item => {
       const title = esc(clean(item.title));
@@ -44,31 +48,52 @@
         ? (stage === 'OFFICIAL' ? 'DEAL DONE' : stage === 'DEVELOPING' ? 'TRANSFER UPDATE' : 'TRANSFER')
         : 'LATEST NEWS';
       const image = clean(item.image || '');
+
       return `<article class="post-card home-api-fallback">
         ${image ? `<img src="${esc(image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}
-        <div class="post-card-content">
-          <p class="eyebrow dark">${esc(label)}</p>
+        <div class="post-card-body">
+          <span class="tag">${esc(label)}</span>
+          <p class="card-meta">${source}${time ? ` · ${time}` : ''}</p>
           <h3>${title}</h3>
           ${description ? `<p>${description}</p>` : ''}
-          <div class="post-meta">${source}${time ? ` · ${time}` : ''}</div>
           ${link ? `<a class="read-story" href="${esc(link)}" target="_blank" rel="noopener noreferrer">Read story →</a>` : ''}
         </div>
       </article>`;
     }).join('');
+
+    return true;
   }
 
-  async function recover() {
-    if (!needsFallback()) return;
+  async function recover(force = false) {
+    if (!needsFallback() || inFlight) return;
+
+    const now = Date.now();
+    if (!force && now - lastAttempt < 900) return;
+    lastAttempt = now;
+    inFlight = true;
+
     try {
-      const response = await fetch(`/api/news?t=${Date.now()}`, { cache: 'no-store' });
+      const response = await fetch(`/api/news?t=${now}`, { cache: 'no-store' });
       if (!response.ok) return;
       const data = await response.json();
       render(data.items || []);
-    } catch (_) {}
+    } catch (_) {
+      // Keep the page usable and let the next scheduled retry handle it.
+    } finally {
+      inFlight = false;
+    }
   }
 
-  // Let the normal Supabase-backed homepage loader go first. If it fails,
-  // recover from Football Talk's own public news endpoint instead.
-  setTimeout(recover, 1200);
-  setTimeout(recover, 4000);
+  // Recover immediately if the normal Supabase-backed loader fails quickly.
+  queueMicrotask(() => recover(true));
+
+  // Also watch for a late failure message from the normal loader and replace it
+  // with Football Talk's own /api/news feed without making visitors refresh.
+  const observer = new MutationObserver(() => {
+    if (feed.querySelector('.empty-state')) recover();
+  });
+  observer.observe(feed, { childList: true, subtree: true });
+
+  setTimeout(() => recover(true), 1000);
+  setTimeout(() => recover(true), 3000);
 })();
