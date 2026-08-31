@@ -44,8 +44,14 @@
       }
       if(view==='matchday'){
         const extra=document.createElement('script');
-        extra.src='matchday-extra.js?v=20260825-2';
+        extra.src='matchday-extra.js?v=20260831-live-now-1';
         document.body.appendChild(extra);
+      }
+      if(view==='transfers'){
+        const tracker=document.createElement('script');
+        tracker.src='transfer-centre.js?v=20260831-1';
+        tracker.dataset.ftTransferCentre='1';
+        document.body.appendChild(tracker);
       }
       if(['latest','transfers','debate'].includes(view)){
         const auto=document.createElement('script');
