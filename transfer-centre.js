@@ -39,6 +39,15 @@
   }
   function stageClass(s){return s==='ITS_A_GO'?'go':s==='OFFICIAL'?'official':''}
   function dateValue(i){return Number(i.published||Date.parse(i.publishedAt||i.published_at||0)||0)}
+  function internalHref(item){
+    const q=new URLSearchParams();
+    q.set('title',clean(item.title));
+    q.set('summary',clean(item.description||item.summary||''));
+    q.set('stage',item._stage||'RUMOUR');
+    if(item.image)q.set('image',item.image);
+    if(item.link)q.set('source',item.link);
+    return `transfer-story.html?${q.toString()}`;
+  }
   function render(items){
     const seen=new Set();
     const transfers=items.filter(i=>String(i.type||'').toUpperCase()==='TRANSFER').map(i=>({...i,_stage:stageFor(i)})).sort((a,b)=>dateValue(b)-dateValue(a)).filter(i=>{const k=clean(i.title).toLowerCase();if(!k||seen.has(k))return false;seen.add(k);return true}).slice(0,16);
@@ -46,8 +55,8 @@
     if(!transfers.length){const e=document.createElement('div');e.className='ft-tc-empty';e.textContent='No live transfer updates are available right now.';grid.appendChild(e);return;}
     transfers.forEach(item=>{
       const current=order.get(item._stage)??0;
-      const a=document.createElement(item.link?'a':'article');
-      if(item.link){a.href=item.link;a.target='_blank';a.rel='noopener noreferrer';a.className='ft-tc-card ft-tc-link';}else a.className='ft-tc-card';
+      const a=document.createElement('a');
+      a.href=internalHref(item);a.className='ft-tc-card ft-tc-link';
       const head=document.createElement('div');head.className='ft-tc-card-head';
       if(item.image){const img=document.createElement('img');img.src=item.image;img.alt='';img.loading='lazy';img.referrerPolicy='no-referrer';img.addEventListener('error',()=>img.remove());head.appendChild(img)}
       const copy=document.createElement('div');const badge=document.createElement('span');badge.className=`ft-tc-stage ${stageClass(item._stage)}`;badge.textContent=`${STAGES[current].icon} ${STAGES[current].label}`;const title=document.createElement('div');title.className='ft-tc-title';title.textContent=clean(item.title);copy.append(badge,title);head.appendChild(copy);a.appendChild(head);
