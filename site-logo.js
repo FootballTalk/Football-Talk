@@ -1,64 +1,9 @@
 (() => {
-  const loadScript=(src,dataKey)=>{
-    if([...document.scripts].some(s=>(s.src||'').includes(src.split('?')[0]))) return;
-    const script=document.createElement('script');
-    script.src=src;
-    if(dataKey) script.dataset[dataKey]='1';
-    document.head.appendChild(script);
-  };
-
+  const loadScript=(src,dataKey)=>{if([...document.scripts].some(s=>(s.src||'').includes(src.split('?')[0])))return;const script=document.createElement('script');script.src=src;if(dataKey)script.dataset[dataKey]='1';document.head.appendChild(script);};
   const isStatsZone=location.pathname.includes('/api/stats-zone');
-
   loadScript('header-logo.js?v=20260827-sitewide-2','headerLogoShared');
-
   if(isStatsZone){
-    const buildStatsHub=()=>{
-      if(document.querySelector('.ft-stats-hub-bar')) return;
-      const header=document.querySelector('header.top,.top');
-      if(!header) return;
-
-      const params=new URLSearchParams(location.search);
-      const main=(params.get('main')||'').toLowerCase();
-      const stat=(params.get('stat')||'').toLowerCase();
-      const active=(main==='leaders'&&stat==='goals')?'scorers':(main==='form'?'form':'zone');
-
-      const items=[
-        ['Tables','/tables.html','tables'],
-        ['Stats Zone','/api/stats-zone','zone'],
-        ['Top Scorers','/api/stats-zone?main=leaders&stat=goals','scorers'],
-        ['Form & Results','/api/stats-zone?main=form','form']
-      ];
-
-      const bar=document.createElement('nav');
-      bar.className='ft-stats-hub-bar';
-      bar.setAttribute('aria-label','Stats Hub');
-      const label=document.createElement('span');
-      label.className='ft-stats-hub-label';
-      label.textContent='STATS HUB';
-      bar.appendChild(label);
-      items.forEach(([text,href,id])=>{
-        const a=document.createElement('a');
-        a.href=href;
-        a.textContent=text;
-        if(id===active) a.classList.add('context-active');
-        bar.appendChild(a);
-      });
-      header.insertAdjacentElement('afterend',bar);
-
-      const style=document.createElement('style');
-      style.textContent=`
-        .ft-stats-hub-bar{position:sticky;top:78px;z-index:176;display:flex;gap:8px;align-items:center;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:9px 12px;background:#f7c600;border-bottom:1px solid #d0a800;box-shadow:0 3px 8px rgba(0,0,0,.08)}
-        .ft-stats-hub-bar::-webkit-scrollbar{display:none}.ft-stats-hub-label{flex:0 0 auto;font-size:11px;font-weight:1000;letter-spacing:.08em;color:#111;padding-right:4px}.ft-stats-hub-bar a{flex:0 0 auto;padding:9px 13px;border-radius:999px;background:#111;color:#fff;font-size:12px;font-weight:900;text-decoration:none;white-space:nowrap}.ft-stats-hub-bar a.context-active{background:#fff;color:#111}.hub-nav{top:132px!important}
-        @media(max-width:650px){.ft-stats-hub-bar{top:66px;padding:8px 10px}.ft-stats-hub-bar a{padding:8px 12px;font-size:11px}.hub-nav{top:114px!important}}
-      `;
-      document.head.appendChild(style);
-    };
-    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',buildStatsHub,{once:true}); else buildStatsHub();
-  } else {
-    loadScript('persistent-tabs.js?v=20260831-stats-hub-3','persistentTabsShared');
-  }
-
-  loadScript('stats-route.js?v=20260827-1','statsRouteShared');
-  loadScript('deadline-day.js?v=20260827-1','deadlineDayShared');
-  if(/quiz\.html$/i.test(location.pathname)) loadScript('quiz-scoreboard.js?v=20260829-1','quizScoreboardShared');
+    const buildStatsHub=()=>{if(document.querySelector('.ft-stats-hub-bar'))return;const header=document.querySelector('header.top,.top');if(!header)return;const params=new URLSearchParams(location.search),main=(params.get('main')||'').toLowerCase(),stat=(params.get('stat')||'').toLowerCase(),active=(main==='leaders'&&stat==='goals')?'scorers':(main==='form'?'form':'zone');const items=[['Tables','/tables.html','tables'],['Stats Zone','/api/stats-zone','zone'],['Top Scorers','/api/stats-zone?main=leaders&stat=goals','scorers'],['Form & Results','/api/stats-zone?main=form','form']];const bar=document.createElement('nav');bar.className='ft-stats-hub-bar';bar.setAttribute('aria-label','Stats Hub');const label=document.createElement('span');label.className='ft-stats-hub-label';label.textContent='STATS HUB';bar.appendChild(label);items.forEach(([text,href,id])=>{const a=document.createElement('a');a.href=href;a.textContent=text;if(id===active)a.classList.add('context-active');bar.appendChild(a)});header.insertAdjacentElement('afterend',bar);const style=document.createElement('style');style.textContent=`.ft-stats-hub-bar{position:sticky;top:78px;z-index:176;display:flex;gap:8px;align-items:center;overflow-x:auto;padding:9px 12px;background:#f7c600;border-bottom:1px solid #d0a800}.ft-stats-hub-label{font-size:11px;font-weight:1000;letter-spacing:.08em}.ft-stats-hub-bar a{flex:0 0 auto;padding:9px 13px;border-radius:999px;background:#111;color:#fff;font-size:12px;font-weight:900;text-decoration:none}.ft-stats-hub-bar a.context-active{background:#fff;color:#111}@media(max-width:650px){.ft-stats-hub-bar{top:66px;padding:8px 10px}.ft-stats-hub-bar a{padding:8px 12px;font-size:11px}}`;document.head.appendChild(style)};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',buildStatsHub,{once:true});else buildStatsHub();
+  } else loadScript('persistent-tabs.js?v=20260831-nav-audit-2','persistentTabsShared');
+  loadScript('stats-route.js?v=20260827-1','statsRouteShared');loadScript('deadline-day.js?v=20260827-1','deadlineDayShared');if(/quiz\.html$/i.test(location.pathname))loadScript('quiz-scoreboard.js?v=20260829-1','quizScoreboardShared');
 })();
