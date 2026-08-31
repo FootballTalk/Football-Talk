@@ -39,17 +39,30 @@
   }
   function stageClass(s){return s==='ITS_A_GO'?'go':s==='OFFICIAL'?'official':''}
   function dateValue(i){return Number(i.published||Date.parse(i.publishedAt||i.published_at||0)||0)}
+  function publishedImageUrl(raw=''){
+    const value=clean(raw);if(!value)return'';
+    try{
+      const u=new URL(value);
+      if(u.hostname==='ichef.bbci.co.uk'){
+        u.pathname=u.pathname.replace('/ace/standard/240/','/ace/standard/1024/').replace('/images/ic/240x135/','/images/ic/1024x576/');
+      }else if(u.hostname==='i.guim.co.uk'){
+        u.searchParams.set('width','900');
+        u.searchParams.set('quality','85');
+      }
+      return u.href;
+    }catch{return value}
+  }
   function internalHref(item){
     const q=new URLSearchParams();
     q.set('title',clean(item.title));
     q.set('summary',clean(item.description||item.summary||''));
     q.set('stage',item._stage||'RUMOUR');
-    if(item.image)q.set('image',item.image);
+    const image=publishedImageUrl(item.image);if(image)q.set('image',image);
     if(item.link)q.set('source',item.link);
     return `transfer-story.html?${q.toString()}`;
   }
   function addPublishedImage(card,item){
-    if(!item.image)return;
+    const src=publishedImageUrl(item.image);if(!src)return;
     const img=new Image();
     img.alt=clean(item.title);
     img.loading='lazy';
@@ -62,7 +75,7 @@
       media.appendChild(img);
       card.prepend(media);
     };
-    img.src=item.image;
+    img.src=src;
   }
   function render(items){
     const seen=new Set();
