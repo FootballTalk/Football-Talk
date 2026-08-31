@@ -53,7 +53,7 @@
       }
       if(view==='transfers'){
         const tracker=document.createElement('script');
-        tracker.src='transfer-centre.js?v=20260831-1';
+        tracker.src='transfer-centre.js?v=20260831-2';
         tracker.dataset.ftTransferCentre='1';
         document.body.appendChild(tracker);
       }
