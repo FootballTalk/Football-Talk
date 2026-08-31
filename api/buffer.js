@@ -33,10 +33,10 @@ async function connectionInfo(){
   const channelResult=await gql(`query FootballTalkChannels($organizationId: OrganizationId!) { channels(input:{organizationId:$organizationId,filter:{isLocked:false}}) { id name displayName service isQueuePaused } }`,{organizationId:organization.id});
   return {connected:true,organization,channels:channelResult.data?.channels||[],rateLimit:channelResult.rateLimit||orgResult.rateLimit};
 }
-function storyKey(item){return crypto.createHash('sha256').update(`${item.link||''}|${item.title||''}`).digest('hex').slice(0,24);}
+function storyKey(item){return crypto.createHash('sha256').update(`${item.link||''}|${item.title||''}|${item.stage||''}`).digest('hex').slice(0,24);}
 function eligibility(item){
   if(!item?.title)return {ok:false,reason:'missing-title'};
-  if(item.type==='TRANSFER'&&!['OFFICIAL','DEVELOPING'].includes(item.stage))return {ok:false,reason:`transfer-stage-${item.stage||'none'}`};
+  if(item.type==='TRANSFER'&&!['OFFICIAL','DEVELOPING','ROMANO_CONFIRMED'].includes(item.stage))return {ok:false,reason:`transfer-stage-${item.stage||'none'}`};
   if(item.type!=='TRANSFER'&&item.type!=='NEWS')return {ok:false,reason:`unsupported-type-${item.type||'none'}`};
   if((item.relevance||0)<2)return {ok:false,reason:'low-relevance'};
   const age=Date.now()-new Date(item.publishedAt||0).getTime();
@@ -45,13 +45,18 @@ function eligibility(item){
   return {ok:true,ageMinutes:Math.round(age/60000)};
 }
 function eligible(item){return eligibility(item).ok;}
-function cleanTitle(value){return String(value||'').replace(/\s+/g,' ').trim();}
-function leadFor(item){return item.type==='TRANSFER'?(item.stage==='OFFICIAL'?'🚨 DEAL DONE':'🔥 TRANSFER CENTRE — GAINING PACE'):'⚽ FOOTBALL TALK';}
+function cleanTitle(value){return String(value||'').replace(/\b(?:Fabrizio Romano|@FabrizioRomano)\b/gi,'').replace(/\s+/g,' ').trim();}
+function leadFor(item){
+  if(item.type!=='TRANSFER')return '⚽ FOOTBALL TALK';
+  if(item.stage==='ROMANO_CONFIRMED')return "🚨 IT'S A GO";
+  if(item.stage==='OFFICIAL')return '✅ OFFICIAL';
+  return '🔥 TRANSFER CENTRE — GAINING PACE';
+}
 function debateFor(item){
   const title=cleanTitle(item.title);
   let debate=String(item.debatePrompt||'').trim();
   if(debate&&cleanTitle(debate).toLowerCase()!==title.toLowerCase()&&!cleanTitle(debate).toLowerCase().startsWith(title.toLowerCase()))return debate;
-  if(item.type==='TRANSFER')return item.stage==='OFFICIAL'?'Good move? Have your say 👇':'Can you see this one happening? Have your say 👇';
+  if(item.type==='TRANSFER')return ['OFFICIAL','ROMANO_CONFIRMED'].includes(item.stage)?'Good move? Have your say 👇':'Can you see this one happening? Have your say 👇';
   if(/\blive\b/i.test(title))return 'Follow the action and have your say 👇';
   return 'What’s your verdict? Have your say 👇';
 }
@@ -59,7 +64,11 @@ function detailFor(item,max=260){
   const title=cleanTitle(item.title);
   let detail=cleanTitle(item.description||item.summary||item.excerpt||'');
   if(!detail||detail.toLowerCase()===title.toLowerCase()||detail.toLowerCase().startsWith(title.toLowerCase())){
-    detail=item.type==='TRANSFER'?(item.stage==='OFFICIAL'?'The deal is confirmed. Here’s the latest as the move is completed.':'The move is developing and beginning to gather pace. Here’s the latest.'):'The latest football story is developing. Here’s the key update from the live feed.';
+    if(item.type==='TRANSFER'){
+      if(item.stage==='ROMANO_CONFIRMED')detail='The deal is agreed and can be treated as confirmed. The official club announcement is still to follow.';
+      else if(item.stage==='OFFICIAL')detail='The club has now confirmed the move. Here’s the latest as the signing is made official.';
+      else detail='The move is developing and beginning to gather pace. Here’s the latest.';
+    }else detail='The latest football story is developing. Here’s the key update from the live feed.';
   }
   if(detail.length>max)detail=detail.slice(0,max-1).trimEnd()+'…';
   return detail;
@@ -91,15 +100,27 @@ async function alreadyRecorded(cfg,prefix,id,service){
   return Array.isArray(rows)&&rows.length>0;
 }
 async function remember(cfg,prefix,kind,id,item,post,service){
-  const record={kind,storyId:id,title:item.title,bufferPostId:post?.id||null,createdAt:new Date().toISOString(),channel:service};
+  const record={kind,storyId:id,title:item.title,stage:item.stage||null,confirmationPhase:item.confirmationPhase||null,source:item.source||null,bufferPostId:post?.id||null,createdAt:new Date().toISOString(),channel:service};
   const r=await fetch(`${cfg.url}/rest/v1/poll_responses`,{method:'POST',headers:sbHeaders(cfg,{'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({poll_id:`${prefix}${service}:${id}`,answer:JSON.stringify(record)})});
   if(!r.ok)throw new Error(`Supabase ${r.status}`);
 }
-async function websiteStories(){
-  const r=await fetch(`${SITE_URL}api/news`,{headers:{'User-Agent':'FootballTalk Buffer Sync/1.5'},cache:'no-store'});
-  if(!r.ok)throw new Error(`Website news ${r.status}`);
+async function fetchStoryFeed(endpoint,label){
+  const r=await fetch(`${SITE_URL}${endpoint}`,{headers:{'User-Agent':'FootballTalk Buffer Sync/2.0'},cache:'no-store'});
+  if(!r.ok)throw new Error(`${label} ${r.status}`);
   const data=await r.json();
   return data.items||[];
+}
+async function websiteStories(){
+  const settled=await Promise.allSettled([
+    fetchStoryFeed('api/news','Website news'),
+    fetchStoryFeed('api/romano','Confirmed transfer feed')
+  ]);
+  const items=settled.filter(r=>r.status==='fulfilled').flatMap(r=>r.value||[]);
+  if(!items.length){
+    const reasons=settled.filter(r=>r.status==='rejected').map(r=>String(r.reason?.message||r.reason));
+    throw new Error(reasons.join('; ')||'No story feeds available');
+  }
+  return items.sort((a,b)=>new Date(b.publishedAt||0)-new Date(a.publishedAt||0));
 }
 async function createPost(channelId,text,service,{draft=false,image=null}={}){
   let query;
@@ -149,7 +170,7 @@ async function syncPublish(){
         published.push({service,channel:target.displayName||target.name,postId:made.post.id,image});
       }catch(error){errors.push({service,error:String(error.message||error)});}
     }
-    return {ok:published.length>0,published:published.length>0,title:item.title,posts:published,errors,instagram:'automatic-square-image'};
+    return {ok:published.length>0,published:published.length>0,title:item.title,stage:item.stage||null,posts:published,errors,instagram:'automatic-square-image'};
   }
   return {ok:true,published:false,reason:'No fresh unpublished selected story',instagram:'automatic-square-image'};
 }
@@ -157,7 +178,7 @@ async function diagnostics(){
   const cfg=siteConfig();
   const [items,info]=await Promise.all([websiteStories(),connectionInfo()]);
   const targets={facebook:channelFor(info,'facebook'),twitter:channelFor(info,'twitter'),instagram:channelFor(info,'instagram')};
-  const sample=(items||[]).slice(0,12).map(item=>({title:item.title,type:item.type,stage:item.stage||null,relevance:item.relevance||0,publishedAt:item.publishedAt||null,image:item.image||null,...eligibility(item)}));
+  const sample=(items||[]).slice(0,12).map(item=>({title:item.title,type:item.type,stage:item.stage||null,confirmationPhase:item.confirmationPhase||null,source:item.source||null,relevance:item.relevance||0,publishedAt:item.publishedAt||null,image:item.image||null,...eligibility(item)}));
   let selected=null;
   for(const item of items){
     if(!eligible(item))continue;
@@ -165,7 +186,7 @@ async function diagnostics(){
     const published=await Promise.all(['facebook','twitter','instagram'].map(s=>alreadyRecorded(cfg,PUBLISH_PREFIX,id,s)));
     if(published.some(v=>!v)){selected=item;break;}
   }
-  return {ok:true,mode:'diagnostic',publishing:'facebook-x-instagram-live',instagram:'automatic-square-image',instagramImage:INSTAGRAM_SOCIAL_IMAGE,bufferConnected:true,organization:info.organization?{id:info.organization.id,name:info.organization.name}:null,channels:(info.channels||[]).map(c=>({id:c.id,name:c.displayName||c.name,service:c.service,isQueuePaused:!!c.isQueuePaused})),targets:Object.fromEntries(Object.entries(targets).map(([k,v])=>[k,v?{id:v.id,name:v.displayName||v.name}:null])),storyCount:items.length,selectedStory:selected?{title:selected.title,type:selected.type,stage:selected.stage||null,relevance:selected.relevance||0,publishedAt:selected.publishedAt||null,image:imageUrl(selected),instagramImage:INSTAGRAM_SOCIAL_IMAGE,facebookPreview:facebookText(selected),instagramPreview:instagramText(selected),xPreview:xText(selected)}:null,recentEligibility:sample};
+  return {ok:true,mode:'diagnostic',publishing:'facebook-x-instagram-live',transferConfirmation:'verified-insider-plus-club-official',instagram:'automatic-square-image',instagramImage:INSTAGRAM_SOCIAL_IMAGE,bufferConnected:true,organization:info.organization?{id:info.organization.id,name:info.organization.name}:null,channels:(info.channels||[]).map(c=>({id:c.id,name:c.displayName||c.name,service:c.service,isQueuePaused:!!c.isQueuePaused})),targets:Object.fromEntries(Object.entries(targets).map(([k,v])=>[k,v?{id:v.id,name:v.displayName||v.name}:null])),storyCount:items.length,selectedStory:selected?{title:selected.title,type:selected.type,stage:selected.stage||null,confirmationPhase:selected.confirmationPhase||null,source:selected.source||null,relevance:selected.relevance||0,publishedAt:selected.publishedAt||null,image:imageUrl(selected),instagramImage:INSTAGRAM_SOCIAL_IMAGE,facebookPreview:facebookText(selected),instagramPreview:instagramText(selected),xPreview:xText(selected)}:null,recentEligibility:sample};
 }
 module.exports=async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
