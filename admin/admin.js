@@ -19,17 +19,37 @@ async function init(){
 }
 
 function renderAuth(session,firstLoad=false){
+  const bell=document.getElementById('advertisingBell');
   if(session){
     login.classList.add('hidden');
     admin.classList.remove('hidden');
     logoutBtn.classList.remove('hidden');
+    bell?.classList.remove('hidden');
     loadStories();
+    loadAdvertisingCount();
     if(firstLoad) restoreDraftOrReset();
   }else{
     login.classList.remove('hidden');
     admin.classList.add('hidden');
     logoutBtn.classList.add('hidden');
+    bell?.classList.add('hidden');
   }
+}
+
+async function loadAdvertisingCount(){
+  const badge=document.getElementById('advertisingCount');
+  if(!badge||!sb)return;
+  const{count,error}=await sb.from('advertising_enquiries').select('id',{count:'exact',head:true});
+  if(error){
+    badge.textContent='!';
+    badge.classList.remove('zero');
+    return;
+  }
+  const n=Number(count||0);
+  badge.textContent=n>99?'99+':String(n);
+  badge.classList.toggle('zero',n===0);
+  const bell=document.getElementById('advertisingBell');
+  if(bell)bell.setAttribute('aria-label',`${n} advertising ${n===1?'enquiry':'enquiries'} awaiting review`);
 }
 
 document.getElementById('loginBtn')?.addEventListener('click',async()=>{
