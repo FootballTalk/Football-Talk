@@ -2,6 +2,8 @@
   const feed = document.getElementById('dynamic-posts');
   if (!feed) return;
 
+  const CACHE_KEY = 'ft-home-news-cache-v1';
+  const MAX_CACHE_AGE = 12 * 60 * 60 * 1000;
   const esc = (value = '') => String(value)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -25,9 +27,25 @@
     if (Number.isNaN(date.getTime())) return '';
     return date.toLocaleString('en-GB', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
   }
+  function usefulItems(items) {
+    return (items || []).filter(item => clean(item.title) && Number(item.relevance ?? 1) > 0).slice(0, 12);
+  }
+  function saveCache(items) {
+    const useful = usefulItems(items);
+    if (!useful.length) return;
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({savedAt:Date.now(), items:useful})); } catch (_) {}
+  }
+  function readCache() {
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+      if (!cached || !Array.isArray(cached.items) || !cached.items.length) return [];
+      if (!cached.savedAt || Date.now() - Number(cached.savedAt) > MAX_CACHE_AGE) return [];
+      return cached.items;
+    } catch (_) { return []; }
+  }
   function render(items) {
     if (!needsFallback()) return false;
-    const useful = (items || []).filter(item => clean(item.title) && Number(item.relevance ?? 1) > 0).slice(0, 12);
+    const useful = usefulItems(items);
     if (!useful.length) return false;
     feed.innerHTML = useful.map(item => {
       const title = esc(clean(item.title));
@@ -43,6 +61,10 @@
     }).join('');
     return true;
   }
+  function neutralState() {
+    if (!needsFallback()) return;
+    feed.innerHTML = '<div class="empty-state"><strong>Latest football updates are refreshing.</strong><br>Please check back shortly.</div>';
+  }
   async function recover(force = false) {
     if (!needsFallback() || inFlight) return;
     const now = Date.now();
@@ -51,16 +73,20 @@
     inFlight = true;
     try {
       const response = await fetch(`/api/news?t=${now}`, {cache:'no-store'});
-      if (!response.ok) return;
+      if (!response.ok) throw new Error('news unavailable');
       const data = await response.json();
-      render(data.items || []);
+      const items = data.items || [];
+      saveCache(items);
+      if (render(items)) return;
+      if (render(readCache())) return;
+      neutralState();
     } catch (_) {
-      // Keep the rest of the homepage usable; the scheduled retry will try again.
+      if (!render(readCache())) neutralState();
     } finally { inFlight = false; }
   }
 
-  // The Supabase loader runs asynchronously and can overwrite an earlier fallback,
-  // so keep watching the feed and recover whenever its failure state appears.
+  // Three-step resilience: live API -> recent local cache -> neutral refresh message.
+  // Keep watching because the asynchronous primary loader can overwrite the fallback.
   const observer = new MutationObserver(() => {
     if (failedState()) recover(true);
   });
