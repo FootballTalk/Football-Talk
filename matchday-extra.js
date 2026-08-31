@@ -8,6 +8,7 @@ const seededMatchdayStories=[{type:'Matchday',published_at:'2026-08-24T15:45:00+
   const FINISHED=new Set(['FT','AET','PEN']);
   const priorityIds=new Set([39,40,41,42,45,48,2,3,848,61,71,87,55,78,135]);
   const priorityNames=/premier league|championship|league one|league two|fa cup|carabao|efl cup|champions league|europa league|conference league|la ?liga|serie a|bundesliga|ligue 1|liga portugal/i;
+  const idNames=new Map([[39,'Premier League'],[40,'EFL Championship'],[41,'League One'],[42,'League Two'],[45,'FA Cup'],[48,'Carabao Cup'],[2,'UEFA Champions League'],[3,'UEFA Europa League'],[848,'UEFA Conference League'],[61,'Ligue 1'],[71,'Serie A'],[87,'LaLiga'],[78,'Bundesliga'],[135,'Serie A']]);
   let loading=false;
 
   const styles=document.createElement('style');
@@ -25,7 +26,8 @@ const seededMatchdayStories=[{type:'Matchday',published_at:'2026-08-24T15:45:00+
   const list=document.getElementById('ft-ln-list'),title=document.getElementById('ft-ln-title'),sub=document.getElementById('ft-ln-sub'),kicker=document.getElementById('ft-ln-kicker'),state=document.getElementById('ft-ln-state'),updated=document.getElementById('ft-ln-updated');
   const londonDate=d=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
   const kickOff=v=>new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(v));
-  const leagueWanted=l=>priorityIds.has(Number(l.id))||priorityNames.test(`${l.country||''} ${l.name||''}`);
+  const normalizedName=l=>String(l.name||'').trim();
+  const leagueWanted=l=>{const id=Number(l.id);const name=normalizedName(l);if(priorityIds.has(id)){const expected=idNames.get(id);return !expected||name.toLowerCase()===expected.toLowerCase()||priorityNames.test(name)}return priorityNames.test(name)};
   const statusText=f=>{const s=String(f.status||'NS').toUpperCase();if(s==='HT')return'HT';if(LIVE.has(s))return f.elapsed?`LIVE · ${f.elapsed}′`:'LIVE';if(FINISHED.has(s))return s==='FT'?'FT':s;return kickOff(f.date)};
   const scoreText=f=>{const s=String(f.status||'NS').toUpperCase();return (LIVE.has(s)||FINISHED.has(s))?`${f.homeGoals??0}–${f.awayGoals??0}`:kickOff(f.date)};
 
