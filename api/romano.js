@@ -23,15 +23,18 @@ function confirmedDeal(text=''){
   const t=String(text).replace(/\s+/g,' ').trim();
   if(!transferContext(t))return false;
   if(/\bhere we go!?\b/i.test(t))return true;
-  return /\b(?:deal (?:is )?done|deal completed|all done|done deal|agreement (?:is )?done|deal sealed|sealed deal)\b/i.test(t);
+  return /\b(?:deal (?:is |now )?done|deal completed|all done|done deal|deal sealed|sealed deal|move (?:is |now )?done|transfer (?:is |now )?done)\b/i.test(t);
 }
 
 function cleanForPublishing(text=''){
   return String(text)
     .replace(/^RT\s+@FabrizioRomano:\s*/i,'')
     .replace(/^Fabrizio Romano\s*[:\-–—]\s*/i,'')
-    .replace(/\b(?:Fabrizio Romano|@FabrizioRomano)\b/gi,'')
+    .replace(/Fabrizio Romano/gi,'')
+    .replace(/@FabrizioRomano/gi,'')
     .replace(/\bHERE WE GO!?\b/gi,'')
+    .replace(/\s*[—-]\s*\(\s*\)\s*[A-Z][a-z]{2}\s+\d{1,2},\s+\d{4}.*$/i,'')
+    .replace(/\s*[—-]\s*\([^)]*\)\s*[A-Z][a-z]{2}\s+\d{1,2},\s+\d{4}.*$/i,'')
     .replace(/\s+([,.;!?])/g,'$1')
     .replace(/\s+/g,' ')
     .replace(/^[\s:;,.\-–—]+|[\s:;,.\-–—]+$/g,'')
@@ -51,6 +54,15 @@ function descriptionFor(text=''){
   let clean=cleanForPublishing(text).replace(/\s+https?:\/\/\S+/g,'').trim();
   if(clean.length>320)clean=clean.slice(0,319).trimEnd()+'…';
   return clean;
+}
+
+function dedupeKey(item){
+  return String(item.title||'')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g,' ')
+    .replace(/\b(excl|exclusive)\b/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
 }
 
 function parseTelegram(html=''){
@@ -84,14 +96,14 @@ function parseTelegram(html=''){
   const seen=new Set();
   return items
     .sort((a,b)=>b.published-a.published)
-    .filter(item=>{const key=item.link||item.title.toLowerCase();if(seen.has(key))return false;seen.add(key);return true;})
+    .filter(item=>{const key=dedupeKey(item);if(!key||seen.has(key))return false;seen.add(key);return true;})
     .slice(0,20);
 }
 
 module.exports=async function handler(req,res){
   res.setHeader('Cache-Control','s-maxage=60, stale-while-revalidate=120');
   try{
-    const response=await fetch(TELEGRAM_URL,{headers:{'User-Agent':'Mozilla/5.0 FootballTalk Transfer Monitor/2.0'},cache:'no-store'});
+    const response=await fetch(TELEGRAM_URL,{headers:{'User-Agent':'Mozilla/5.0 FootballTalk Transfer Monitor/2.1'},cache:'no-store'});
     if(!response.ok)throw new Error(`Telegram ${response.status}`);
     const html=await response.text();
     const items=parseTelegram(html);
