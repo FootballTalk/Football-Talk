@@ -3,6 +3,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   const params=new URLSearchParams(location.search);
   const view=(params.get('view')||'').toLowerCase();
 
+  if(path==='match.html'&&!document.querySelector('script[data-prematch-intelligence]')){
+    const preMatch=document.createElement('script');preMatch.src='pre-match-intelligence.js?v=20260831-1';preMatch.dataset.prematchIntelligence='1';document.body.appendChild(preMatch);
+  }
+
   if(!document.querySelector('script[data-site-logo]')){
     const siteLogo=document.createElement('script');siteLogo.src='site-logo.js?v=20260829-4';siteLogo.dataset.siteLogo='1';document.body.appendChild(siteLogo);
   }
