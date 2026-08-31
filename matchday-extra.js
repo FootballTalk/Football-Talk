@@ -35,17 +35,18 @@ const seededMatchdayStories=[{type:'Matchday',published_at:'2026-08-24T15:45:00+
 
   function render(leagues){
     const now=Date.now();
-    const filtered=(leagues||[]).filter(leagueWanted).map(l=>({...l,fixtures:(l.fixtures||[]).filter(f=>f.date)})).filter(l=>l.fixtures.length);
+    const today=londonDate(new Date());
+    const filtered=(leagues||[]).filter(leagueWanted).map(l=>({...l,fixtures:(l.fixtures||[]).filter(f=>f.date&&londonDate(new Date(f.date))===today)})).filter(l=>l.fixtures.length);
     const live=filtered.map(l=>({...l,fixtures:l.fixtures.filter(f=>LIVE.has(String(f.status||'').toUpperCase()))})).filter(l=>l.fixtures.length);
-    const upcoming=filtered.map(l=>({...l,fixtures:l.fixtures.filter(f=>!LIVE.has(String(f.status||'').toUpperCase())&&!FINISHED.has(String(f.status||'').toUpperCase())&&new Date(f.date).getTime()>=now).sort((a,b)=>(a.timestamp||new Date(a.date).getTime()/1000)-(b.timestamp||new Date(b.date).getTime()/1000)).slice(0,4)})).filter(l=>l.fixtures.length);
-    const finished=filtered.map(l=>({...l,fixtures:l.fixtures.filter(f=>FINISHED.has(String(f.status||'').toUpperCase())).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).slice(0,3)})).filter(l=>l.fixtures.length);
+    const upcoming=filtered.map(l=>({...l,fixtures:l.fixtures.filter(f=>!LIVE.has(String(f.status||'').toUpperCase())&&!FINISHED.has(String(f.status||'').toUpperCase())&&new Date(f.date).getTime()>=now).sort((a,b)=>(a.timestamp||new Date(a.date).getTime()/1000)-(b.timestamp||new Date(b.date).getTime()/1000)).slice(0,6)})).filter(l=>l.fixtures.length);
+    const finished=filtered.map(l=>({...l,fixtures:l.fixtures.filter(f=>FINISHED.has(String(f.status||'').toUpperCase())).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).slice(0,6)})).filter(l=>l.fixtures.length);
     let showing=[];
     if(live.length){showing=live;kicker.innerHTML='<span class="ft-ln-live-dot"></span>FT LIVE';title.textContent='LIVE NOW';sub.textContent='Football is live — scores and match status update automatically.';state.textContent='LIVE NOW stays on top while relevant football is being played.';}
-    else if(upcoming.length){showing=upcoming;kicker.textContent='COMING UP';title.textContent='COMING UP';sub.textContent='No featured match is live right now. Here are the next featured kick-offs.';state.textContent='This automatically switches to LIVE NOW as soon as a featured match starts.';}
+    else if(upcoming.length){showing=upcoming;kicker.textContent='COMING UP';title.textContent='COMING UP TODAY';sub.textContent='No featured match is live right now. These are the remaining featured kick-offs today.';state.textContent='This automatically switches to LIVE NOW as soon as a featured match starts.';}
     else if(finished.length){showing=finished;kicker.textContent='RESULTS & REACTION';title.textContent='TODAY’S RESULTS';sub.textContent='Today’s featured programme has finished.';state.textContent='The live programme is complete — results now take priority.';}
-    else{showing=[];kicker.textContent='COMING UP';title.textContent='COMING UP';sub.textContent='No featured match is live right now.';state.textContent='The next featured fixtures will appear here automatically.';}
+    else{showing=[];kicker.textContent='COMING UP';title.textContent='COMING UP TODAY';sub.textContent='No featured matches are left today.';state.textContent='Open Match Centre for the next scheduled fixtures.';}
     list.replaceChildren();
-    if(!showing.length){const e=document.createElement('div');e.className='ft-ln-empty';e.textContent='No featured fixtures are currently available. Open the Match Centre for the full schedule.';list.appendChild(e);}
+    if(!showing.length){const e=document.createElement('div');e.className='ft-ln-empty';e.textContent='No featured fixtures remain today. Open the Match Centre for the next scheduled games.';list.appendChild(e);}
     showing.slice(0,6).forEach(l=>{const box=document.createElement('div');box.className='ft-ln-league';const h=document.createElement('div');h.className='ft-ln-league-title';h.textContent=l.name||'Football';box.appendChild(h);l.fixtures.slice(0,6).forEach(f=>{const s=String(f.status||'NS').toUpperCase();const row=document.createElement('div');row.className='ft-ln-game';row.innerHTML=`<div class="ft-ln-team ft-ln-home"></div><div class="ft-ln-centre"><span class="ft-ln-score"></span><span class="ft-ln-status${LIVE.has(s)?' live':''}"></span></div><div class="ft-ln-team ft-ln-away"></div>`;row.children[0].textContent=f.home||'';row.querySelector('.ft-ln-score').textContent=scoreText(f);row.querySelector('.ft-ln-status').textContent=statusText(f);row.children[2].textContent=f.away||'';box.appendChild(row)});list.appendChild(box)});
     updated.textContent=`UPDATED ${new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date())}`;
   }
