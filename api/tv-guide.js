@@ -5,39 +5,31 @@ const decode=s=>String(s||'').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').rep
 const text=s=>decode(String(s||'').replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]*>/g,' ')).replace(/\s+/g,' ').trim();
 const anchors=s=>[...String(s||'').matchAll(/<a\b[^>]*>([\s\S]*?)<\/a>/gi)].map(m=>text(m[1])).filter(x=>x&&!/^image(?::|$)/i.test(x));
 const dateRe=/\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\d{1,2})(?:st|nd|rd|th)?\s+(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\s+(\d{4})\s+(\d{1,2}:\d{2})\b/i;
-const monthNum=name=>{const k=name.slice(0,3);return months[k==='Sep'?'Sep':k]};
+const monthNum=name=>months[name.slice(0,3)==='Sep'?'Sep':name.slice(0,3)];
 function parseRow(row){
-  const plain=text(row), dm=plain.match(dateRe); if(!dm||!plain.includes(' v '))return null;
-  const rawDate=dm[0], pos=row.toLowerCase().indexOf(rawDate.toLowerCase());
-  const before=pos>=0?row.slice(0,pos):row, after=pos>=0?row.slice(pos+rawDate.length):'';
-  const ba=anchors(before), aa=anchors(after);
-  if(ba.length<2)return null;
-  // In the source the final links before the date are Home, Away and Competition
-  // (image-only links are removed above). This survives both desktop and mobile markup.
-  const home=ba.length>=3?ba[ba.length-3]:ba[0];
-  const away=ba.length>=3?ba[ba.length-2]:ba[1];
-  let competition=ba.length>=3?ba[ba.length-1]:(aa[0]||'Football');
-  const afterNoDup=aa.filter((x,i)=>!(i===0&&x===competition));
-  const channels=[...new Set(afterNoDup.filter(x=>x!==competition&&!/^(details|more info|fixture)$/i.test(x)))];
-  if(!home||!away||home===competition||away===competition)return null;
-  const mon=monthNum(dm[2]); if(mon==null)return null;
+  const plain=text(row),dm=plain.match(dateRe); if(!dm||!plain.includes(' v '))return null;
+  // The clock value is plain text in the date/time cell, so it gives us a reliable
+  // boundary in the raw HTML even when the written date contains nested markup.
+  const pos=row.indexOf(dm[4]);
+  if(pos<0)return null;
+  const before=row.slice(0,pos),after=row.slice(pos+dm[4].length);
+  const ba=anchors(before),aa=anchors(after);
+  if(ba.length<3)return null;
+  const home=ba[ba.length-3],away=ba[ba.length-2],competition=ba[ba.length-1];
+  // After the kick-off time the source repeats the competition, followed by one
+  // or more broadcaster links. Remove that repeated competition and keep channels.
+  let channels=aa.slice();
+  if(channels[0]===competition)channels.shift();
+  channels=[...new Set(channels.filter(x=>x&&x!==competition&&!/^(details|more info|fixture)$/i.test(x)))];
+  if(!home||!away||!competition||home===away)return null;
+  const mon=monthNum(dm[2]);if(mon==null)return null;
   const d=new Date(+dm[3],mon,+dm[1],12);
   return {date:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'),time:dm[4],home,away,competition,channel:channels.join(', ')||'TV details confirmed',platform:'UK broadcaster / streaming service'};
 }
 function parse(html){
   const out=[],seen=new Set();
-  // Primary parser: the listings are rendered as table rows.
   for(const m of html.matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/gi)){
-    const x=parseRow(m[0]); if(!x)continue; const k=[x.date,x.time,x.home,x.away].join('|').toLowerCase(); if(!seen.has(k)){seen.add(k);out.push(x)}
-  }
-  // Fallback for alternate/mobile markup: inspect a bounded HTML window around each date.
-  if(!out.length){
-    for(const dm of html.matchAll(new RegExp(dateRe.source,'gi'))){
-      const start=Math.max(0,html.lastIndexOf('<div',dm.index));
-      const end=html.indexOf('</div>',dm.index);
-      const chunk=html.slice(start>=0?start:Math.max(0,dm.index-1600),end>dm.index?Math.min(html.length,end+6):Math.min(html.length,dm.index+1600));
-      const x=parseRow(chunk); if(!x)continue; const k=[x.date,x.time,x.home,x.away].join('|').toLowerCase(); if(!seen.has(k)){seen.add(k);out.push(x)}
-    }
+    const x=parseRow(m[0]);if(!x)continue;const k=[x.date,x.time,x.home,x.away].join('|').toLowerCase();if(!seen.has(k)){seen.add(k);out.push(x)}
   }
   return out.sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
 }
