@@ -1,9 +1,12 @@
 (()=>{
   const TARGET=Date.parse('2026-09-01T22:00:00Z'); // 23:00 BST
+  const EXPIRES=Date.parse('2026-09-01T23:00:00Z'); // midnight BST: remove the banner after deadline night
   const pad=n=>String(n).padStart(2,'0');
   const split=ms=>{const safe=Math.max(0,ms);const t=Math.floor(safe/1000);return{days:Math.floor(t/86400),hours:Math.floor((t%86400)/3600),mins:Math.floor((t%3600)/60),secs:t%60,millis:Math.floor((safe%1000)/10)}};
 
   function init(){
+    if(Date.now()>=EXPIRES)return;
+
     const kickoff=document.getElementById('pl-kickoff-countdown');
     if(!kickoff||document.getElementById('transfer-deadline-countdown'))return;
 
@@ -20,7 +23,14 @@
     const meta=section.querySelector('.tdc-meta');
     let closed=false;
     const tick=()=>{
-      const diff=TARGET-Date.now();
+      const now=Date.now();
+      if(now>=EXPIRES){
+        section.remove();
+        style.remove();
+        return;
+      }
+
+      const diff=TARGET-now;
       if(diff<=0){
         if(!closed){
           closed=true;
@@ -33,6 +43,7 @@
           section.querySelector('[data-tdc="secs"]').textContent='00';
           section.querySelector('[data-tdc="millis"]').textContent='00';
         }
+        requestAnimationFrame(tick);
         return;
       }
       const t=split(diff);
@@ -47,6 +58,7 @@
   }
 
   function wait(tries=0){
+    if(Date.now()>=EXPIRES)return;
     if(document.getElementById('pl-kickoff-countdown'))return init();
     if(tries<80)setTimeout(()=>wait(tries+1),50);
   }
