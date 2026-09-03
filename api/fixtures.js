@@ -2,7 +2,7 @@ import {getPredictionFallback} from './prediction-fixtures-fallback.js';
 import {FOTMOB_LEAGUES,fotmobDate,getFotmobLeagueMatches,getFotmobMatchesByDate,withinRange} from '../lib/fotmob.js';
 
 const API_BASE='https://v3.football.api-sports.io';
-const LEAGUES=[{id:39,name:'Premier League'},{id:40,name:'EFL Championship'}];
+const LEAGUES=[{id:39,name:'Premier League'},{id:40,name:'EFL Championship'},{id:179,name:'Scottish Premiership'}];
 const PREDICTION_LEAGUES=[{id:39,name:'Premier League'},{id:45,name:'FA Cup'},{id:48,name:'Carabao Cup'},{id:2,name:'UEFA Champions League'},{id:3,name:'UEFA Europa League'}];
 const FINISHED=new Set(['FT','AET','PEN']);
 const LIVE=new Set(['1H','2H','ET','BT','P','LIVE','HT','INT']);
@@ -43,7 +43,7 @@ async function fotmobFallback(req,res,reason=''){
     res.setHeader('Cache-Control','public, s-maxage=30, stale-while-revalidate=60');
     return res.status(200).json({season,live:true,provider:'FotMob',fallback,reason,leagues});
   }
-  const sourceLeagues=[FOTMOB_LEAGUES.premier,FOTMOB_LEAGUES.championship];
+  const sourceLeagues=[FOTMOB_LEAGUES.premier,FOTMOB_LEAGUES.championship,FOTMOB_LEAGUES.scottishPremiership];
   const fetched=await Promise.all(sourceLeagues.map(async league=>({league,fixtures:await getFotmobLeagueMatches(league)})));
   if(resultsOnly){
     const fromMs=now.getTime()-30*24*60*60*1000;
