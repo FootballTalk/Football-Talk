@@ -11,13 +11,17 @@
   function scoreText(f){const s=String(f.status||'NS').toUpperCase();return(LIVE.has(s)||FINISHED.has(s))?`${f.homeGoals??0}–${f.awayGoals??0}`:kickOff(f.date)}
   function mergeLeagues(...sets){const map=new Map();sets.flat().forEach(l=>{if(!l)return;const key=`${Number(l.id)||0}:${String(l.name||'').toLowerCase()}`;if(!map.has(key))map.set(key,{...l,fixtures:[]});const out=map.get(key),seen=new Set(out.fixtures.map(f=>String(f.id||`${f.date}-${f.home}-${f.away}`)));(l.fixtures||[]).forEach(f=>{const fk=String(f.id||`${f.date}-${f.home}-${f.away}`);if(!seen.has(fk)){seen.add(fk);out.fixtures.push(f)}})});return[...map.values()]}
 
+  function placeShell(section){
+    const ticker=document.getElementById('ft-home-news-ticker');
+    if(ticker){if(ticker.nextElementSibling!==section)ticker.insertAdjacentElement('afterend',section);return;}
+    const hero=document.querySelector('.hero');
+    if(hero&&hero.nextElementSibling!==section)hero.insertAdjacentElement('afterend',section);
+  }
+
   function ensureShell(){
     let section=document.getElementById('ft-live-now');
-    if(!section){
-      section=document.createElement('section');section.id='ft-live-now';
-      const hero=document.querySelector('.hero');
-      if(hero&&hero.parentNode)hero.parentNode.insertBefore(section,hero.nextSibling);
-    }
+    if(!section){section=document.createElement('section');section.id='ft-live-now';}
+    placeShell(section);
     section.innerHTML=`<div class="ft-ln-shell"><div class="ft-ln-head"><div><div id="ft-ln-kicker" class="ft-ln-kicker">● FT LIVE Matchday Centre</div><h2 id="ft-ln-title">Live scores, match status & results</h2><p id="ft-ln-sub" class="ft-ln-sub">Live coverage updated automatically throughout matchdays.</p></div><a class="ft-ln-link" href="match-centre.html">FULL MATCH CENTRE →</a></div><div id="ft-ln-list" class="ft-ln-list"><div class="ft-ln-empty">Loading today’s matches…</div></div><div class="ft-ln-footer"><span id="ft-ln-state">Scores refresh automatically every 30 seconds.</span><span id="ft-ln-updated"></span></div></div>`;
     return section;
   }
@@ -41,5 +45,5 @@
   async function getJson(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json()}
   async function load(){if(loading)return;loading=true;try{ensureShell();const today=londonDate(new Date());const results=await Promise.allSettled([getJson(`/api/fixtures?date=${today}`),getJson('/api/fixtures'),getJson('/api/fixtures?predictions=1')]);const leagues=[];results.forEach(r=>{if(r.status==='fulfilled')leagues.push(...(r.value.leagues||[]))});if(!leagues.length)throw new Error('No fixture data');render(mergeLeagues(leagues))}catch(e){ensureShell();const list=document.getElementById('ft-ln-list');if(list&&!list.querySelector('.ft-ln-game'))list.innerHTML='<div class="ft-ln-empty">Live match data is temporarily unavailable. This board will retry automatically.</div>'}finally{loading=false}}
 
-  addStyles();ensureShell();setTimeout(load,50);setInterval(load,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
+  addStyles();ensureShell();setTimeout(load,50);setTimeout(()=>placeShell(document.getElementById('ft-live-now')),500);setInterval(load,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
 })();
