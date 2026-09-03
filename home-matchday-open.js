@@ -1,7 +1,7 @@
 (function setupAlwaysOpenHomeMatchday(){
   const LIVE=new Set(['1H','2H','ET','BT','P','LIVE','HT','INT']);
   const FINISHED=new Set(['FT','AET','PEN']);
-  const approvedNames=new Map([[39,/^premier league$/i],[40,/^(efl )?championship$/i],[41,/^(efl )?league one$/i],[42,/^(efl )?league two$/i],[179,/^(scottish )?premiership$/i],[45,/^fa cup$/i],[48,/^(carabao cup|efl cup)$/i],[2,/^(uefa )?champions league$/i],[3,/^(uefa )?europa league$/i],[848,/^(uefa )?conference league$/i],[61,/^ligue 1$/i],[71,/^serie a$/i],[87,/^laliga$/i],[78,/^bundesliga$/i],[55,/^liga portugal$/i],[135,/^serie a$/i]]);
+  const approvedNames=new Map([[39,/^premier league$/i],[40,/^(efl )?championship$/i],[179,/^(scottish )?premiership$/i],[45,/^fa cup$/i],[48,/^(carabao cup|efl cup)$/i],[2,/^(uefa )?champions league$/i],[3,/^(uefa )?europa league$/i]]);
   let loading=false;
 
   function londonDate(d){return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(d)}
