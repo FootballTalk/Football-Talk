@@ -23,6 +23,18 @@
 
     if(view==='transfers'){
       mount.querySelectorAll('.transfer-update-grid,.transfer-live-head,.latest-transfer-head,#transfer-stories').forEach(el=>el.style.display='none');
+      const keepClubSearchAtTop=()=>{
+        const section=mount.querySelector('#transfers');
+        const search=document.getElementById('club-transfer-search');
+        if(!section||!search)return;
+        const heading=section.querySelector('.section-heading');
+        const target=heading?heading.nextSibling:section.firstChild;
+        if(search.parentNode!==section||search!==target){section.insertBefore(search,target||null);}
+      };
+      const observer=new MutationObserver(()=>keepClubSearchAtTop());
+      observer.observe(mount,{childList:true,subtree:true});
+      setTimeout(keepClubSearchAtTop,150);
+      setTimeout(keepClubSearchAtTop,700);
     }
 
     if(view!=='latest'){
