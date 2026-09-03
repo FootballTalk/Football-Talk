@@ -55,45 +55,31 @@
   }
 
   function isFeaturedCompetition(league) {
-    const id = Number(league?.id || 0);
     const name = normalText(league?.name);
     const country = normalText(league?.country);
-    const knownIds = new Set([1,2,3,4,5,39,40,41,42,45,48,848]);
-    if (knownIds.has(id)) return true;
+    const england = country === 'england' || country === 'eng' || country === '';
+    const scotland = country === 'scotland' || country === 'sco' || country === '';
 
-    if (country === 'england') {
-      return /^(premier league|championship|league one|league two|fa cup|efl cup|league cup|carabao cup)$/.test(name);
-    }
-
+    if (england && name === 'premier league') return true;
+    if (england && /^(efl )?championship$/.test(name)) return true;
+    if (scotland && /^(scottish )?premiership$/.test(name)) return true;
+    if (england && name === 'fa cup') return true;
+    if (england && /^(carabao cup|efl cup|league cup)$/.test(name)) return true;
     if (/^(uefa )?champions league$/.test(name)) return true;
     if (/^(uefa )?europa league$/.test(name)) return true;
-    if (/^(uefa )?(europa )?conference league$/.test(name)) return true;
-
-    return /^(fifa )?world cup$/.test(name)
-      || /world cup qualification/.test(name)
-      || /^(uefa )?european championship$/.test(name)
-      || /^euro /.test(name)
-      || /uefa nations league/.test(name)
-      || /copa america/.test(name);
+    return false;
   }
 
   function featuredPriority(league) {
-    const id = Number(league?.id || 0);
     const name = normalText(league?.name);
-    const priorities = new Map([
-      [39,10],[40,20],[41,30],[42,40],[2,50],[3,60],[848,70],[48,80],[45,90],[1,100],[4,110],[5,120]
-    ]);
-    if (priorities.has(id)) return priorities.get(id);
     if (name === 'premier league') return 10;
-    if (name === 'championship') return 20;
-    if (name === 'league one') return 30;
-    if (name === 'league two') return 40;
-    if (name.includes('champions league')) return 50;
-    if (name.includes('europa league')) return 60;
-    if (name.includes('conference league')) return 70;
-    if (/(carabao|efl cup|league cup)/.test(name)) return 80;
-    if (name === 'fa cup') return 90;
-    return 100;
+    if (/^(efl )?championship$/.test(name)) return 20;
+    if (/^(scottish )?premiership$/.test(name)) return 30;
+    if (name === 'fa cup') return 40;
+    if (/^(carabao cup|efl cup|league cup)$/.test(name)) return 50;
+    if (/^(uefa )?champions league$/.test(name)) return 60;
+    if (/^(uefa )?europa league$/.test(name)) return 70;
+    return 999;
   }
 
   function featuredLeagues() {
@@ -200,17 +186,13 @@
   function render() {
     if(!content) return;
     const chosen=filter?.value||'featured';
-    let leagues;
-    if(chosen==='featured') leagues=featuredLeagues();
-    else if(chosen==='all') leagues=latestLeagues;
-    else leagues=latestLeagues.filter(league=>competitionKey(league)===chosen);
+    const available=featuredLeagues();
+    const leagues=chosen==='featured'?available:available.filter(league=>competitionKey(league)===chosen);
 
     content.replaceChildren();
     if(!leagues.length){
       const empty=document.createElement('div');empty.className='empty';
-      empty.textContent=chosen==='featured'
-        ? 'No Football Talk priority fixtures are currently listed for this date. Choose All competitions to see the full worldwide schedule.'
-        : 'No fixtures are currently listed for this date.';
+      empty.textContent='No selected competition fixtures are currently listed for this date.';
       content.appendChild(empty);return;
     }
     leagues.forEach(league=>{
@@ -233,15 +215,10 @@
 
     const preferred=document.createElement('option');
     preferred.value='featured';
-    preferred.textContent=`Football Talk favourites (${featured.length})`;
+    preferred.textContent=`Selected competitions (${featured.length})`;
     filter.appendChild(preferred);
 
-    const all=document.createElement('option');
-    all.value='all';
-    all.textContent=`All competitions (${latestLeagues.length})`;
-    filter.appendChild(all);
-
-    latestLeagues.forEach(league=>{
+    featured.forEach(league=>{
       const option=document.createElement('option');option.value=competitionKey(league);option.textContent=`${league.country||'International'} — ${league.name||'Other'}`;filter.appendChild(option);
     });
     filter.value=[...filter.options].some(o=>o.value===old)?old:'featured';
