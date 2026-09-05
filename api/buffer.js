@@ -6,7 +6,6 @@ const PUBLISH_PREFIX='buffer-publish:';
 const BACKOFF_PREFIX='buffer-backoff:';
 const SITE_URL='https://www.footballtalk.uk/';
 const DEFAULT_SOCIAL_IMAGE=`${SITE_URL}api/social-card-image`;
-const INSTAGRAM_SOCIAL_IMAGE=`${SITE_URL}api/instagram-card-image`;
 const DEFAULT_BACKOFF_SECONDS=1800;
 const FACEBOOK_ROLLING_CAP=22;
 const FACEBOOK_PRIORITY_CAP=28;
