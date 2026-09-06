@@ -5,201 +5,35 @@ const crypto=require('crypto');
 const BUFFER_ENDPOINT='https://api.buffer.com';
 const PUBLISH_PREFIX='buffer-publish:';
 const BACKOFF_PREFIX='buffer-backoff:';
+const CHANNEL_CACHE_PREFIX='buffer-channels:';
 const SITE_URL='https://www.footballtalk.uk/';
 const DEFAULT_SOCIAL_IMAGE=`${SITE_URL}api/social-card-image`;
 const DEFAULT_BACKOFF_SECONDS=1800;
 const FACEBOOK_ROLLING_CAP=22;
 const FACEBOOK_PRIORITY_CAP=28;
 const FACEBOOK_COOLDOWN_MS=45*60*1000;
+const CHANNEL_CACHE_MS=7*24*60*60*1000;
+const QUOTA_RESERVE_RATIO=0.10;
 
-function siteConfig(){
-  const text=fs.readFileSync(path.join(process.cwd(),'config.js'),'utf8');
-  const url=(text.match(/SUPABASE_URL:\s*'([^']+)'/)||[])[1];
-  const key=(text.match(/SUPABASE_ANON_KEY:\s*'([^']+)'/)||[])[1];
-  if(!url||!key)throw new Error('Missing site config');
-  return{url,key};
-}
+function siteConfig(){const text=fs.readFileSync(path.join(process.cwd(),'config.js'),'utf8');const url=(text.match(/SUPABASE_URL:\s*'([^']+)'/)||[])[1];const key=(text.match(/SUPABASE_ANON_KEY:\s*'([^']+)'/)||[])[1];if(!url||!key)throw new Error('Missing site config');return{url,key};}
 function sbHeaders(c,e={}){return{apikey:c.key,Authorization:`Bearer ${c.key}`,...e};}
-function rateInfo(r){
-  const retry=Number(r.headers.get('retry-after'));
-  return{raw:r.headers.get('ratelimit')||null,retryAfterSeconds:Number.isFinite(retry)&&retry>0?retry:DEFAULT_BACKOFF_SECONDS};
-}
-async function gql(query,variables={}){
-  const key=process.env.BUFFER_API_KEY;
-  if(!key)throw new Error('BUFFER_API_KEY is not configured');
-  const r=await fetch(BUFFER_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${key}`},body:JSON.stringify({query,variables}),cache:'no-store'});
-  const rate=rateInfo(r);
-  const data=await r.json().catch(()=>({}));
-  if(r.status===429){
-    const e=new Error(`Buffer HTTP 429; retry after ${rate.retryAfterSeconds}s`);
-    e.code='BUFFER_RATE_LIMIT';
-    e.retryAfterSeconds=rate.retryAfterSeconds;
-    throw e;
-  }
-  if(!r.ok)throw new Error(`Buffer HTTP ${r.status}`);
-  if(data.errors?.length)throw new Error(data.errors.map(e=>e.message).join('; '));
-  return{data:data.data,rateLimit:rate.raw};
-}
-async function connectionInfo(){
-  const a=await gql(`query { account { organizations { id name } } }`);
-  const o=a.data?.account?.organizations?.[0];
-  if(!o)return{organization:null,channels:[]};
-  const c=await gql(`query C($organizationId: OrganizationId!) { channels(input:{organizationId:$organizationId,filter:{isLocked:false}}) { id name displayName service isQueuePaused } }`,{organizationId:o.id});
-  return{organization:o,channels:c.data?.channels||[]};
-}
-
-function storyKey(i){return crypto.createHash('sha256').update(`${i.link||''}|${i.title||''}|${i.stage||''}`).digest('hex').slice(0,24);}
-function eligible(i){
-  if(!i?.title||!['TRANSFER','NEWS'].includes(i.type)||(i.relevance||0)<2)return false;
-  if(i.type==='TRANSFER'&&!['OFFICIAL','DEVELOPING','ROMANO_CONFIRMED'].includes(i.stage))return false;
-  const age=Date.now()-new Date(i.publishedAt||0).getTime();
-  return Number.isFinite(age)&&age>=0&&age<=21600000;
-}
-function priority(i){return i.type==='TRANSFER'&&['OFFICIAL','ROMANO_CONFIRMED'].includes(i.stage);}
-function clean(v){return String(v||'').replace(/\b(?:Fabrizio Romano|@FabrizioRomano)\b/gi,'').replace(/\s+/g,' ').trim();}
-function lead(i){return i.type!=='TRANSFER'?'⚽ FOOTBALL TALK':i.stage==='OFFICIAL'?'✅ OFFICIAL':i.stage==='ROMANO_CONFIRMED'?"🚨 IT'S A GO":'🔥 TRANSFER CENTRE — GAINING PACE';}
-function detail(i,m=220){let d=clean(i.description||i.summary||'');if(!d)d='The latest football story is developing. Here’s the key update.';return d.length>m?d.slice(0,m-1)+'…':d;}
-function debate(i){return i.type==='TRANSFER'?'Good move? Have your say 👇':'What’s your verdict? Have your say 👇';}
-function fb(i){return`${lead(i)}\n\n${clean(i.title)}\n\n${detail(i,260)}\n\n💬 ${debate(i)}\n\n🔗 ${SITE_URL}\n\n#WhereFansHaveTheirSay`;}
-function ig(i){return`${lead(i)}\n\n${clean(i.title)}\n\n${detail(i)}\n\n💬 ${debate(i)}\n\nfootballtalk.uk\n\n#FootballTalk #WhereFansHaveTheirSay`;}
-function xt(i){return`${lead(i)}\n\n${clean(i.title)}\n\n${detail(i,80)}\n\n${SITE_URL}`.slice(0,280);}
-function sourceImage(i){return [i.image,i.imageUrl,i.image_url,i.thumbnail].find(v=>/^https:\/\//i.test(String(v||'')))||'';}
-function image(i,s){
-  const src=sourceImage(i);
-  if(s==='instagram'){
-    if(!src)return DEFAULT_SOCIAL_IMAGE;
-    const stamp=crypto.createHash('sha1').update(`${i.link||''}|${i.title||''}|${src}`).digest('hex').slice(0,12);
-    return`${SITE_URL}api/instagram-story-image?src=${encodeURIComponent(src)}&title=${encodeURIComponent(clean(i.title))}&story=${stamp}`;
-  }
-  return src||DEFAULT_SOCIAL_IMAGE;
-}
-
-async function rows(cfg,key){
-  const r=await fetch(`${cfg.url}/rest/v1/poll_responses?select=poll_id,answer&poll_id=eq.${encodeURIComponent(key)}&limit=1`,{headers:sbHeaders(cfg),cache:'no-store'});
-  return r.ok?await r.json():[];
-}
-async function done(cfg,id,s){return(await rows(cfg,`${PUBLISH_PREFIX}${s}:${id}`)).length>0;}
-async function remember(cfg,id,i,p,s){
-  await fetch(`${cfg.url}/rest/v1/poll_responses`,{method:'POST',headers:sbHeaders(cfg,{'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({poll_id:`${PUBLISH_PREFIX}${s}:${id}`,answer:JSON.stringify({storyId:id,title:i.title,bufferPostId:p.id,channel:s,createdAt:new Date().toISOString()})})});
-}
-async function recentPublishes(cfg,s){
-  const prefix=`${PUBLISH_PREFIX}${s}:`;
-  const r=await fetch(`${cfg.url}/rest/v1/poll_responses?select=poll_id,answer&poll_id=like.${encodeURIComponent(prefix+'*')}&limit=200`,{headers:sbHeaders(cfg),cache:'no-store'});
-  if(!r.ok)return[];
-  const cutoff=Date.now()-86400000;
-  return(await r.json()).map(x=>{try{return JSON.parse(x.answer)}catch{return null}}).filter(x=>x&&new Date(x.createdAt).getTime()>=cutoff).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
-}
-async function facebookGate(cfg,i){
-  const recent=await recentPublishes(cfg,'facebook'),count=recent.length,isPriority=priority(i);
-  if(count>=(isPriority?FACEBOOK_PRIORITY_CAP:FACEBOOK_ROLLING_CAP))return{allow:false,reason:isPriority?'facebook priority reserve exhausted':'facebook rolling safety cap',count};
-  if(!isPriority&&recent[0]&&Date.now()-new Date(recent[0].createdAt).getTime()<FACEBOOK_COOLDOWN_MS)return{allow:false,reason:'facebook routine cooldown',count};
-  return{allow:true,count};
-}
-
-async function getBackoff(cfg){
-  const r=await fetch(`${cfg.url}/rest/v1/poll_responses?select=answer&poll_id=like.${encodeURIComponent(BACKOFF_PREFIX+'*')}&limit=50`,{headers:sbHeaders(cfg),cache:'no-store'});
-  if(!r.ok)return{active:false};
-  let latest=0,untilIso=null;
-  for(const row of await r.json()){
-    try{
-      const x=JSON.parse(row.answer),t=new Date(x.until).getTime();
-      if(Number.isFinite(t)&&t>latest){latest=t;untilIso=x.until;}
-    }catch{}
-  }
-  return latest>Date.now()?{active:true,until:untilIso,retryAfterSeconds:Math.ceil((latest-Date.now())/1000)}:{active:false};
-}
-async function setBackoff(cfg,seconds){
-  const until=new Date(Date.now()+Math.max(60,seconds||DEFAULT_BACKOFF_SECONDS)*1000).toISOString();
-  const pollId=`${BACKOFF_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
-  await fetch(`${cfg.url}/rest/v1/poll_responses`,{method:'POST',headers:sbHeaders(cfg,{'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({poll_id:pollId,answer:JSON.stringify({until})})});
-  return{active:true,until};
-}
-
-async function stories(){
-  const jobs=['api/news','api/romano'].map(x=>fetch(`${SITE_URL}${x}`,{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject(new Error(x))));
-  const settled=await Promise.allSettled(jobs);
-  const items=settled.filter(x=>x.status==='fulfilled').flatMap(x=>x.value.items||[]);
-  return items.sort((a,b)=>Number(priority(b))-Number(priority(a))||new Date(b.publishedAt||0)-new Date(a.publishedAt||0));
-}
-function channel(info,s){return(info.channels||[]).find(c=>String(c.service).toLowerCase()===s&&(s==='facebook'?/football\s*talk/i.test(`${c.name} ${c.displayName}`):s==='twitter'?/footballt8lk/i.test(`${c.name} ${c.displayName}`):true));}
-async function post(ch,text,s,img){
-  const meta=s==='instagram'?',metadata:{instagram:{type:post,shouldShareToFeed:true}}':s==='facebook'?',metadata:{facebook:{type:post}}':'';
-  const q=`mutation P($channelId: ChannelId!,$text: String,$image: String!) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:shareNow,saveToDraft:false,assets:[{image:{url:$image}}]${meta}}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`;
-  const r=await gql(q,{channelId:ch,text,image:img}),p=r.data?.createPost;
-  if(!p?.post)throw new Error(p?.message||`Buffer did not create ${s} post`);
-  return p.post;
-}
-
-async function findCandidate(cfg){
-  for(const i of await stories()){
-    if(!eligible(i))continue;
-    const id=storyKey(i),pending=[],skipped=[];
-    for(const s of ['facebook','twitter','instagram']){
-      if(await done(cfg,id,s))continue;
-      if(s==='facebook'){
-        const gate=await facebookGate(cfg,i);
-        if(!gate.allow){skipped.push({service:s,reason:gate.reason,count:gate.count});continue;}
-      }
-      pending.push(s);
-    }
-    if(pending.length)return{i,id,pending,skipped};
-  }
-  return null;
-}
-
-async function run(){
-  const cfg=siteConfig();
-  const hold=await getBackoff(cfg);
-  if(hold.active){console.info('Buffer publish skipped: backoff active',hold);return{ok:true,published:false,reason:'Buffer rate-limit backoff active',backoff:hold};}
-
-  // Work out whether there is anything worth publishing before touching Buffer at all.
-  const candidate=await findCandidate(cfg);
-  if(!candidate){console.info('Buffer publish skipped: no fresh unpublished selected story');return{ok:true,published:false,reason:'No fresh unpublished selected story'};}
-
-  let info;
-  try{info=await connectionInfo();}
-  catch(e){
-    if(e.code==='BUFFER_RATE_LIMIT')return{ok:true,published:false,reason:'Buffer rate limited',backoff:await setBackoff(cfg,e.retryAfterSeconds)};
-    throw e;
-  }
-
-  const targets={facebook:channel(info,'facebook'),twitter:channel(info,'twitter'),instagram:channel(info,'instagram')};
-  const pending=candidate.pending.filter(s=>targets[s]);
-  if(!pending.length)return{ok:true,published:false,reason:'No available Buffer channel for selected story',title:candidate.i.title};
-
-  const posts=[],errors=[];
-  for(const s of pending){
-    try{
-      const p=await post(targets[s].id,s==='facebook'?fb(candidate.i):s==='instagram'?ig(candidate.i):xt(candidate.i),s,image(candidate.i,s));
-      await remember(cfg,candidate.id,candidate.i,p,s);
-      posts.push({service:s,postId:p.id});
-    }catch(e){
-      errors.push({service:s,error:String(e.message||e)});
-      if(e.code==='BUFFER_RATE_LIMIT'){
-        await setBackoff(cfg,e.retryAfterSeconds);
-        break;
-      }
-    }
-  }
-  return{ok:true,published:posts.length>0,title:candidate.i.title,priority:priority(candidate.i),posts,skipped:candidate.skipped,errors,backoff:await getBackoff(cfg)};
-}
-
-module.exports=async(req,res)=>{
-  res.setHeader('Cache-Control','no-store');
-  try{
-    const cron=String(req.headers['user-agent']||'').toLowerCase().includes('vercel-cron');
-    if(cron||String(req.query?.run||'')==='1')return res.status(200).json(await run());
-    const cfg=siteConfig(),hold=await getBackoff(cfg);
-    if(hold.active)return res.status(200).json({ok:true,mode:'diagnostic',reason:'Buffer rate-limit backoff active',backoff:hold});
-    try{
-      const info=await connectionInfo();
-      return res.status(200).json({ok:true,mode:'diagnostic',publishing:'facebook-x-instagram-independent',protection:{facebookRoutineCap:FACEBOOK_ROLLING_CAP,facebookPriorityCap:FACEBOOK_PRIORITY_CAP,routineCooldownMinutes:FACEBOOK_COOLDOWN_MS/60000},channels:info.channels.map(c=>({name:c.displayName||c.name,service:c.service}))});
-    }catch(e){
-      if(e.code==='BUFFER_RATE_LIMIT')return res.status(200).json({ok:true,mode:'diagnostic',reason:'Buffer rate limited',backoff:await setBackoff(cfg,e.retryAfterSeconds)});
-      throw e;
-    }
-  }catch(e){
-    console.error('Buffer connection failed',e);
-    return res.status(502).json({ok:false,error:'Buffer connection unavailable',detail:String(e.message||e)});
-  }
-};
+function parsePolicies(raw){const out=[];for(const m of String(raw||'').matchAll(/"([^"]+)"\s*;\s*r=(\d+)\s*;\s*t=(\d+)/gi))out.push({name:m[1],remaining:Number(m[2]),resetSeconds:Number(m[3])});return out;}
+function rateInfo(r){const retry=Number(r.headers.get('retry-after'));const raw=r.headers.get('ratelimit')||'';const policies=parsePolicies(raw);return{raw:raw||null,policies,retryAfterSeconds:Number.isFinite(retry)&&retry>0?retry:DEFAULT_BACKOFF_SECONDS};}
+function lowQuota(rate){const hit=(rate?.policies||[]).find(p=>{const q=Number((p.name.match(/^(\d+)-in-/)||[])[1]);return Number.isFinite(q)&&q>0&&p.remaining<=Math.max(2,Math.ceil(q*QUOTA_RESERVE_RATIO));});return hit||null;}
+async function gql(query,variables={}){const key=process.env.BUFFER_API_KEY;if(!key)throw new Error('BUFFER_API_KEY is not configured');const r=await fetch(BUFFER_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${key}`},body:JSON.stringify({query,variables}),cache:'no-store'});const rate=rateInfo(r),data=await r.json().catch(()=>({}));if(r.status===429){const e=new Error(`Buffer HTTP 429; retry after ${rate.retryAfterSeconds}s`);e.code='BUFFER_RATE_LIMIT';e.retryAfterSeconds=rate.retryAfterSeconds;e.rate=rate;throw e;}if(!r.ok)throw new Error(`Buffer HTTP ${r.status}`);if(data.errors?.length)throw new Error(data.errors.map(e=>e.message).join('; '));const low=lowQuota(rate);if(low){const e=new Error(`Buffer quota reserve reached for ${low.name}`);e.code='BUFFER_QUOTA_LOW';e.retryAfterSeconds=Math.max(60,low.resetSeconds);e.rate=rate;throw e;}return{data:data.data,rateLimit:rate};}
+async function rows(cfg,key){const r=await fetch(`${cfg.url}/rest/v1/poll_responses?select=poll_id,answer&poll_id=eq.${encodeURIComponent(key)}&limit=1`,{headers:sbHeaders(cfg),cache:'no-store'});return r.ok?await r.json():[];}
+async function cacheChannels(cfg,info){const id=`${CHANNEL_CACHE_PREFIX}${Date.now()}`;await fetch(`${cfg.url}/rest/v1/poll_responses`,{method:'POST',headers:sbHeaders(cfg,{'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({poll_id:id,answer:JSON.stringify({createdAt:new Date().toISOString(),organization:info.organization,channels:info.channels})})});}
+async function cachedChannels(cfg){const r=await fetch(`${cfg.url}/rest/v1/poll_responses?select=answer&poll_id=like.${encodeURIComponent(CHANNEL_CACHE_PREFIX+'*')}&limit=50`,{headers:sbHeaders(cfg),cache:'no-store'});if(!r.ok)return null;let best=null,bestTime=0;for(const row of await r.json()){try{const x=JSON.parse(row.answer),t=new Date(x.createdAt).getTime();if(t>bestTime){best=x;bestTime=t;}}catch{}}return best&&Date.now()-bestTime<CHANNEL_CACHE_MS?{organization:best.organization,channels:best.channels||[],cached:true}:null;}
+async function connectionInfo(cfg){const cached=await cachedChannels(cfg);if(cached)return cached;const a=await gql(`query { account { organizations { id name } } }`);const o=a.data?.account?.organizations?.[0];if(!o)return{organization:null,channels:[]};const c=await gql(`query C($organizationId: OrganizationId!) { channels(input:{organizationId:$organizationId,filter:{isLocked:false}}) { id name displayName service isQueuePaused } }`,{organizationId:o.id});const info={organization:o,channels:c.data?.channels||[]};await cacheChannels(cfg,info);return info;}
+function storyKey(i){return crypto.createHash('sha256').update(`${i.link||''}|${i.title||''}|${i.stage||''}`).digest('hex').slice(0,24);}function eligible(i){if(!i?.title||!['TRANSFER','NEWS'].includes(i.type)||(i.relevance||0)<2)return false;if(i.type==='TRANSFER'&&!['OFFICIAL','DEVELOPING','ROMANO_CONFIRMED'].includes(i.stage))return false;const age=Date.now()-new Date(i.publishedAt||0).getTime();return Number.isFinite(age)&&age>=0&&age<=21600000;}function priority(i){return i.type==='TRANSFER'&&['OFFICIAL','ROMANO_CONFIRMED'].includes(i.stage);}function clean(v){return String(v||'').replace(/\b(?:Fabrizio Romano|@FabrizioRomano)\b/gi,'').replace(/\s+/g,' ').trim();}function lead(i){return i.type!=='TRANSFER'?'⚽ FOOTBALL TALK':i.stage==='OFFICIAL'?'✅ OFFICIAL':i.stage==='ROMANO_CONFIRMED'?"🚨 IT'S A GO":'🔥 TRANSFER CENTRE — GAINING PACE';}function detail(i,m=220){let d=clean(i.description||i.summary||'');if(!d)d='The latest football story is developing. Here’s the key update.';return d.length>m?d.slice(0,m-1)+'…':d;}function debate(i){return i.type==='TRANSFER'?'Good move? Have your say 👇':'What’s your verdict? Have your say 👇';}function fb(i){return`${lead(i)}\n\n${clean(i.title)}\n\n${detail(i,260)}\n\n💬 ${debate(i)}\n\n🔗 ${SITE_URL}\n\n#WhereFansHaveTheirSay`;}function ig(i){return`${lead(i)}\n\n${clean(i.title)}\n\n${detail(i)}\n\n💬 ${debate(i)}\n\nfootballtalk.uk\n\n#FootballTalk #WhereFansHaveTheirSay`;}function xt(i){return`${lead(i)}\n\n${clean(i.title)}\n\n${detail(i,80)}\n\n${SITE_URL}`.slice(0,280);}
+function sourceImage(i){return [i.image,i.imageUrl,i.image_url,i.thumbnail].find(v=>/^https:\/\//i.test(String(v||'')))||'';}function image(i,s){const src=sourceImage(i);if(s==='instagram'){if(!src)return DEFAULT_SOCIAL_IMAGE;const stamp=crypto.createHash('sha1').update(`${i.link||''}|${i.title||''}|${src}`).digest('hex').slice(0,12);return`${SITE_URL}api/instagram-story-image?src=${encodeURIComponent(src)}&title=${encodeURIComponent(clean(i.title))}&story=${stamp}`;}return src||DEFAULT_SOCIAL_IMAGE;}
+async function done(cfg,id,s){return(await rows(cfg,`${PUBLISH_PREFIX}${s}:${id}`)).length>0;}async function remember(cfg,id,i,p,s){await fetch(`${cfg.url}/rest/v1/poll_responses`,{method:'POST',headers:sbHeaders(cfg,{'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({poll_id:`${PUBLISH_PREFIX}${s}:${id}`,answer:JSON.stringify({storyId:id,title:i.title,bufferPostId:p.id,channel:s,createdAt:new Date().toISOString()})})});}
+async function recentPublishes(cfg,s){const prefix=`${PUBLISH_PREFIX}${s}:`;const r=await fetch(`${cfg.url}/rest/v1/poll_responses?select=poll_id,answer&poll_id=like.${encodeURIComponent(prefix+'*')}&limit=200`,{headers:sbHeaders(cfg),cache:'no-store'});if(!r.ok)return[];const cutoff=Date.now()-86400000;return(await r.json()).map(x=>{try{return JSON.parse(x.answer)}catch{return null}}).filter(x=>x&&new Date(x.createdAt).getTime()>=cutoff).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));}
+async function facebookGate(cfg,i){const recent=await recentPublishes(cfg,'facebook'),count=recent.length,isPriority=priority(i);if(count>=(isPriority?FACEBOOK_PRIORITY_CAP:FACEBOOK_ROLLING_CAP))return{allow:false,reason:isPriority?'facebook priority reserve exhausted':'facebook rolling safety cap',count};if(!isPriority&&recent[0]&&Date.now()-new Date(recent[0].createdAt).getTime()<FACEBOOK_COOLDOWN_MS)return{allow:false,reason:'facebook routine cooldown',count};return{allow:true,count};}
+async function getBackoff(cfg){const r=await fetch(`${cfg.url}/rest/v1/poll_responses?select=answer&poll_id=like.${encodeURIComponent(BACKOFF_PREFIX+'*')}&limit=100`,{headers:sbHeaders(cfg),cache:'no-store'});if(!r.ok)return{active:false};let latest=0,untilIso=null;for(const row of await r.json()){try{const x=JSON.parse(row.answer),t=new Date(x.until).getTime();if(Number.isFinite(t)&&t>latest){latest=t;untilIso=x.until;}}catch{}}return latest>Date.now()?{active:true,until:untilIso,retryAfterSeconds:Math.ceil((latest-Date.now())/1000)}:{active:false};}
+async function setBackoff(cfg,seconds,reason='rate-limit'){const until=new Date(Date.now()+Math.max(60,seconds||DEFAULT_BACKOFF_SECONDS)*1000).toISOString();const pollId=`${BACKOFF_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2,8)}`;await fetch(`${cfg.url}/rest/v1/poll_responses`,{method:'POST',headers:sbHeaders(cfg,{'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({poll_id:pollId,answer:JSON.stringify({until,reason})})});return{active:true,until,reason};}
+async function stories(){const jobs=['api/news','api/romano'].map(x=>fetch(`${SITE_URL}${x}`,{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject(new Error(x))));const settled=await Promise.allSettled(jobs),items=settled.filter(x=>x.status==='fulfilled').flatMap(x=>x.value.items||[]);return items.sort((a,b)=>Number(priority(b))-Number(priority(a))||new Date(b.publishedAt||0)-new Date(a.publishedAt||0));}function channel(info,s){return(info.channels||[]).find(c=>String(c.service).toLowerCase()===s&&(s==='facebook'?/football\s*talk/i.test(`${c.name} ${c.displayName}`):s==='twitter'?/footballt8lk/i.test(`${c.name} ${c.displayName}`):true));}
+async function post(ch,text,s,img){const meta=s==='instagram'?',metadata:{instagram:{type:post,shouldShareToFeed:true}}':s==='facebook'?',metadata:{facebook:{type:post}}':'';const q=`mutation P($channelId: ChannelId!,$text: String,$image: String!) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:shareNow,saveToDraft:false,assets:[{image:{url:$image}}]${meta}}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`;const r=await gql(q,{channelId:ch,text,image:img}),p=r.data?.createPost;if(!p?.post)throw new Error(p?.message||`Buffer did not create ${s} post`);return p.post;}
+async function findCandidate(cfg){for(const i of await stories()){if(!eligible(i))continue;const id=storyKey(i),pending=[],skipped=[];for(const s of ['facebook','twitter','instagram']){if(await done(cfg,id,s))continue;if(s==='facebook'){const gate=await facebookGate(cfg,i);if(!gate.allow){skipped.push({service:s,reason:gate.reason,count:gate.count});continue;}}pending.push(s);}if(pending.length)return{i,id,pending,skipped};}return null;}
+async function run(){const cfg=siteConfig(),hold=await getBackoff(cfg);if(hold.active){console.info('Buffer publish skipped: backoff active',hold);return{ok:true,published:false,reason:'Buffer rate-limit backoff active',backoff:hold};}const candidate=await findCandidate(cfg);if(!candidate){console.info('Buffer publish skipped: no fresh unpublished selected story');return{ok:true,published:false,reason:'No fresh unpublished selected story'};}let info;try{info=await connectionInfo(cfg);}catch(e){if(e.code==='BUFFER_RATE_LIMIT'||e.code==='BUFFER_QUOTA_LOW')return{ok:true,published:false,reason:e.code==='BUFFER_QUOTA_LOW'?'Buffer quota reserve active':'Buffer rate limited',backoff:await setBackoff(cfg,e.retryAfterSeconds,e.code)};throw e;}const targets={facebook:channel(info,'facebook'),twitter:channel(info,'twitter'),instagram:channel(info,'instagram')};const pending=candidate.pending.filter(s=>targets[s]);if(!pending.length)return{ok:true,published:false,reason:'No available Buffer channel for selected story',title:candidate.i.title};const posts=[],errors=[];for(const s of pending){try{const p=await post(targets[s].id,s==='facebook'?fb(candidate.i):s==='instagram'?ig(candidate.i):xt(candidate.i),s,image(candidate.i,s));await remember(cfg,candidate.id,candidate.i,p,s);posts.push({service:s,postId:p.id});}catch(e){errors.push({service:s,error:String(e.message||e)});if(e.code==='BUFFER_RATE_LIMIT'||e.code==='BUFFER_QUOTA_LOW'){await setBackoff(cfg,e.retryAfterSeconds,e.code);break;}}}return{ok:true,published:posts.length>0,title:candidate.i.title,priority:priority(candidate.i),posts,skipped:candidate.skipped,errors,backoff:await getBackoff(cfg)};}
+module.exports=async(req,res)=>{res.setHeader('Cache-Control','no-store');try{const cron=String(req.headers['user-agent']||'').toLowerCase().includes('vercel-cron');if(cron||String(req.query?.run||'')==='1')return res.status(200).json(await run());const cfg=siteConfig(),hold=await getBackoff(cfg);return res.status(200).json({ok:true,mode:'diagnostic-safe',publishing:'facebook-x-instagram-independent',backoff:hold,note:'Diagnostic requests do not contact Buffer and therefore do not consume Buffer API quota.'});}catch(e){console.error('Buffer connection failed',e);return res.status(502).json({ok:false,error:'Buffer connection unavailable',detail:String(e.message||e)});}};
