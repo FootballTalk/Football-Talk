@@ -41,7 +41,7 @@ function parseUpdates(html,source){
     const incidentRe=/Incident\s*-\s*(\d{1,3}(?:\+\d{1,2})?)\s*min\s*([^]{20,600}?)(?=Incident\s*-|Matchweek\s+\d+|$)/gi;
     while((m=incidentRe.exec(text))){const minute=`${m[1]}’`,detail=m[2].replace(/\s+/g,' ').trim().slice(0,520);updates.push({id:`incident-${minute}-${updates.length}`,match:'PREMIER LEAGUE',minute,kind:'VAR UPDATE',detail,source});}
   }
-  return updates.slice(-12).reverse();
+  return updates.slice(0,12);
 }
 module.exports=async(req,res)=>{
   res.setHeader('Cache-Control','s-maxage=20, stale-while-revalidate=40');
