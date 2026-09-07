@@ -88,10 +88,10 @@ async function profile(){
   const me=await graph('/me',{params:{fields:'id,username'}});
   return {id:configuredId||me.id,username:me.username||null};
 }
-async function publishText(userId,text){
-  const created=await graph(`/${encodeURIComponent(userId)}/threads`,{method:'POST',params:{media_type:'TEXT',text}});
+async function publishText(text){
+  const created=await graph('/me/threads',{method:'POST',params:{media_type:'TEXT',text}});
   if(!created.id)throw new Error('Threads did not return a creation id');
-  const published=await graph(`/${encodeURIComponent(userId)}/threads_publish`,{method:'POST',params:{creation_id:created.id}});
+  const published=await graph('/me/threads_publish',{method:'POST',params:{creation_id:created.id}});
   if(!published.id)throw new Error('Threads did not return a published post id');
   return {containerId:created.id,postId:published.id};
 }
@@ -118,7 +118,7 @@ async function syncPublish(){
     const id=storyKey(item);
     if(await alreadyRecorded(cfg,id))continue;
     const text=threadsText(item);
-    const made=await publishText(me.id,text);
+    const made=await publishText(text);
     await remember(cfg,id,item,made.postId,me.username);
     return {ok:true,published:true,title:item.title,username:me.username,postId:made.postId,containerId:made.containerId,text};
   }
