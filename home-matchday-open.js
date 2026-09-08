@@ -33,7 +33,7 @@
     let section=document.getElementById('ft-live-now');
     if(!section){section=document.createElement('section');section.id='ft-live-now';}
     placeShell(section);
-    if(!section.querySelector('.ft-ln-shell')){
+    if(!section.querySelector('#ft-ln-toggle')){
       section.innerHTML=`<div class="ft-ln-shell"><div class="ft-ln-head"><div><div id="ft-ln-kicker" class="ft-ln-kicker">● FT LIVE Matchday Centre</div><h2 id="ft-ln-title">Live scores, match status & results</h2><p id="ft-ln-sub" class="ft-ln-sub">Live coverage updated automatically throughout matchdays.</p></div><div class="ft-ln-actions"><button id="ft-ln-toggle" class="ft-ln-toggle" type="button" aria-expanded="false" aria-controls="ft-ln-body">SHOW LIVE SCORES ▼</button><a class="ft-ln-link" href="match-centre.html">FULL MATCH CENTRE →</a></div></div><div id="ft-ln-body" hidden style="display:none"><div id="ft-ln-list" class="ft-ln-list"><div class="ft-ln-empty">Loading today’s matches…</div></div><div class="ft-ln-footer"><span id="ft-ln-state">Scores refresh automatically every 30 seconds.</span><span id="ft-ln-updated"></span></div></div></div>`;
       const toggle=section.querySelector('#ft-ln-toggle');
       toggle.addEventListener('click',()=>setExpanded(section,toggle.getAttribute('aria-expanded')!=='true'));
