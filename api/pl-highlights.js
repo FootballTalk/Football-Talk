@@ -29,7 +29,11 @@ function parseFeed(xml){
 }
 function isHighlight(item){
   const text=`${item.title} ${item.description}`.toLowerCase();
-  return /highlight|extended highlight|match highlight/.test(text) && !/premier league 2|u21|academy|women|wsl/.test(text);
+  return /highlight|extended highlight|match highlight|every weekend goal|every goal|all goals|goals of the weekend/.test(text) && !/premier league 2|u21|academy|women|wsl/.test(text);
+}
+function isWeekendRoundup(item){
+  const text=`${item.title} ${item.description}`.toLowerCase();
+  return /every weekend goal|every goal|all goals|goals of the weekend|all \d+ (?:weekend )?goals|matchweek\s*\d+.*\bgoals\b/.test(text);
 }
 
 export default async function handler(req,res){
@@ -42,9 +46,11 @@ export default async function handler(req,res){
     if(!response.ok) throw new Error(`YouTube feed returned HTTP ${response.status}`);
     const xml=await response.text();
     const all=parseFeed(xml);
-    const highlights=all.filter(isHighlight).slice(0,12);
+    const highlights=all.filter(isHighlight).slice(0,15);
+    const weekendRoundup=highlights.filter(isWeekendRoundup).slice(0,6);
+    const matchHighlights=highlights.filter(item=>!isWeekendRoundup(item)).slice(0,12);
     res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=900');
-    return res.status(200).json({source:'Premier League official YouTube channel',channel:'https://www.youtube.com/PremierLeague',channelId:CHANNEL_ID,updated:new Date().toISOString(),highlights});
+    return res.status(200).json({source:'Premier League official YouTube channel',channel:'https://www.youtube.com/PremierLeague',channelId:CHANNEL_ID,updated:new Date().toISOString(),matchHighlights,weekendRoundup,highlights});
   }catch(error){
     console.error('Premier League highlights feed error:',error);
     res.setHeader('Cache-Control','no-store');
