@@ -31,12 +31,14 @@ module.exports=async(req,res)=>{
     const src=bestSource(requested);if(!/^https:\/\//i.test(src))throw new Error('Invalid image URL');
     let r=await fetch(src,{cache:'no-store'});if(!r.ok&&src!==requested)r=await fetch(requested,{cache:'no-store'});if(!r.ok)throw new Error(`Image fetch failed: ${r.status}`);
     const input=Buffer.from(await r.arrayBuffer()),meta=await sharp(input).metadata(),sourceW=meta.width||0,sourceH=meta.height||0;
-    let photo,photoTop=0,photoLeft=0;
-    if(sourceW>=700&&sourceH>=450)photo=await sharp(input).rotate().resize(W,PHOTO_H,{fit:'cover',position:'attention',kernel:sharp.kernel.lanczos3}).sharpen({sigma:0.45,m1:0.35,m2:0.9}).jpeg({quality:94,mozjpeg:true,chromaSubsampling:'4:4:4'}).toBuffer();
-    else{photo=await sharp(input).rotate().resize({width:Math.min(W,Math.max(sourceW*2,sourceW)),height:PHOTO_H,fit:'inside',withoutEnlargement:false,kernel:sharp.kernel.lanczos3}).jpeg({quality:94,mozjpeg:true,chromaSubsampling:'4:4:4'}).toBuffer();const pm=await sharp(photo).metadata();photoLeft=Math.max(0,Math.round((W-(pm.width||W))/2));photoTop=Math.max(0,Math.round((PHOTO_H-(pm.height||PHOTO_H))/2));}
+    // Always fill the Instagram hero frame. Feed sources are often small thumbnails;
+    // rendering those with `fit: inside` caused the tiny-picture-on-black regression.
+    // Controlled enlargement is intentional and keeps every automated post full-bleed.
+    const photo=await sharp(input).rotate().resize(W,PHOTO_H,{fit:'cover',position:'attention',kernel:sharp.kernel.lanczos3}).sharpen({sigma:0.45,m1:0.35,m2:0.9}).jpeg({quality:94,mozjpeg:true,chromaSubsampling:'4:4:4'}).toBuffer();
+    const photoTop=0,photoLeft=0;
     const lines=wrap(title,24);
     const frame=Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg"><rect width="${W}" height="${H}" fill="none"/><rect x="0" y="0" width="${W}" height="12" fill="#ffd600"/><rect x="0" y="${PHOTO_H-8}" width="${W}" height="8" fill="#ffd600"/><rect x="0" y="${PHOTO_H}" width="${W}" height="${H-PHOTO_H}" fill="#080808"/><rect x="0" y="${H-12}" width="${W}" height="12" fill="#ffd600"/><g fill="#fff">${bitmapText(lines)}</g></svg>`);
     const out=await sharp({create:{width:W,height:H,channels:3,background:'#080808'}}).composite([{input:photo,top:photoTop,left:photoLeft},{input:frame,top:0,left:0,blend:'over'}]).jpeg({quality:94,mozjpeg:true,chromaSubsampling:'4:4:4'}).toBuffer();
-    res.setHeader('Content-Type','image/jpeg');res.setHeader('Cache-Control','no-store, max-age=0');res.setHeader('X-FT-Instagram-Renderer','headline-bitmap-v5');return res.status(200).send(out);
+    res.setHeader('Content-Type','image/jpeg');res.setHeader('Cache-Control','no-store, max-age=0');res.setHeader('X-FT-Instagram-Renderer','headline-bitmap-v6-fullbleed');return res.status(200).send(out);
   }catch(e){console.error('Instagram image format failed',e);return res.status(302).setHeader('Location',FALLBACK).end();}
 };
