@@ -16,34 +16,40 @@ window.va = window.va || function () {
 })();
 
 // Football Talk Founding Partner programme.
-// Kept here so the same commercial component can appear on the homepage
-// and advertise page without adding another football-navigation tab.
+// Shared commercial component for the homepage and advertise page.
 (function () {
+  var foundingPackage = 'Founding Commercial Partner — £1,000 / 12 months';
+
   function addFoundingPartnerStyles() {
     if (document.getElementById('ft-founding-partner-styles')) return;
     var style = document.createElement('style');
     style.id = 'ft-founding-partner-styles';
     style.textContent = [
-      '.ft-founding{background:#0b0b0e;color:#fff;border-top:4px solid #f7c600;border-bottom:4px solid #f7c600}',
+      '.ft-founding{background:#0b0b0e;color:#fff;border-top:4px solid #f7c600;border-bottom:4px solid #f7c600;max-width:100%;overflow:hidden}',
       '.ft-founding-inner{max-width:1180px;margin:auto;padding:22px 24px}',
-      '.ft-founding-top{display:grid;grid-template-columns:1fr auto;gap:22px;align-items:center}',
-      '.ft-founding-kicker{margin:0 0 5px;color:#f7c600;font-size:11px;font-weight:1000;letter-spacing:.13em}',
-      '.ft-founding h2{margin:0;font-family:Archivo Black,Inter,Arial,sans-serif;font-size:clamp(24px,4vw,38px);line-height:1.05}',
+      '.ft-founding-top{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:22px;align-items:center}',
+      '.ft-founding-top>*{min-width:0}',
+      '.ft-founding-kicker{margin:0 0 5px;color:#f7c600;font-size:11px;font-weight:1000;letter-spacing:.13em;overflow-wrap:anywhere}',
+      '.ft-founding h2{margin:0;font-family:Archivo Black,Inter,Arial,sans-serif;font-size:clamp(24px,4vw,38px);line-height:1.05;overflow-wrap:anywhere}',
       '.ft-founding h2 span{color:#f7c600}',
-      '.ft-founding-copy{margin:8px 0 0;max-width:760px;color:#c9c9ce;font-size:14px;line-height:1.5}',
-      '.ft-founding-btn{display:inline-block;background:#f7c600;color:#111;text-decoration:none;font-weight:1000;padding:12px 17px;border-radius:8px;text-align:center;white-space:nowrap}',
-      '.ft-founding-slots{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:16px}',
-      '.ft-founding-slot{border:1px solid #4a4a50;border-radius:8px;padding:10px 8px;text-align:center;color:#f7c600;font-size:11px;font-weight:900;letter-spacing:.04em;background:#151518}',
-      '.ft-founding-detail{margin:28px 0;background:#111114;border:2px solid #f7c600;border-radius:18px;padding:28px}',
-      '.ft-founding-detail-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:28px;align-items:start}',
-      '.ft-founding-detail h2{font-family:Archivo Black,Inter,Arial,sans-serif;font-size:clamp(30px,5vw,52px);line-height:1;margin:6px 0 12px}',
+      '.ft-founding-copy{margin:8px 0 0;max-width:760px;color:#c9c9ce;font-size:14px;line-height:1.5;overflow-wrap:anywhere}',
+      '.ft-founding-btn{display:inline-block;max-width:100%;background:#f7c600;color:#111;text-decoration:none;font-weight:1000;padding:12px 17px;border-radius:8px;text-align:center;white-space:nowrap;overflow-wrap:anywhere}',
+      '.ft-founding-slots{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:16px}',
+      '.ft-founding-slot{min-width:0;border:1px solid #4a4a50;border-radius:8px;padding:10px 8px;text-align:center;color:#f7c600;font-size:11px;font-weight:900;letter-spacing:.04em;background:#151518;overflow-wrap:anywhere}',
+      '.ft-founding-detail{margin:28px 0;background:#111114;border:2px solid #f7c600;border-radius:18px;padding:28px;max-width:100%;overflow:hidden}',
+      '.ft-founding-detail-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:28px;align-items:start}',
+      '.ft-founding-detail-grid>*{min-width:0;max-width:100%}',
+      '.ft-founding-detail h2{font-family:Archivo Black,Inter,Arial,sans-serif;font-size:clamp(30px,5vw,52px);line-height:1;margin:6px 0 12px;overflow-wrap:anywhere}',
       '.ft-founding-detail h2 span{color:#f7c600}',
-      '.ft-founding-price{font-family:Archivo Black,Inter,Arial,sans-serif;color:#f7c600;font-size:42px;margin:10px 0 0}',
+      '.ft-founding-detail p{max-width:100%;overflow-wrap:anywhere;word-break:normal}',
+      '.ft-founding-price{font-family:Archivo Black,Inter,Arial,sans-serif;color:#f7c600;font-size:42px;margin:10px 0 0;max-width:100%;overflow-wrap:anywhere}',
       '.ft-founding-price small{font-family:Inter,Arial,sans-serif;color:#aaa;font-size:13px}',
-      '.ft-founding-list{margin:0;padding-left:20px;color:#d0d0d4;line-height:1.8}',
+      '.ft-founding-list{margin:0;padding-left:20px;color:#d0d0d4;line-height:1.8;max-width:100%}',
+      '.ft-founding-list li{max-width:100%;padding-left:2px;overflow-wrap:anywhere;word-break:normal}',
       '.ft-founding-note{margin-top:14px;color:#aaa;font-size:12px;line-height:1.5}',
       '.ft-founding-detail .ft-founding-btn{margin-top:16px}',
-      '@media(max-width:760px){.ft-founding-inner{padding:18px 15px}.ft-founding-top,.ft-founding-detail-grid{grid-template-columns:1fr}.ft-founding-slots{grid-template-columns:repeat(2,1fr)}.ft-founding-slot:last-child{grid-column:1/-1}.ft-founding-btn{width:100%}.ft-founding-detail{padding:22px 17px}.ft-founding-price{font-size:36px}}'
+      '@media(max-width:760px){.ft-founding-inner{padding:18px 15px}.ft-founding-top,.ft-founding-detail-grid{grid-template-columns:minmax(0,1fr)}.ft-founding-slots{grid-template-columns:repeat(2,minmax(0,1fr))}.ft-founding-slot:last-child{grid-column:1/-1}.ft-founding-btn{display:block;width:100%;white-space:normal;line-height:1.25;padding:12px 10px;font-size:13px}.ft-founding-detail{padding:22px 17px}.ft-founding-detail h2{font-size:clamp(29px,8.5vw,42px)}.ft-founding-price{font-size:36px}.ft-founding-list{padding-left:18px}.ft-founding-detail-grid{gap:22px}}',
+      '@media(max-width:390px){.ft-founding-detail{padding:20px 14px}.ft-founding-detail h2{font-size:28px}.ft-founding-kicker{font-size:10px;letter-spacing:.09em}.ft-founding-btn{font-size:12px}.ft-founding-list{font-size:15px;line-height:1.65}}'
     ].join('');
     document.head.appendChild(style);
   }
@@ -65,26 +71,58 @@ window.va = window.va || function () {
     return section;
   }
 
+  function applyFoundingFormState() {
+    var type = document.getElementById('enquiryType');
+    var pkg = document.getElementById('package');
+    var title = document.getElementById('formTitle');
+    var intro = document.getElementById('formIntro');
+    var packageLabel = document.getElementById('packageLabel');
+    var messageLabel = document.getElementById('messageLabel');
+    var message = document.getElementById('message');
+    var btn = document.getElementById('sendButton');
+    var note = document.getElementById('formNote');
+    if (!type || !pkg || type.value !== 'Founding Partner') return;
+
+    pkg.disabled = false;
+    pkg.innerHTML = '<option value="' + foundingPackage + '" selected>' + foundingPackage + '</option>';
+    if (title) title.textContent = 'Founding Partner Enquiry';
+    if (intro) intro.textContent = 'Tell us about your business and your interest in becoming one of Football Talk’s five Founding Commercial Partners for 2026/27.';
+    if (packageLabel) packageLabel.textContent = 'Founding Partner package *';
+    if (messageLabel) messageLabel.textContent = 'Tell us about your business and why you are interested in becoming a Founding Partner *';
+    if (message) message.placeholder = 'Tell us about your business, your sector and why a Football Talk Founding Partnership interests you...';
+    if (btn) btn.textContent = 'SEND FOUNDING PARTNER ENQUIRY →';
+    if (note) note.textContent = 'No payment is taken here. We will review your enquiry and contact you before any Founding Partner position is confirmed.';
+  }
+
+  function ensureFoundingFormOption() {
+    var type = document.getElementById('enquiryType');
+    if (!type) return;
+    if (!Array.prototype.slice.call(type.options).some(function (o) { return o.value === 'Founding Partner'; })) {
+      var option = document.createElement('option');
+      option.value = 'Founding Partner';
+      option.textContent = 'Founding Partner';
+      type.appendChild(option);
+    }
+    type.addEventListener('change', function () {
+      setTimeout(function () {
+        if (type.value === 'Founding Partner') applyFoundingFormState();
+      }, 0);
+    });
+  }
+
   function wireFoundingEnquiry() {
-    var btn = document.getElementById('foundingEnquire');
-    if (!btn) return;
-    btn.addEventListener('click', function () {
+    var foundingBtn = document.getElementById('foundingEnquire');
+    if (!foundingBtn) return;
+    foundingBtn.addEventListener('click', function () {
       var type = document.getElementById('enquiryType');
-      var pkg = document.getElementById('package');
       var message = document.getElementById('message');
-      if (!type || !pkg) return;
-      type.value = 'Partnership';
+      if (!type) return;
+      type.value = 'Founding Partner';
       type.dispatchEvent(new Event('change', { bubbles: true }));
-      var value = 'Founding Commercial Partner — £1,000 / 12 months';
-      var option = Array.prototype.slice.call(pkg.options).find(function (o) { return o.value === value; });
-      if (!option) {
-        option = document.createElement('option');
-        option.value = value;
-        option.textContent = value;
-        pkg.appendChild(option);
-      }
-      pkg.value = value;
-      if (message && !message.value) message.value = 'I am interested in one of the five Football Talk Founding Commercial Partner positions for 2026/27.';
+      setTimeout(function () {
+        applyFoundingFormState();
+        if (message && !message.value) message.value = 'I am interested in one of the five Football Talk Founding Commercial Partner positions for 2026/27.';
+      }, 0);
     });
   }
 
@@ -102,7 +140,10 @@ window.va = window.va || function () {
         var intro = document.getElementById('advertisingIntro');
         if (intro) intro.insertAdjacentElement('beforebegin', foundingDetail());
       }
-      setTimeout(wireFoundingEnquiry, 0);
+      setTimeout(function () {
+        ensureFoundingFormOption();
+        wireFoundingEnquiry();
+      }, 0);
     }
   }
 
