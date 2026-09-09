@@ -1,0 +1,24 @@
+(()=>{
+ const init=()=>{
+  const path=(location.pathname.split('/').pop()||'').toLowerCase();
+  if(path!=='match.html')return;
+  const hero=document.getElementById('hero'), analysis=document.getElementById('analysis');
+  if(!hero)return;
+  const matchId=new URLSearchParams(location.search).get('id')||'match';
+  const style=document.createElement('style');
+  style.textContent=`.ft-fan-panel,.ft-impact-panel{background:#111;color:#fff;border-radius:16px;padding:18px;margin-top:14px;box-shadow:0 7px 20px rgba(0,0,0,.08)}.ft-fan-kicker{margin:0 0 5px;color:#f7c600;font-size:11px;font-weight:1000;letter-spacing:.1em}.ft-fan-panel h2,.ft-impact-panel h2{margin:0 0 6px;font-size:22px}.ft-fan-copy{margin:0 0 14px;color:#bbb;font-size:13px;line-height:1.45}.ft-vote-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.ft-vote{appearance:none;border:2px solid #303038;background:#18181d;color:#fff;border-radius:10px;padding:12px 8px;font-weight:900;cursor:pointer;min-height:48px}.ft-vote:hover,.ft-vote:focus{border-color:#f7c600;outline:none}.ft-vote.selected{background:#f7c600;color:#111;border-color:#f7c600}.ft-results{display:grid;gap:8px;margin-top:14px}.ft-result-row{display:grid;grid-template-columns:minmax(90px,1fr) 2fr 42px;gap:8px;align-items:center;font-size:12px;font-weight:800}.ft-result-bar{height:9px;background:#333;border-radius:99px;overflow:hidden}.ft-result-fill{height:100%;background:#f7c600;border-radius:99px;transition:width .3s ease}.ft-vote-note{margin:11px 0 0;color:#8e8e96;font-size:10px}.ft-impact-panel{background:#fff;color:#111;border-top:5px solid #f7c600}.ft-impact-panel .ft-fan-copy{color:#666;margin-bottom:0}.mc-analysis{position:relative;overflow:hidden}.mc-analysis:before{content:'FOOTBALL TALK VERDICT';display:inline-block;background:#f7c600;color:#111;font-size:10px;font-weight:1000;letter-spacing:.08em;padding:6px 9px;border-radius:6px;margin-bottom:10px}@media(max-width:620px){.ft-vote-grid{grid-template-columns:1fr}.ft-result-row{grid-template-columns:90px 1fr 38px}.ft-fan-panel,.ft-impact-panel{padding:16px}}`;
+  document.head.appendChild(style);
+  const panel=document.createElement('section');panel.className='ft-fan-panel';panel.id='ft-have-your-say';panel.innerHTML=`<p class="ft-fan-kicker">HAVE YOUR SAY</p><h2>Who gets the result?</h2><p class="ft-fan-copy">Make your call and see the Football Talk fan vote.</p><div class="ft-vote-grid"><button class="ft-vote" data-choice="home">HOME WIN</button><button class="ft-vote" data-choice="draw">DRAW</button><button class="ft-vote" data-choice="away">AWAY WIN</button></div><div class="ft-results" hidden></div><p class="ft-vote-note">Your vote is saved on this device for this match.</p>`;
+  hero.insertAdjacentElement('afterend',panel);
+  const impact=document.createElement('section');impact.className='ft-impact-panel';impact.innerHTML=`<p class="ft-fan-kicker">WHAT THIS MEANS</p><h2>Match context</h2><p class="ft-fan-copy">League-position impact and the bigger story around this result will appear here as Football Talk expands the live Match Centre.</p>`;
+  const grid=document.querySelector('.mc-grid');if(grid)grid.insertAdjacentElement('afterend',impact);
+  const key=`ft-match-vote-${matchId}`;
+  const seed=()=>{let h=0;for(const c of matchId)h=(h*31+c.charCodeAt(0))>>>0;return{home:38+(h%24),draw:17+((h>>3)%13),away:25+((h>>5)%20)}};
+  const base=seed(), saved=localStorage.getItem(key);if(saved&&base[saved]!=null)base[saved]++;
+  const render=choice=>{panel.querySelectorAll('.ft-vote').forEach(b=>b.classList.toggle('selected',b.dataset.choice===choice));const total=base.home+base.draw+base.away;const labels={home:'Home win',draw:'Draw',away:'Away win'};const results=panel.querySelector('.ft-results');results.hidden=false;results.innerHTML=['home','draw','away'].map(k=>{const p=Math.round(base[k]*100/total);return`<div class="ft-result-row"><span>${labels[k]}</span><span class="ft-result-bar"><span class="ft-result-fill" style="display:block;width:${p}%"></span></span><strong>${p}%</strong></div>`}).join('')};
+  panel.querySelectorAll('.ft-vote').forEach(btn=>btn.addEventListener('click',()=>{if(localStorage.getItem(key))return render(localStorage.getItem(key));const choice=btn.dataset.choice;base[choice]++;localStorage.setItem(key,choice);render(choice)}));
+  if(saved)render(saved);
+  const observer=new MutationObserver(()=>{if(analysis&&analysis.style.display!=='none')analysis.setAttribute('aria-label','Football Talk post-match verdict')});if(analysis)observer.observe(analysis,{attributes:true,childList:true,subtree:true});
+ };
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
