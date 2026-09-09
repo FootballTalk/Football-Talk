@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded',()=>{
  const path=(location.pathname.split('/').pop()||'index.html').toLowerCase(),params=new URLSearchParams(location.search),view=(params.get('view')||'').toLowerCase(),isHome=path==='index.html'||path==='';
  if(path==='match.html'&&!document.querySelector('script[data-prematch-intelligence]')){const s=document.createElement('script');s.src='pre-match-intelligence.js?v=20260831-1';s.dataset.prematchIntelligence='1';document.body.appendChild(s)}
+ if(path==='match.html'&&!document.querySelector('script[data-match-fan-experience]')){const s=document.createElement('script');s.src='match-centre-fan-experience.js?v=20260909-1';s.dataset.matchFanExperience='1';document.body.appendChild(s)}
  if(!document.querySelector('script[data-site-logo]')){const s=document.createElement('script');s.src='site-logo.js?v=20260903-directory-1';s.dataset.siteLogo='1';document.body.appendChild(s)}
  if(isHome&&!document.querySelector('script[data-auto-editorial]')){const s=document.createElement('script');s.src='auto-editorial.js?v=20260829-gaining-pace-1';s.dataset.autoEditorial='1';document.body.appendChild(s)}
  if(isHome&&!document.querySelector('script[data-home-dashboard]')){const s=document.createElement('script');s.src='site-home.js?v=20260830-1';s.dataset.homeDashboard='1';document.body.appendChild(s)}
