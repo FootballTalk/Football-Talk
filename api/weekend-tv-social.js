@@ -13,7 +13,7 @@ function londonParts(now=new Date()){const parts=new Intl.DateTimeFormat('en-GB'
 function isoFromParts(p){return`${p.year}-${p.month}-${p.day}`;}
 function addDays(iso,days){const d=new Date(`${iso}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10);}
 function fridayFor(now=new Date()){return addDays(isoFromParts(londonParts(now)),1);}
-function isThursdayEvening(now=new Date()){const p=londonParts(now);return p.weekday==='Thu'&&Number(p.hour)===18;}
+function isThursdayEvening(now=new Date()){const p=londonParts(now),hour=Number(p.hour);return p.weekday==='Thu'&&(hour===18||hour===19);}
 function allowed(match){const label=`${match.home||''} ${match.away||''} ${match.competition||''}`;if(/\bU(?:18|19|20|21|23)\b|academy|reserves|premier league 2/i.test(label))return false;return ALLOWED_COMPETITIONS.some(re=>re.test(String(match.competition||'')));}
 function shortDate(iso){return new Intl.DateTimeFormat('en-GB',{weekday:'long',day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(`${iso}T12:00:00Z`));}
 
@@ -32,7 +32,7 @@ async function remember(cfg,start,service,post){const r=await fetch(`${cfg.url}/
 async function publish(channelId,text,service,image){const metadata=service==='instagram'?',metadata:{instagram:{type:post,shouldShareToFeed:true}}':service==='facebook'?',metadata:{facebook:{type:post}}':'';const q=`mutation P($channelId: ChannelId!,$text: String,$image: String!) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:shareNow,saveToDraft:false,assets:[{image:{url:$image}}]${metadata}}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`;const data=await gql(q,{channelId,text,image});const payload=data?.createPost;if(!payload?.post)throw new Error(payload?.message||`Buffer did not create ${service} post`);return payload.post;}
 
 async function run(force=false){
-  if(!force&&!isThursdayEvening())return{ok:true,published:false,reason:'Outside Thursday 18:00 Europe/London window'};
+  if(!force&&!isThursdayEvening())return{ok:true,published:false,reason:'Outside Thursday 18:00-19:59 Europe/London retry window'};
   const start=fridayFor(),items=await matches(start);if(!items.length)return{ok:true,published:false,reason:'No confirmed in-scope televised fixtures',start};
   const cfg=siteConfig(),info=await connectionInfo(),copy=captions(items),image=`${SITE_URL}api/weekend-tv-image?start=${encodeURIComponent(start)}`;
   const results=[],errors=[];
@@ -54,7 +54,7 @@ module.exports=async function handler(req,res){
     if(cron){if(!authorised)return res.status(401).json({error:'Unauthorized'});return res.status(200).json(await run(false));}
     const start=fridayFor(),cfg=siteConfig(),published={};
     for(const service of['facebook','instagram','tiktok'])published[service]=await recorded(cfg,start,service);
-    return res.status(200).json({ok:true,mode:'diagnostic-only',nextWindow:'Thursday 18:00 Europe/London',start,published,services:['facebook','instagram','tiktok'],note:'Publishing is restricted to authenticated Vercel Cron requests.'});
+    return res.status(200).json({ok:true,mode:'diagnostic-only',nextWindow:'Thursday 18:00-19:59 Europe/London',start,published,services:['facebook','instagram','tiktok'],note:'Publishing is restricted to authenticated Vercel Cron requests.'});
   }
   catch(error){console.error('Weekend TV social publish failed',error);return res.status(502).json({ok:false,error:'Weekend TV social publishing unavailable',detail:String(error.message||error)});}
 };
