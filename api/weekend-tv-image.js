@@ -4,7 +4,7 @@ const sharp=require('sharp');
 
 const SITE_URL='https://www.footballtalk.uk/';
 const W=1080,H=1350;
-const FONT=fs.readFileSync(path.join(process.cwd(),'assets','ft-social-bold.ttf')).toString('base64');
+const FONT_FILE=path.join(process.cwd(),'assets','ft-social-bold.ttf');
 const ALLOWED_COMPETITIONS=[
   /premier league/i,
   /championship/i,
@@ -33,7 +33,10 @@ async function matchesFor(start){
   return (data.matches||[]).filter(x=>x.date>=start&&x.date<=end&&allowed(x));
 }
 
-function svg(start,matches){
+function textInput(value,size,color,width,align='left'){
+  return {text:{text:`<span foreground="${color}" size="${size*1024}">${esc(value)}</span>`,font:'NimbusSans-Bold',fontfile:FONT_FILE,width,align,rgba:true,dpi:72,wrap:'none'}};
+}
+function layout(start,matches){
   const grouped=new Map();
   for(const m of matches){if(!grouped.has(m.date))grouped.set(m.date,[]);grouped.get(m.date).push(m);}
   const rows=[];
@@ -45,25 +48,32 @@ function svg(start,matches){
   }
   const maxRows=22,visible=rows.slice(0,maxRows),trimmed=rows.length-visible.length;
   const top=250,bottom=1180,step=Math.max(37,Math.min(54,(bottom-top)/Math.max(1,visible.length)));
-  let y=top,body='';
+  let y=top,bars='',layers=[];
   for(const row of visible){
     if(row.kind==='day'){
-      body+=`<rect x="54" y="${y-28}" width="972" height="38" rx="8" fill="#f7c600"/><text x="75" y="${y}" class="day">${esc(row.label)}</text>`;y+=step;
+      bars+=`<rect x="54" y="${y-28}" width="972" height="38" rx="8" fill="#f7c600"/>`;
+      layers.push({input:textInput(row.label,23,'#090909',910),left:75,top:Math.round(y-27)});y+=step;
     }else if(row.kind==='empty'){
-      body+=`<text x="78" y="${y}" class="empty">${esc(row.label)}</text>`;y+=step;
+      layers.push({input:textInput(row.label,18,'#888888',900),left:78,top:Math.round(y-22)});y+=step;
     }else{
       const fixture=wrap(`${row.home} v ${row.away}`,44)[0]||'';
       const channel=wrap(row.channel||'TV details confirmed',34)[0]||'';
-      body+=`<text x="74" y="${y}" class="time">${esc(row.time)}</text><text x="188" y="${y}" class="fixture">${esc(fixture)}</text><text x="1010" y="${y}" text-anchor="end" class="channel">${esc(channel)}</text>`;y+=step;
+      layers.push({input:textInput(row.time,23,'#f7c600',100),left:74,top:Math.round(y-26)});
+      layers.push({input:textInput(fixture,22,'#ffffff',575),left:188,top:Math.round(y-25)});
+      layers.push({input:textInput(channel,19,'#dddddd',245,'right'),left:765,top:Math.round(y-23)});y+=step;
     }
   }
-  if(trimmed>0)body+=`<text x="540" y="1215" text-anchor="middle" class="more">+ ${trimmed} more listing${trimmed===1?'':'s'} at FootballTalk.uk</text>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-  <rect width="1080" height="1350" fill="#090909"/><rect width="1080" height="18" fill="#f7c600"/><rect y="1288" width="1080" height="62" fill="#f7c600"/>
-  <style>@font-face{font-family:FTSans;src:url("data:font/ttf;base64,${FONT}") format("truetype");font-weight:700}.brand{font:700 64px FTSans,sans-serif;fill:#fff}.brand2{fill:#f7c600}.strap{font:700 19px FTSans,sans-serif;fill:#ddd;letter-spacing:5px}.title{font:700 42px FTSans,sans-serif;fill:#f7c600}.range{font:700 22px FTSans,sans-serif;fill:#fff}.day{font:700 23px FTSans,sans-serif;fill:#090909}.time{font:700 23px FTSans,sans-serif;fill:#f7c600}.fixture{font:700 22px FTSans,sans-serif;fill:#fff}.channel{font:700 19px FTSans,sans-serif;fill:#ddd}.empty{font:700 18px FTSans,sans-serif;fill:#888}.more{font:700 21px FTSans,sans-serif;fill:#f7c600}.footer{font:700 25px FTSans,sans-serif;fill:#090909}</style>
-  <text x="54" y="92" class="brand">FOOTBALL <tspan class="brand2">TALK</tspan></text><text x="56" y="126" class="strap">WHERE FANS HAVE THEIR SAY</text>
-  <text x="54" y="192" class="title">WEEKEND TV GUIDE</text><text x="1026" y="192" text-anchor="end" class="range">FRIDAY - MONDAY</text>
-  ${body}<text x="540" y="1328" text-anchor="middle" class="footer">FULL 7-DAY GUIDE: FOOTBALLTALK.UK</text></svg>`;
+  if(trimmed>0)layers.push({input:textInput(`+ ${trimmed} more listing${trimmed===1?'':'s'} at FootballTalk.uk`,21,'#f7c600',900,'center'),left:90,top:1185});
+  const background=Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><rect width="1080" height="1350" fill="#090909"/><rect width="1080" height="18" fill="#f7c600"/><rect y="1288" width="1080" height="62" fill="#f7c600"/>${bars}</svg>`);
+  layers.unshift(
+    {input:textInput('FOOTBALL',64,'#ffffff',390),left:54,top:40},
+    {input:textInput('TALK',64,'#f7c600',260),left:450,top:40},
+    {input:textInput('W H E R E   F A N S   H A V E   T H E I R   S A Y',19,'#dddddd',700),left:56,top:108},
+    {input:textInput('WEEKEND TV GUIDE',42,'#f7c600',650),left:54,top:154},
+    {input:textInput('FRIDAY - MONDAY',22,'#ffffff',280,'right'),left:746,top:170}
+  );
+  layers.push({input:textInput('FULL 7-DAY GUIDE: FOOTBALLTALK.UK',25,'#090909',920,'center'),left:80,top:1303});
+  return {background,layers};
 }
 
 module.exports=async function handler(req,res){
@@ -71,7 +81,8 @@ module.exports=async function handler(req,res){
     const start=String(req.query?.start||'');
     if(!/^\d{4}-\d{2}-\d{2}$/.test(start))return res.status(400).json({error:'A valid Friday start date is required'});
     const matches=await matchesFor(start);
-    const image=await sharp(Buffer.from(svg(start,matches))).png({compressionLevel:9}).toBuffer();
+    const card=layout(start,matches);
+    const image=await sharp(card.background).composite(card.layers).png({compressionLevel:9}).toBuffer();
     res.setHeader('Content-Type','image/png');res.setHeader('Cache-Control','public, max-age=300, s-maxage=21600');
     return res.status(200).send(image);
   }catch(error){console.error('Weekend TV image failed',error);return res.status(502).json({error:'Weekend TV image unavailable',detail:String(error.message||error)});}
