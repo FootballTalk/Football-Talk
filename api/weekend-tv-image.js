@@ -18,7 +18,12 @@ const ALLOWED_COMPETITIONS=[
 function esc(value){return String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));}
 function addDays(iso,days){const d=new Date(`${iso}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10);}
 function dateLabel(iso){return new Intl.DateTimeFormat('en-GB',{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'}).format(new Date(`${iso}T12:00:00Z`));}
-function allowed(match){return ALLOWED_COMPETITIONS.some(re=>re.test(String(match.competition||'')));}
+function allowed(match){const label=`${match.home||''} ${match.away||''} ${match.competition||''}`;if(/\bU(?:18|19|20|21|23)\b|academy|reserves|premier league 2/i.test(label))return false;return ALLOWED_COMPETITIONS.some(re=>re.test(String(match.competition||'')));}
+function primaryChannel(value){
+  const parts=[...new Set(String(value||'TV details confirmed').split(',').map(x=>x.trim()).filter(Boolean))];
+  const preferred=['Sky Sports Main Event','Sky Sports Premier League','Sky Sports Football','Sky Sports+','TNT Sports 1','TNT Sports 2','BBC One','BBC Two','ITV1','ITV4','Premier Sports 1','Premier Sports 2'];
+  return preferred.find(name=>parts.some(x=>x.toLowerCase()===name.toLowerCase()))||parts[0]||'TV details confirmed';
+}
 function wrap(value,max){
   const words=String(value||'').split(/\s+/),lines=[];let line='';
   for(const word of words){const next=line?`${line} ${word}`:word;if(next.length>max&&line){lines.push(line);line=word;}else line=next;}
@@ -57,7 +62,7 @@ function layout(start,matches){
       layers.push({input:textInput(row.label,18,'#888888',900),left:78,top:Math.round(y-22)});y+=step;
     }else{
       const fixture=wrap(`${row.home} v ${row.away}`,44)[0]||'';
-      const channel=wrap(row.channel||'TV details confirmed',34)[0]||'';
+      const channel=wrap(primaryChannel(row.channel),25)[0]||'';
       layers.push({input:textInput(row.time,23,'#f7c600',100),left:74,top:Math.round(y-26)});
       layers.push({input:textInput(fixture,22,'#ffffff',575),left:188,top:Math.round(y-25)});
       layers.push({input:textInput(channel,19,'#dddddd',245,'right'),left:765,top:Math.round(y-23)});y+=step;
