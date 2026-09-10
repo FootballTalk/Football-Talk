@@ -50,7 +50,12 @@ module.exports=async function handler(req,res){
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({error:'Method not allowed'});}
   const cron=String(req.headers['user-agent']||'').toLowerCase().includes('vercel-cron');
   const secret=process.env.CRON_SECRET,authorised=secret?req.headers.authorization===`Bearer ${secret}`:cron;
-  try{if(cron){if(!authorised)return res.status(401).json({error:'Unauthorized'});return res.status(200).json(await run(false));}return res.status(200).json({ok:true,mode:'diagnostic-only',nextWindow:'Thursday 18:00 Europe/London',services:['facebook','instagram','tiktok'],note:'Publishing is restricted to authenticated Vercel Cron requests.'});}
+  try{
+    if(cron){if(!authorised)return res.status(401).json({error:'Unauthorized'});return res.status(200).json(await run(false));}
+    const start=fridayFor(),cfg=siteConfig(),published={};
+    for(const service of['facebook','instagram','tiktok'])published[service]=await recorded(cfg,start,service);
+    return res.status(200).json({ok:true,mode:'diagnostic-only',nextWindow:'Thursday 18:00 Europe/London',start,published,services:['facebook','instagram','tiktok'],note:'Publishing is restricted to authenticated Vercel Cron requests.'});
+  }
   catch(error){console.error('Weekend TV social publish failed',error);return res.status(502).json({ok:false,error:'Weekend TV social publishing unavailable',detail:String(error.message||error)});}
 };
 
