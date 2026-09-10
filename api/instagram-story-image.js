@@ -32,7 +32,10 @@ function wrap(s='',max=30){
 function headlineSvg(lines){
   const fontSize=54,lineHeight=63,x=52,y=1169;
   const tspans=lines.map((line,i)=>`<tspan x="${x}" y="${y+i*lineHeight}">${esc(line.toUpperCase())}</tspan>`).join('');
-  return `<text fill="#fff" font-family="DejaVu Sans, Arial, Helvetica, sans-serif" font-size="${fontSize}" font-weight="800" letter-spacing="0.6" text-rendering="geometricPrecision">${tspans}</text>`;
+  // Sharp/librsvg reliably renders the generic sans-serif family in Vercel's runtime.
+  // Avoid naming a font that may not be installed: that caused otherwise valid text
+  // elements to disappear completely in generated Instagram cards.
+  return Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg"><text x="0" y="0" fill="#fff" font-family="sans-serif" font-size="${fontSize}" font-weight="bold" letter-spacing="0.6">${tspans}</text></svg>`);
 }
 module.exports=async(req,res)=>{
   try{
@@ -42,8 +45,8 @@ module.exports=async(req,res)=>{
     const input=Buffer.from(await r.arrayBuffer());
     const photo=await sharp(input).rotate().resize(W,PHOTO_H,{fit:'cover',position:'attention',kernel:sharp.kernel.lanczos3,fastShrinkOnLoad:false}).sharpen({sigma:0.65,m1:0.55,m2:1.1}).jpeg({quality:96,mozjpeg:true,chromaSubsampling:'4:4:4'}).toBuffer();
     const lines=wrap(title,30);
-    const frame=Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg"><rect width="${W}" height="${H}" fill="none"/><rect x="0" y="0" width="${W}" height="12" fill="#ffd600"/><rect x="0" y="${PHOTO_H-8}" width="${W}" height="8" fill="#ffd600"/><rect x="0" y="${PHOTO_H}" width="${W}" height="${H-PHOTO_H}" fill="#080808"/><rect x="0" y="${H-12}" width="${W}" height="12" fill="#ffd600"/>${headlineSvg(lines)}</svg>`);
-    const out=await sharp({create:{width:W,height:H,channels:3,background:'#080808'}}).composite([{input:photo,top:0,left:0},{input:frame,top:0,left:0,blend:'over'}]).jpeg({quality:96,mozjpeg:true,chromaSubsampling:'4:4:4'}).toBuffer();
-    res.setHeader('Content-Type','image/jpeg');res.setHeader('Cache-Control','no-store, max-age=0');res.setHeader('X-FT-Instagram-Renderer','headline-vector-v7-fullbleed');return res.status(200).send(out);
+    const frame=Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg"><rect width="${W}" height="${H}" fill="none"/><rect x="0" y="0" width="${W}" height="12" fill="#ffd600"/><rect x="0" y="${PHOTO_H-8}" width="${W}" height="8" fill="#ffd600"/><rect x="0" y="${PHOTO_H}" width="${W}" height="${H-PHOTO_H}" fill="#080808"/><rect x="0" y="${H-12}" width="${W}" height="12" fill="#ffd600"/></svg>`);
+    const out=await sharp({create:{width:W,height:H,channels:3,background:'#080808'}}).composite([{input:photo,top:0,left:0},{input:frame,top:0,left:0,blend:'over'},{input:headlineSvg(lines),top:0,left:0,blend:'over'}]).jpeg({quality:96,mozjpeg:true,chromaSubsampling:'4:4:4'}).toBuffer();
+    res.setHeader('Content-Type','image/jpeg');res.setHeader('Cache-Control','no-store, max-age=0');res.setHeader('X-FT-Instagram-Renderer','headline-vector-v8-reliable');return res.status(200).send(out);
   }catch(e){console.error('Instagram image format failed',e);return res.status(302).setHeader('Location',FALLBACK).end();}
 };
