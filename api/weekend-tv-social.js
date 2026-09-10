@@ -14,7 +14,7 @@ function isoFromParts(p){return`${p.year}-${p.month}-${p.day}`;}
 function addDays(iso,days){const d=new Date(`${iso}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10);}
 function fridayFor(now=new Date()){return addDays(isoFromParts(londonParts(now)),1);}
 function isThursdayEvening(now=new Date()){const p=londonParts(now);return p.weekday==='Thu'&&Number(p.hour)===18;}
-function allowed(match){return ALLOWED_COMPETITIONS.some(re=>re.test(String(match.competition||'')));}
+function allowed(match){const label=`${match.home||''} ${match.away||''} ${match.competition||''}`;if(/\bU(?:18|19|20|21|23)\b|academy|reserves|premier league 2/i.test(label))return false;return ALLOWED_COMPETITIONS.some(re=>re.test(String(match.competition||'')));}
 function shortDate(iso){return new Intl.DateTimeFormat('en-GB',{weekday:'long',day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(`${iso}T12:00:00Z`));}
 
 async function gql(query,variables={}){const key=process.env.BUFFER_API_KEY;if(!key)throw new Error('BUFFER_API_KEY is not configured');const r=await fetch(BUFFER_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${key}`},body:JSON.stringify({query,variables}),cache:'no-store'});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(`Buffer HTTP ${r.status}`);if(data.errors?.length)throw new Error(data.errors.map(e=>e.message).join('; '));return data.data;}
