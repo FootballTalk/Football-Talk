@@ -36,13 +36,29 @@ function headlineSvg(lines){
 }
 module.exports=async(req,res)=>{
   try{
-    const requested=String(req.query?.src||FALLBACK),title=String(req.query?.title||'FOOTBALL TALK');const src=bestSource(requested);if(!/^https:\/\//i.test(src))throw new Error('Invalid image URL');
+    const requested=String(req.query?.src||'').trim(),title=String(req.query?.title||'FOOTBALL TALK');
+    // Permanent guard: Instagram must always use a real story-specific image.
+    // Never silently substitute the generic Football Talk social card.
+    if(!requested||requested===FALLBACK||/\/api\/social-card-image(?:\?|$)/i.test(requested)){
+      res.setHeader('Cache-Control','no-store, max-age=0');
+      res.setHeader('X-FT-Instagram-Renderer','headline-vector-v10-story-only');
+      return res.status(422).json({ok:false,error:'Story-specific image required'});
+    }
+    const src=bestSource(requested);if(!/^https:\/\//i.test(src))throw new Error('Invalid image URL');
     let r=await fetch(src,{cache:'no-store'});if(!r.ok&&src!==requested)r=await fetch(requested,{cache:'no-store'});if(!r.ok)throw new Error(`Image fetch failed: ${r.status}`);
+    const type=String(r.headers.get('content-type')||'');if(type&&!/^image\//i.test(type))throw new Error(`Unexpected content type: ${type}`);
     const input=Buffer.from(await r.arrayBuffer());
+    const meta=await sharp(input).metadata();if(!meta.width||!meta.height||meta.width<500||meta.height<300)throw new Error('Story image too small');
     const photo=await sharp(input).rotate().resize(W,PHOTO_H,{fit:'cover',position:'attention',kernel:sharp.kernel.lanczos3,fastShrinkOnLoad:false}).sharpen({sigma:0.65,m1:0.55,m2:1.1}).jpeg({quality:96,mozjpeg:true,chromaSubsampling:'4:4:4'}).toBuffer();
     const lines=wrap(title,30);
     const frame=Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg"><rect width="${W}" height="${H}" fill="none"/><rect x="0" y="0" width="${W}" height="12" fill="#ffd600"/><rect x="0" y="${PHOTO_H-8}" width="${W}" height="8" fill="#ffd600"/><rect x="0" y="${PHOTO_H}" width="${W}" height="${H-PHOTO_H}" fill="#080808"/><rect x="0" y="${H-12}" width="${W}" height="12" fill="#ffd600"/></svg>`);
     const out=await sharp({create:{width:W,height:H,channels:3,background:'#080808'}}).composite([{input:photo,top:0,left:0},{input:frame,top:0,left:0,blend:'over'},{input:headlineSvg(lines),top:0,left:0,blend:'over'}]).jpeg({quality:96,mozjpeg:true,chromaSubsampling:'4:4:4'}).toBuffer();
-    res.setHeader('Content-Type','image/jpeg');res.setHeader('Cache-Control','no-store, max-age=0');res.setHeader('X-FT-Instagram-Renderer','headline-vector-v9-fontless');return res.status(200).send(out);
-  }catch(e){console.error('Instagram image format failed',e);return res.status(302).setHeader('Location',FALLBACK).end();}
+    res.setHeader('Content-Type','image/jpeg');res.setHeader('Cache-Control','no-store, max-age=0');res.setHeader('X-FT-Instagram-Renderer','headline-vector-v10-story-only');return res.status(200).send(out);
+  }catch(e){
+    console.error('Instagram image format failed',e);
+    // Fail closed. A bad image must never become a generic or broken Instagram post.
+    res.setHeader('Cache-Control','no-store, max-age=0');
+    res.setHeader('X-FT-Instagram-Renderer','headline-vector-v10-story-only');
+    return res.status(502).json({ok:false,error:'Unable to build story-specific Instagram image'});
+  }
 };
