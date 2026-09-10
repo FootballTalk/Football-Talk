@@ -1,7 +1,10 @@
+const fs=require('fs');
+const path=require('path');
 const sharp=require('sharp');
 
 const SITE_URL='https://www.footballtalk.uk/';
 const W=1080,H=1350;
+const FONT=fs.readFileSync(path.join(process.cwd(),'assets','ft-social-bold.ttf')).toString('base64');
 const ALLOWED_COMPETITIONS=[
   /premier league/i,
   /championship/i,
@@ -57,7 +60,7 @@ function svg(start,matches){
   if(trimmed>0)body+=`<text x="540" y="1215" text-anchor="middle" class="more">+ ${trimmed} more listing${trimmed===1?'':'s'} at FootballTalk.uk</text>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <rect width="1080" height="1350" fill="#090909"/><rect width="1080" height="18" fill="#f7c600"/><rect y="1288" width="1080" height="62" fill="#f7c600"/>
-  <style>.brand{font:900 64px Arial,sans-serif;fill:#fff}.brand2{fill:#f7c600}.strap{font:700 19px Arial,sans-serif;fill:#ddd;letter-spacing:5px}.title{font:900 42px Arial,sans-serif;fill:#f7c600}.range{font:700 22px Arial,sans-serif;fill:#fff}.day{font:900 23px Arial,sans-serif;fill:#090909}.time{font:900 23px Arial,sans-serif;fill:#f7c600}.fixture{font:800 22px Arial,sans-serif;fill:#fff}.channel{font:700 19px Arial,sans-serif;fill:#ddd}.empty{font:italic 18px Arial,sans-serif;fill:#888}.more{font:800 21px Arial,sans-serif;fill:#f7c600}.footer{font:900 25px Arial,sans-serif;fill:#090909}</style>
+  <style>@font-face{font-family:FTSans;src:url("data:font/ttf;base64,${FONT}") format("truetype");font-weight:700}.brand{font:700 64px FTSans,sans-serif;fill:#fff}.brand2{fill:#f7c600}.strap{font:700 19px FTSans,sans-serif;fill:#ddd;letter-spacing:5px}.title{font:700 42px FTSans,sans-serif;fill:#f7c600}.range{font:700 22px FTSans,sans-serif;fill:#fff}.day{font:700 23px FTSans,sans-serif;fill:#090909}.time{font:700 23px FTSans,sans-serif;fill:#f7c600}.fixture{font:700 22px FTSans,sans-serif;fill:#fff}.channel{font:700 19px FTSans,sans-serif;fill:#ddd}.empty{font:700 18px FTSans,sans-serif;fill:#888}.more{font:700 21px FTSans,sans-serif;fill:#f7c600}.footer{font:700 25px FTSans,sans-serif;fill:#090909}</style>
   <text x="54" y="92" class="brand">FOOTBALL <tspan class="brand2">TALK</tspan></text><text x="56" y="126" class="strap">WHERE FANS HAVE THEIR SAY</text>
   <text x="54" y="192" class="title">WEEKEND TV GUIDE</text><text x="1026" y="192" text-anchor="end" class="range">FRIDAY - MONDAY</text>
   ${body}<text x="540" y="1328" text-anchor="middle" class="footer">FULL 7-DAY GUIDE: FOOTBALLTALK.UK</text></svg>`;
