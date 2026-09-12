@@ -6,7 +6,7 @@ const GENERIC_RE=/\/api\/(?:social-card-image|instagram-card-image)(?:\?|$)/i;
 function bestSource(url=''){
   let u=String(url||'');
   if(/ichef\.bbci\.co\.uk/i.test(u))u=u.replace(/\/ace\/standard\/\d+\//i,'/ace/standard/1536/').replace(/\/standard\/\d+\//i,'/standard/1536/');
-  if(/i\.guim\.co\.uk/i.test(u))u=u.replace(/([?&])width=\d+/i,'$1width=1600');
+  if(/i\.guim\.co\.uk/i.test(u))try{const x=new URL(u),m=x.pathname.match(/^\/img\/media\/([^/]+)\/([^/]+)\/master\/([^/]+)$/);if(m)u=`https://media.guim.co.uk/${m[1]}/${m[2]}/${m[3]}`;}catch{}
   return u;
 }
 
