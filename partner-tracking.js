@@ -13,7 +13,7 @@
     var placement = (link.dataset.ftPlacement || 'unspecified').trim().toLowerCase();
     var destination = link.href;
 
-    // Vercel Web Analytics custom event. No personal information is sent.
+    // Keep the existing Vercel Web Analytics event.
     if (typeof window.va === 'function') {
       window.va('event', {
         name: 'partner_outbound_click',
@@ -26,6 +26,24 @@
         }
       });
     }
+
+    // Also mirror the click to Football Talk's own lightweight counter so it can
+    // be checked independently of the Vercel dashboard. No personal data is sent.
+    var payload = JSON.stringify({partner:partner, placement:placement, destination:destination});
+    try {
+      if (navigator.sendBeacon) {
+        var blob = new Blob([payload], {type:'application/json'});
+        navigator.sendBeacon('/api/partner-click', blob);
+      } else {
+        fetch('/api/partner-click', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:payload,
+          keepalive:true,
+          credentials:'same-origin'
+        }).catch(function () {});
+      }
+    } catch (_) {}
   }
 
   document.addEventListener('click', function (event) {
