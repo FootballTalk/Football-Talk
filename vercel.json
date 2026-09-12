@@ -57,7 +57,7 @@
   "rewrites": [
     {
       "source": "/api/instagram-story/:story",
-      "destination": "/api/instagram-story-image?story=:story"
+      "destination": "/api/instagram-story-image"
     }
   ]
 }
