@@ -12,6 +12,8 @@
   function mergeLeagues(...sets){const map=new Map();sets.flat().forEach(l=>{if(!l)return;const key=`${Number(l.id)||0}:${String(l.name||'').toLowerCase()}`;if(!map.has(key))map.set(key,{...l,fixtures:[]});const out=map.get(key),seen=new Set(out.fixtures.map(f=>String(f.id||`${f.date}-${f.home}-${f.away}`)));(l.fixtures||[]).forEach(f=>{const fk=String(f.id||`${f.date}-${f.home}-${f.away}`);if(!seen.has(fk)){seen.add(fk);out.fixtures.push(f)}})});return[...map.values()]}
 
   function placeShell(section){
+    const countdown=document.getElementById('pl-kickoff-countdown');
+    if(countdown){if(countdown.nextElementSibling!==section)countdown.insertAdjacentElement('afterend',section);return;}
     const ticker=document.getElementById('ft-home-news-ticker');
     if(ticker){if(ticker.nextElementSibling!==section)ticker.insertAdjacentElement('afterend',section);return;}
     const hero=document.querySelector('.hero');
