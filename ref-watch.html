@@ -30,9 +30,22 @@
     .ref-card,.ref-side{background:#fff;border:1px solid #dedede;border-radius:16px;padding:24px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
     .ref-card h2,.ref-side h2{margin-top:0}
     .ref-badge{display:inline-block;background:#f7c600;color:#111;font-weight:900;padding:7px 10px;border-radius:999px;font-size:12px;letter-spacing:.06em}
-    .ref-empty{margin-top:18px;padding:28px;border:2px dashed #bdbdbd;border-radius:14px;background:#fafafa}
-    .ref-empty h3{margin:0 0 8px;font-size:24px}
-    .ref-empty p{margin:0;line-height:1.6;color:#444}
+    .edition-note{margin:8px 0 22px;color:#666;font-weight:700}
+    .incident{border:1px solid #ddd;border-radius:16px;overflow:hidden;margin:0 0 20px;background:#fff}
+    .incident-head{background:#111;color:#fff;padding:18px 20px;border-bottom:5px solid #f7c600}
+    .incident-head small{display:block;color:#f7c600;font-weight:900;letter-spacing:.08em;margin-bottom:6px}
+    .incident-head h3{margin:0;font-size:26px;line-height:1.15}
+    .incident-body{padding:20px}
+    .incident-section{margin:0 0 16px}
+    .incident-section:last-child{margin-bottom:0}
+    .incident-section strong{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#7d6500;margin-bottom:5px}
+    .incident-section p{margin:0;line-height:1.6;color:#333}
+    .verdict{display:inline-block;margin-top:8px;padding:8px 12px;border-radius:999px;font-weight:1000;font-size:12px;letter-spacing:.05em}
+    .verdict.wrong{background:#fdebea;color:#8d1b13;border:1px solid #efb1ad}
+    .verdict.right{background:#e7f6ec;color:#0d5e29;border:1px solid #abd8ba}
+    .verdict.debate{background:#fff4c2;color:#6d5700;border:1px solid #ead275}
+    .source-links{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .source-links a{color:#111;font-weight:900;text-decoration:underline;text-decoration-color:#f7c600;text-decoration-thickness:3px;text-underline-offset:3px}
     .ref-steps{display:grid;gap:12px;margin-top:18px}
     .ref-step{border-left:5px solid #f7c600;padding:10px 14px;background:#f7f7f7}
     .ref-step strong{display:block;margin-bottom:4px}
@@ -42,7 +55,7 @@
     .sponsor-box p{color:#ddd;line-height:1.55}
     .sponsor-box a{display:inline-block;margin-top:8px;background:#f7c600;color:#111;text-decoration:none;font-weight:900;padding:12px 16px;border-radius:9px}
     .source-note{margin-top:22px;font-size:13px;color:#666;line-height:1.5}
-    @media(max-width:820px){.ref-grid{grid-template-columns:1fr}.ref-hero{padding-top:38px}.ref-card,.ref-side{padding:18px}}
+    @media(max-width:820px){.ref-grid{grid-template-columns:1fr}.ref-hero{padding-top:38px}.ref-card,.ref-side{padding:18px}.incident-head h3{font-size:22px}}
   </style>
 </head>
 <body>
@@ -65,20 +78,59 @@
     <div class="ref-wrap ref-grid">
       <section class="ref-card" aria-labelledby="latest-ref-watch">
         <span class="ref-badge">LATEST EDITION</span>
-        <h2 id="latest-ref-watch">This week's Ref Watch</h2>
-        <div class="ref-empty">
-          <h3>First edition coming Monday</h3>
-          <p>Each Monday, Football Talk will review the key refereeing and VAR incidents from the weekend after the professional referee analysis has aired. The incidents, verdicts and fan questions will appear here.</p>
-        </div>
+        <h2 id="latest-ref-watch">Ref Watch — 14 September 2026</h2>
+        <p class="edition-note">Three major decisions from the Premier League weekend.</p>
+
+        <article class="incident">
+          <div class="incident-head">
+            <small>MANCHESTER UNITED 0–1 MANCHESTER CITY</small>
+            <h3>Haaland winner allowed after VAR review</h3>
+          </div>
+          <div class="incident-body">
+            <div class="incident-section"><strong>The Incident</strong><p>Erling Haaland's second-half goal was initially ruled out for offside before VAR established that Haaland himself was onside. The bigger issue was Enzo Fernández, who was in an offside position and made a clear attempt to play the cross before the ball reached Haaland, potentially affecting Lisandro Martínez's ability to defend.</p></div>
+            <div class="incident-section"><strong>The Professional View</strong><p>English football's refereeing body, Pro Ref, subsequently acknowledged that the goal should not have stood. The review concluded VAR should have recommended an on-field review because Fernández's actions from an offside position were relevant to the play.</p></div>
+            <div class="incident-section"><strong>Football Talk Verdict</strong><p>Once an offside player makes an obvious attempt to play the ball and affects a defender's reaction, that involvement has to be considered. The later admission from Pro Ref makes this the clearest wrong call of the weekend.</p><span class="verdict wrong">WRONG DECISION</span></div>
+            <div class="incident-section"><strong>Your Verdict</strong><p>Should Haaland's goal have been disallowed for Fernández interfering from an offside position?</p></div>
+            <div class="source-links"><a href="https://www.skysports.com/football/news/11095/13585530/gary-neville-man-utd-can-expect-apology-from-pro-ref-for-erling-haalands-winner-in-manchester-derby" target="_blank" rel="noopener">Sky Sports analysis ↗</a><a href="https://www.theguardian.com/football/2026/sep/14/vars-erling-haaland-goal-manchester-united-stood-down-wrongly-allowed" target="_blank" rel="noopener">Pro Ref follow-up ↗</a></div>
+          </div>
+        </article>
+
+        <article class="incident">
+          <div class="incident-head">
+            <small>MANCHESTER UNITED 0–1 MANCHESTER CITY</small>
+            <h3>Phil Foden sent off after clash with Bruno Fernandes</h3>
+          </div>
+          <div class="incident-body">
+            <div class="incident-section"><strong>The Incident</strong><p>Phil Foden was shown a red card after reacting to Bruno Fernandes during a first-half confrontation. The sending-off became another major talking point because Fernandes' role in provoking the incident was also heavily debated.</p></div>
+            <div class="incident-section"><strong>The Professional View</strong><p>Post-match refereeing analysis supported the red card for Foden's retaliatory act. The separate question was whether Fernandes should also have received disciplinary action for his part in the confrontation.</p></div>
+            <div class="incident-section"><strong>Football Talk Verdict</strong><p>Retaliation can still be a sending-off offence even when another player helps spark the confrontation. Foden's red can be correct while debate remains over whether Fernandes escaped an additional sanction.</p><span class="verdict right">RED CARD JUSTIFIED</span></div>
+            <div class="incident-section"><strong>Your Verdict</strong><p>Was Foden's red card right, and should Fernandes also have been punished?</p></div>
+            <div class="source-links"><a href="https://www.skysports.com/football/news/11095/13583589/man-utd-0-1-man-city-erling-haalands-controversial-winner-follows-phil-fodens-contentious-red-card-in-dramatic-manchester-derby" target="_blank" rel="noopener">Sky Sports match report ↗</a></div>
+          </div>
+        </article>
+
+        <article class="incident">
+          <div class="incident-head">
+            <small>SUNDERLAND 0–2 ARSENAL</small>
+            <h3>Sunderland awarded penalty for Konsa hold on Ballard</h3>
+          </div>
+          <div class="incident-body">
+            <div class="incident-section"><strong>The Incident</strong><p>Referee John Brooks awarded Sunderland a penalty after judging Ezri Konsa to have held Dan Ballard at a set-piece. VAR checked the incident and confirmed the on-field decision. David Raya saved Enzo Le Fée's penalty.</p></div>
+            <div class="incident-section"><strong>The Professional View</strong><p>The VAR review did not judge the on-field penalty call to be a clear and obvious error, so the decision was allowed to stand. Arsenal strongly disputed the interpretation and requested an explanation from Pro Ref.</p></div>
+            <div class="incident-section"><strong>Football Talk Verdict</strong><p>The contact is open to interpretation. The bigger VAR question is whether the original penalty decision crossed the high threshold required for intervention. On that basis, leaving the referee's call alone is defensible even if many fans disagree with the penalty itself.</p><span class="verdict debate">DEBATABLE — VAR RIGHT NOT TO OVERTURN</span></div>
+            <div class="incident-section"><strong>Your Verdict</strong><p>Penalty, or normal set-piece grappling that should have been allowed to continue?</p></div>
+            <div class="source-links"><a href="https://www.skysports.com/football/news/11670/13585214/mikel-arteta-rages-at-sunderland-penalty-decision-after-arsenal-win-at-stadium-of-light-this-cannot-happen" target="_blank" rel="noopener">Sky Sports analysis ↗</a></div>
+          </div>
+        </article>
 
         <div class="ref-steps">
           <div class="ref-step"><strong>1. The Incident</strong>A clear, original summary of what happened in the match.</div>
           <div class="ref-step"><strong>2. The Professional View</strong>A concise summary of the professional referee analysis, clearly attributed to its source.</div>
           <div class="ref-step"><strong>3. Football Talk Verdict</strong>Our own view: agree, disagree or debatable — with the reasoning explained.</div>
-          <div class="ref-step"><strong>4. Your Verdict</strong>Fans get the final say with a simple right decision / wrong decision debate.</div>
+          <div class="ref-step"><strong>4. Your Verdict</strong>Fans get the final say on the biggest calls.</div>
         </div>
 
-        <p class="source-note">Football Talk will publish original summaries and commentary. Third-party analysis will be attributed and not reproduced verbatim, and copyrighted broadcast footage or graphics will not be republished.</p>
+        <p class="source-note">Football Talk publishes original summaries and commentary. Third-party analysis is attributed and not reproduced verbatim, and copyrighted broadcast footage or graphics are not republished.</p>
       </section>
 
       <aside class="ref-side">
