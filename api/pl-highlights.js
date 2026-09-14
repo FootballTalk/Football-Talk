@@ -27,14 +27,24 @@ function parseFeed(xml){
     return{id,title,published,updated,thumbnail,description,url:id?`https://www.youtube.com/watch?v=${id}`:''};
   }).filter(item=>item.id&&item.title);
 }
-function isHighlight(item){
+function excluded(item){
   const text=`${item.title} ${item.description}`.toLowerCase();
-  return /highlight|extended highlight|match highlight|every weekend goal|every goal|all goals|goals of the weekend/.test(text) && !/premier league 2|u21|academy|women|wsl/.test(text);
+  return /premier league 2|u21|u18|academy|women|wsl|shorts?|podcast|interview|press conference|training/.test(text);
 }
 function isWeekendRoundup(item){
   const text=`${item.title} ${item.description}`.toLowerCase();
-  return /every weekend goal|every goal|all goals|goals of the weekend|all \d+ (?:weekend )?goals|matchweek\s*\d+.*\bgoals\b/.test(text);
+  return /every weekend goal|every goal|all goals|goals of the weekend|all \d+ (?:weekend )?goals|matchweek\s*\d+.*\bgoals\b|weekend round.?up/.test(text);
 }
+function isMatchHighlight(item){
+  if(excluded(item)||isWeekendRoundup(item)) return false;
+  const text=`${item.title} ${item.description}`.toLowerCase();
+  const explicit=/extended highlights?|match highlights?|highlights?/.test(text);
+  const fixtureTitle=/\b(?:v|vs|versus)\b/.test(item.title.toLowerCase());
+  const scoreTitle=/\b\d+\s*[-–—]\s*\d+\b/.test(item.title);
+  const matchLanguage=/premier league|matchweek|full[- ]?time|goals?/.test(text);
+  return explicit || ((fixtureTitle||scoreTitle)&&matchLanguage);
+}
+function isHighlight(item){return isWeekendRoundup(item)||isMatchHighlight(item)}
 
 export default async function handler(req,res){
   if(req.method!=='GET'){
@@ -46,10 +56,10 @@ export default async function handler(req,res){
     if(!response.ok) throw new Error(`YouTube feed returned HTTP ${response.status}`);
     const xml=await response.text();
     const all=parseFeed(xml);
-    const highlights=all.filter(isHighlight).slice(0,15);
-    const weekendRoundup=highlights.filter(isWeekendRoundup).slice(0,6);
-    const matchHighlights=highlights.filter(item=>!isWeekendRoundup(item)).slice(0,12);
-    res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=900');
+    const highlights=all.filter(isHighlight).slice(0,30);
+    const weekendRoundup=all.filter(item=>!excluded(item)&&isWeekendRoundup(item)).slice(0,6);
+    const matchHighlights=all.filter(isMatchHighlight).slice(0,20);
+    res.setHeader('Cache-Control','public, s-maxage=180, stale-while-revalidate=600');
     return res.status(200).json({source:'Premier League official YouTube channel',channel:'https://www.youtube.com/PremierLeague',channelId:CHANNEL_ID,updated:new Date().toISOString(),matchHighlights,weekendRoundup,highlights});
   }catch(error){
     console.error('Premier League highlights feed error:',error);
