@@ -1,5 +1,6 @@
 const CHANNEL_ID='UCG5qGWdu8nIRZqJ_GgDwQ-w';
 const FEED_URL=`https://www.youtube.com/feeds/videos.xml?channel_id=${CHANNEL_ID}`;
+const MATCH_MAX_AGE_DAYS=14;
 
 function decodeXml(value=''){
   return value
@@ -31,12 +32,17 @@ function excluded(item){
   const text=`${item.title} ${item.description}`.toLowerCase();
   return /premier league 2|u21|u18|academy|women|wsl|shorts?|podcast|interview|press conference|training/.test(text);
 }
+function recentEnough(item,maxDays=MATCH_MAX_AGE_DAYS){
+  const time=Date.parse(item.published||item.updated||'');
+  if(!Number.isFinite(time)) return false;
+  return Date.now()-time <= maxDays*86400000;
+}
 function isWeekendRoundup(item){
   const text=`${item.title} ${item.description}`.toLowerCase();
   return /every weekend goal|every goal|all goals|goals of the weekend|all \d+ (?:weekend )?goals|matchweek\s*\d+.*\bgoals\b|weekend round.?up/.test(text);
 }
 function isMatchHighlight(item){
-  if(excluded(item)||isWeekendRoundup(item)) return false;
+  if(excluded(item)||isWeekendRoundup(item)||!recentEnough(item)) return false;
   const text=`${item.title} ${item.description}`.toLowerCase();
   const explicit=/extended highlights?|match highlights?|highlights?/.test(text);
   const fixtureTitle=/\b(?:v|vs|versus)\b/.test(item.title.toLowerCase());
