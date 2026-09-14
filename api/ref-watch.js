@@ -9,6 +9,7 @@ const TERMS = [
   'decision','controversial','controversy','pgmol','pro ref','apology','apologise','apologize','wrongly allowed',
   'wrongly disallowed','disallowed goal','overturned','on-field review','reviewed by var'
 ];
+const STOP = new Set(['the','and','for','from','with','that','this','have','has','was','were','are','but','not','after','before','into','over','under','their','they','his','her','its','our','your','you','who','what','when','where','why','how']);
 
 function decode(text='') {
   return String(text)
@@ -46,7 +47,18 @@ function score(item) {
   let s=0;
   for (const term of TERMS) if (t.includes(term)) s+=term.includes('wrongly')||term.includes('apolog')||term==='pgmol'||term==='pro ref'?5:2;
   if (/premier league|manchester|arsenal|liverpool|chelsea|tottenham|newcastle|sunderland|everton|villa|west ham|wolves|brighton|brentford|fulham|palace|forest|bournemouth|burnley|leeds/.test(t)) s+=2;
+  if (/podcast|talking points|live blog|round-up|roundup/.test(item.title.toLowerCase())) s-=8;
   return s;
+}
+function tokens(value='') {
+  return new Set(String(value).toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(x=>x.length>2&&!STOP.has(x)));
+}
+function similar(a,b) {
+  const A=tokens(`${a.title} ${a.description}`), B=tokens(`${b.title} ${b.description}`);
+  if(!A.size||!B.size) return false;
+  let common=0;
+  for(const x of A) if(B.has(x)) common++;
+  return common/Math.min(A.size,B.size)>=0.42;
 }
 function verdict(item) {
   const t=`${item.title} ${item.description}`.toLowerCase();
@@ -70,17 +82,19 @@ module.exports = async function handler(req,res) {
     const all=settled.filter(x=>x.status==='fulfilled').flatMap(x=>x.value)
       .filter(x=>x.published>=start && x.published<=end)
       .map(x=>({...x,relevance:score(x)}))
-      .filter(x=>x.relevance>=2)
+      .filter(x=>x.relevance>=4)
       .sort((a,b)=>b.relevance-a.relevance || b.published-a.published);
 
-    const seen=[];
-    const items=[];
+    const chosen=[];
     for (const item of all) {
-      const key=item.title.toLowerCase().replace(/[^a-z0-9 ]/g,'').split(/\s+/).filter(Boolean).slice(0,7).join(' ');
-      if (seen.some(s=>s===key)) continue;
-      seen.push(key);
+      if (chosen.some(existing=>similar(item,existing))) continue;
+      chosen.push(item);
+      if(chosen.length>=5) break;
+    }
+
+    const items=chosen.map(item=>{
       const v=verdict(item);
-      items.push({
+      return {
         title:item.title,
         incident:item.description || 'A major refereeing or VAR talking point from the weekend.',
         professionalView:`Reported by ${item.source}. Football Talk links to the original report for the full context and any professional referee analysis available.`,
@@ -90,9 +104,8 @@ module.exports = async function handler(req,res) {
         source:item.source,
         link:item.link,
         publishedAt:new Date(item.published).toISOString()
-      });
-      if(items.length>=5) break;
-    }
+      };
+    });
 
     res.setHeader('Cache-Control','s-maxage=21600, stale-while-revalidate=86400');
     res.status(200).json({editionKey:monday,editionDate:monday,updatedAt:new Date().toISOString(),items});
