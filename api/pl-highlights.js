@@ -1,6 +1,7 @@
 const CHANNEL_ID='UCG5qGWdu8nIRZqJ_GgDwQ-w';
 const FEED_URL=`https://www.youtube.com/feeds/videos.xml?channel_id=${CHANNEL_ID}`;
 const MATCH_MAX_AGE_DAYS=14;
+const BLOCKED_VIDEO_IDS=new Set(['ZewC4N4Z7EI']);
 
 function decodeXml(value=''){
   return value
@@ -29,6 +30,7 @@ function parseFeed(xml){
   }).filter(item=>item.id&&item.title);
 }
 function excluded(item){
+  if(BLOCKED_VIDEO_IDS.has(item.id)) return true;
   const text=`${item.title} ${item.description}`.toLowerCase();
   return /premier league 2|u21|u18|academy|women|wsl|shorts?|podcast|interview|press conference|training/.test(text);
 }
@@ -62,7 +64,7 @@ export default async function handler(req,res){
     if(!response.ok) throw new Error(`YouTube feed returned HTTP ${response.status}`);
     const xml=await response.text();
     const all=parseFeed(xml);
-    const highlights=all.filter(isHighlight).slice(0,30);
+    const highlights=all.filter(item=>!excluded(item)&&isHighlight(item)).slice(0,30);
     const weekendRoundup=all.filter(item=>!excluded(item)&&isWeekendRoundup(item)).slice(0,6);
     const matchHighlights=all.filter(isMatchHighlight).slice(0,20);
     res.setHeader('Cache-Control','public, s-maxage=180, stale-while-revalidate=600');
