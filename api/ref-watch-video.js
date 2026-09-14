@@ -26,14 +26,14 @@ function absoluteSkyUrl(href = '') {
 function articleCandidates(html = '') {
   const results = [];
   const seen = new Set();
-  const re = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
-  for (const match of html.matchAll(re)) {
-    const label = clean(match[2]);
+  const hrefRe = /href=["']([^"']+)["']/gi;
+  for (const match of html.matchAll(hrefRe)) {
     const href = absoluteSkyUrl(match[1]);
-    if (!href || !/ref\s*watch/i.test(label) || seen.has(href)) continue;
+    if (!href || seen.has(href)) continue;
+    if (!/\/football\/(?:video|news|live-blog)\//i.test(href)) continue;
     seen.add(href);
-    results.push({ href, label });
-    if (results.length >= 12) break;
+    results.push(href);
+    if (results.length >= 30) break;
   }
   return results;
 }
@@ -59,6 +59,11 @@ function pageTitle(html = '') {
   return title ? clean(title[1]).replace(/\s*\|\s*Sky Sports.*$/i, '') : 'Ref Watch';
 }
 
+function looksLikeRefWatch(html = '') {
+  const text = clean(html).toLowerCase();
+  return text.includes('ref watch') && text.includes('dermot gallagher');
+}
+
 async function getText(url) {
   const response = await fetch(url, {
     headers: {
@@ -75,19 +80,20 @@ module.exports = async function handler(req, res) {
     const authorHtml = await getText(SKY_AUTHOR);
     const candidates = articleCandidates(authorHtml);
 
-    for (const candidate of candidates) {
+    for (const href of candidates) {
       try {
-        const html = await getText(candidate.href);
+        const html = await getText(href);
+        if (!looksLikeRefWatch(html)) continue;
         const embedUrl = extractSkyWidget(html);
         if (!embedUrl) continue;
-        const title = pageTitle(html) || candidate.label;
+        const title = pageTitle(html);
         res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=21600');
         return res.status(200).json({
           available: true,
           provider: 'Sky Sports',
           title,
           embedUrl,
-          articleUrl: candidate.href,
+          articleUrl: href,
           rights: 'Video is streamed from Sky Sports. Football Talk does not host or re-upload the footage.'
         });
       } catch {}
@@ -95,7 +101,7 @@ module.exports = async function handler(req, res) {
 
     res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=3600');
     return res.status(200).json({ available: false, provider: 'Sky Sports' });
-  } catch (error) {
+  } catch {
     return res.status(200).json({ available: false, provider: 'Sky Sports' });
   }
 };
