@@ -1,8 +1,13 @@
 (async function(){
-  const allowed=new Set(['latest','transfers','matchday','debate','social','stats']);
+  const allowed=new Set(['latest','transfers','matchday','social','stats']);
   const params=new URLSearchParams(location.search);
-  const view=allowed.has(params.get('view'))?params.get('view'):'latest';
-  const titleMap={latest:'Latest Football Talk',transfers:'Transfer Centre',matchday:'Matchday Centre',debate:'Fan Debate',social:'Follow Football Talk',stats:'Stats Zone'};
+  const requested=params.get('view');
+  if(requested==='debate'){
+    location.replace('news.html');
+    return;
+  }
+  const view=allowed.has(requested)?requested:'latest';
+  const titleMap={latest:'Latest Football Talk',transfers:'Transfer Centre',matchday:'Matchday Centre',social:'Follow Football Talk',stats:'Stats Zone'};
   document.title=`${titleMap[view]} | Football Talk`;
   const mount=document.getElementById('section-page-content');
 
@@ -69,16 +74,11 @@
         tracker.dataset.ftTransferCentre='1';
         document.body.appendChild(tracker);
       }
-      if(['latest','transfers','debate'].includes(view)){
+      if(['latest','transfers'].includes(view)){
         const auto=document.createElement('script');
         auto.src='auto-editorial.js?v=20260828-2';
         auto.dataset.autoEditorial='1';
         document.body.appendChild(auto);
-      }
-      if(view==='debate'){
-        const comments=document.createElement('script');
-        comments.src='debate-comments.js?v=20260826-4';
-        document.body.appendChild(comments);
       }
     };
     document.body.appendChild(script);
