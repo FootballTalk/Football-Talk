@@ -5,7 +5,13 @@ const crypto=require('crypto');
 const BUFFER_ENDPOINT='https://api.buffer.com';
 const SITE_URL='https://www.footballtalk.uk/';
 const PUBLISH_PREFIX='buffer-publish:tiktok:';
+const BACKOFF_PREFIX='buffer-backoff:';
+const CHANNEL_CACHE_PREFIX='buffer-channels:';
 const CLAIM_TTL_MS=15*60*1000;
+const DEFAULT_BACKOFF_SECONDS=1800;
+const MAX_BACKOFF_SECONDS=6*60*60;
+const CHANNEL_CACHE_MS=7*24*60*60*1000;
+const QUOTA_RESERVE_RATIO=0.10;
 
 function siteConfig(){
   const text=fs.readFileSync(path.join(process.cwd(),'config.js'),'utf8');
@@ -15,14 +21,77 @@ function siteConfig(){
   return{url,key};
 }
 function sbHeaders(c,e={}){return{apikey:c.key,Authorization:`Bearer ${c.key}`,...e};}
+function parsePolicies(raw){
+  const out=[];
+  for(const m of String(raw||'').matchAll(/"([^"]+)"\s*;\s*r=(\d+)\s*;\s*t=(\d+)/gi))out.push({name:m[1],remaining:Number(m[2]),resetSeconds:Number(m[3])});
+  return out;
+}
+function rateInfo(r){
+  const retry=Number(r.headers.get('retry-after'));
+  const raw=r.headers.get('ratelimit')||'';
+  return{raw:raw||null,policies:parsePolicies(raw),retryAfterSeconds:Number.isFinite(retry)&&retry>0?retry:DEFAULT_BACKOFF_SECONDS};
+}
+function lowQuota(rate){
+  return(rate?.policies||[]).find(p=>{
+    const q=Number((p.name.match(/^(\d+)-in-/)||[])[1]);
+    return Number.isFinite(q)&&q>0&&p.remaining<=Math.max(2,Math.ceil(q*QUOTA_RESERVE_RATIO));
+  })||null;
+}
 async function gql(query,variables={}){
   const key=process.env.BUFFER_API_KEY;
   if(!key)throw new Error('BUFFER_API_KEY is not configured');
   const r=await fetch(BUFFER_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${key}`},body:JSON.stringify({query,variables}),cache:'no-store'});
+  const rate=rateInfo(r);
   const data=await r.json().catch(()=>({}));
+  if(r.status===429){
+    const e=new Error(`Buffer HTTP 429; retry after ${rate.retryAfterSeconds}s`);
+    e.code='BUFFER_RATE_LIMIT';
+    e.retryAfterSeconds=rate.retryAfterSeconds;
+    e.rate=rate;
+    throw e;
+  }
   if(!r.ok)throw new Error(`Buffer HTTP ${r.status}`);
   if(data.errors?.length)throw new Error(data.errors.map(e=>e.message).join('; '));
-  return data.data;
+  const low=lowQuota(rate);
+  if(low){
+    const e=new Error(`Buffer quota reserve reached for ${low.name}`);
+    e.code='BUFFER_QUOTA_LOW';
+    e.retryAfterSeconds=Math.max(60,low.resetSeconds);
+    e.rate=rate;
+    throw e;
+  }
+  return{data:data.data,rateLimit:rate};
+}
+async function cacheChannels(cfg,info){
+  const id=`${CHANNEL_CACHE_PREFIX}${Date.now()}`;
+  await fetch(`${cfg.url}/rest/v1/poll_responses`,{method:'POST',headers:sbHeaders(cfg,{'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({poll_id:id,answer:JSON.stringify({createdAt:new Date().toISOString(),organization:info.organization,channels:info.channels})})});
+}
+async function cachedChannels(cfg){
+  const r=await fetch(`${cfg.url}/rest/v1/poll_responses?select=answer&poll_id=like.${encodeURIComponent(CHANNEL_CACHE_PREFIX+'*')}&limit=50`,{headers:sbHeaders(cfg),cache:'no-store'});
+  if(!r.ok)return null;
+  let best=null,bestTime=0;
+  for(const row of await r.json()){
+    try{const x=JSON.parse(row.answer),t=new Date(x.createdAt).getTime();if(t>bestTime){best=x;bestTime=t;}}catch{}
+  }
+  return best&&Date.now()-bestTime<CHANNEL_CACHE_MS?{organization:best.organization,channels:best.channels||[],cached:true}:null;
+}
+async function getBackoff(cfg){
+  const r=await fetch(`${cfg.url}/rest/v1/poll_responses?select=answer&poll_id=like.${encodeURIComponent(BACKOFF_PREFIX+'*')}&order=poll_id.desc&limit=100`,{headers:sbHeaders(cfg),cache:'no-store'});
+  if(!r.ok)return{active:false};
+  const now=Date.now(),maxUntil=now+MAX_BACKOFF_SECONDS*1000;
+  let latest=0,untilIso=null;
+  for(const row of await r.json()){
+    try{const x=JSON.parse(row.answer),t=new Date(x.until).getTime();if(Number.isFinite(t)&&t<=maxUntil&&t>latest){latest=t;untilIso=x.until;}}catch{}
+  }
+  return latest>now?{active:true,until:untilIso,retryAfterSeconds:Math.ceil((latest-now)/1000)}:{active:false};
+}
+async function setBackoff(cfg,seconds,reason='rate-limit'){
+  const requested=Math.max(60,Number(seconds)||DEFAULT_BACKOFF_SECONDS);
+  const applied=Math.min(requested,MAX_BACKOFF_SECONDS);
+  const until=new Date(Date.now()+applied*1000).toISOString();
+  const pollId=`${BACKOFF_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  await fetch(`${cfg.url}/rest/v1/poll_responses`,{method:'POST',headers:sbHeaders(cfg,{'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({poll_id:pollId,answer:JSON.stringify({until,reason,requestedSeconds:requested,appliedSeconds:applied})})});
+  return{active:true,until,reason,requestedSeconds:requested,appliedSeconds:applied};
 }
 function clean(v){return String(v||'').replace(/\b(?:Fabrizio Romano|@FabrizioRomano)\b/gi,'').replace(/\s+/g,' ').trim();}
 function storyKey(i){return crypto.createHash('sha256').update(`${i.link||''}|${i.title||''}|${i.stage||''}`).digest('hex').slice(0,24);}
@@ -76,23 +145,34 @@ async function stories(){
   const settled=await Promise.allSettled(jobs);
   return settled.filter(x=>x.status==='fulfilled').flatMap(x=>x.value.items||[]).sort((a,b)=>Number(priority(b))-Number(priority(a))||new Date(b.publishedAt||0)-new Date(a.publishedAt||0));
 }
-async function tiktokChannel(){
+async function tiktokChannel(cfg){
+  const cached=await cachedChannels(cfg);
+  if(cached){
+    const channel=(cached.channels||[]).find(ch=>String(ch.service||'').toLowerCase()==='tiktok');
+    if(channel)return channel;
+  }
   const a=await gql(`query { account { organizations { id name } } }`);
-  const o=a?.account?.organizations?.[0];
+  const o=a.data?.account?.organizations?.[0];
   if(!o)throw new Error('No Buffer organization found');
-  const c=await gql(`query C($organizationId: OrganizationId!) { channels(input:{organizationId:$organizationId,filter:{isLocked:false}}) { id name displayName service isQueuePaused } }`,{organizationId:o.id});
-  const channels=c?.channels||[];
+  const result=await gql(`query C($organizationId: OrganizationId!) { channels(input:{organizationId:$organizationId,filter:{isLocked:false}}) { id name displayName service isQueuePaused } }`,{organizationId:o.id});
+  const channels=result.data?.channels||[];
+  await cacheChannels(cfg,{organization:o,channels});
   return channels.find(ch=>String(ch.service||'').toLowerCase()==='tiktok')||null;
 }
 async function publish(channel,i){
   const q=`mutation P($channelId: ChannelId!,$text: String,$image: String!,$title: String) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:shareNow,saveToDraft:false,assets:[{image:{url:$image}}],metadata:{tiktok:{title:$title}}}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`;
-  const data=await gql(q,{channelId:channel.id,text:caption(i),image:artwork(i),title:clean(i.title).slice(0,90)});
-  const p=data?.createPost;
+  const result=await gql(q,{channelId:channel.id,text:caption(i),image:artwork(i),title:clean(i.title).slice(0,90)});
+  const p=result.data?.createPost;
   if(!p?.post)throw new Error(p?.message||'Buffer did not create TikTok post');
   return p.post;
 }
 async function run(){
   const cfg=siteConfig();
+  const hold=await getBackoff(cfg);
+  if(hold.active){
+    console.info('TikTok publish skipped: shared Buffer backoff active',hold);
+    return{ok:true,published:false,reason:'Buffer rate-limit backoff active',backoff:hold};
+  }
   let candidate=null;
   for(const i of await stories()){
     if(!eligible(i))continue;
@@ -102,7 +182,17 @@ async function run(){
     break;
   }
   if(!candidate)return{ok:true,published:false,reason:'No fresh unpublished TikTok story'};
-  const channel=await tiktokChannel();
+  let channel;
+  try{
+    channel=await tiktokChannel(cfg);
+  }catch(error){
+    if(error.code==='BUFFER_RATE_LIMIT'||error.code==='BUFFER_QUOTA_LOW'){
+      const backoff=await setBackoff(cfg,error.retryAfterSeconds,error.code);
+      console.warn('TikTok publish deferred to protect Buffer quota',{code:error.code,backoff});
+      return{ok:true,published:false,reason:error.code==='BUFFER_QUOTA_LOW'?'Buffer quota reserve active':'Buffer rate limited',backoff};
+    }
+    throw error;
+  }
   if(!channel)return{ok:false,published:false,reason:'TikTok channel is not connected or is locked in Buffer'};
   if(!(await claimPublish(cfg,candidate.id)))return{ok:true,published:false,reason:'TikTok story already claimed or published',title:candidate.i.title};
   let post=null;
@@ -112,6 +202,11 @@ async function run(){
     return{ok:true,published:true,title:candidate.i.title,postId:post.id,channel:{id:channel.id,name:channel.displayName||channel.name}};
   }catch(error){
     if(!post)await releaseClaim(cfg,candidate.id);
+    if(error.code==='BUFFER_RATE_LIMIT'||error.code==='BUFFER_QUOTA_LOW'){
+      const backoff=await setBackoff(cfg,error.retryAfterSeconds,error.code);
+      console.warn('TikTok publish deferred to protect Buffer quota',{code:error.code,backoff});
+      return{ok:true,published:false,reason:error.code==='BUFFER_QUOTA_LOW'?'Buffer quota reserve active':'Buffer rate limited',backoff};
+    }
     throw error;
   }
 }
