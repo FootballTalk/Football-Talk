@@ -35,11 +35,11 @@
     },
     {
       "path": "/api/buffer",
-      "schedule": "5 * * * *"
+      "schedule": "*/25 * * * *"
     },
     {
       "path": "/api/buffer-tiktok",
-      "schedule": "15 * * * *"
+      "schedule": "*/25 * * * *"
     },
     {
       "path": "/api/threads",
