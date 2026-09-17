@@ -70,23 +70,26 @@ async function publish(channel,i){
 }
 async function run(){
   const cfg=siteConfig();
-  const channel=await tiktokChannel();
-  if(!channel)return{ok:false,published:false,reason:'TikTok channel is not connected or is locked in Buffer'};
+  let candidate=null;
   for(const i of await stories()){
     if(!eligible(i))continue;
     const id=storyKey(i);
     if(await alreadyDone(cfg,id))continue;
-    const post=await publish(channel,i);
-    await remember(cfg,id,i,post);
-    return{ok:true,published:true,title:i.title,postId:post.id,channel:{id:channel.id,name:channel.displayName||channel.name}};
+    candidate={i,id};
+    break;
   }
-  return{ok:true,published:false,reason:'No fresh unpublished TikTok story'};
+  if(!candidate)return{ok:true,published:false,reason:'No fresh unpublished TikTok story'};
+  const channel=await tiktokChannel();
+  if(!channel)return{ok:false,published:false,reason:'TikTok channel is not connected or is locked in Buffer'};
+  const post=await publish(channel,candidate.i);
+  await remember(cfg,candidate.id,candidate.i,post);
+  return{ok:true,published:true,title:candidate.i.title,postId:post.id,channel:{id:channel.id,name:channel.displayName||channel.name}};
 }
 module.exports=async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
     const cron=String(req.headers['user-agent']||'').toLowerCase().includes('vercel-cron');
-    if(!cron&&String(req.query?.run||'')!=='1')return res.status(200).json({ok:true,mode:'diagnostic-safe',publishing:'tiktok-dedicated',note:'TikTok publishes every 10 minutes via Vercel cron.'});
+    if(!cron&&String(req.query?.run||'')!=='1')return res.status(200).json({ok:true,mode:'diagnostic-safe',publishing:'tiktok-dedicated',note:'TikTok checks hourly via Vercel cron and only contacts Buffer when a fresh story is pending.'});
     return res.status(200).json(await run());
   }catch(e){
     console.error('TikTok Buffer publisher failed',e);
