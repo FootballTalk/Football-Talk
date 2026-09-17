@@ -5,6 +5,7 @@ const crypto=require('crypto');
 const BUFFER_ENDPOINT='https://api.buffer.com';
 const SITE_URL='https://www.footballtalk.uk/';
 const PUBLISH_PREFIX='buffer-publish:tiktok:';
+const CLAIM_TTL_MS=15*60*1000;
 
 function siteConfig(){
   const text=fs.readFileSync(path.join(process.cwd(),'config.js'),'utf8');
@@ -45,6 +46,28 @@ async function alreadyDone(cfg,id){
   const r=await fetch(`${cfg.url}/rest/v1/poll_responses?select=poll_id&poll_id=eq.${encodeURIComponent(PUBLISH_PREFIX+id)}&limit=1`,{headers:sbHeaders(cfg),cache:'no-store'});
   return r.ok&&(await r.json()).length>0;
 }
+async function claimPublish(cfg,id){
+  const claimKey=PUBLISH_PREFIX+id;
+  const url=`${cfg.url}/rest/v1/buffer_publish_claims`;
+  const lookup=await fetch(`${url}?select=claim_key,claimed_at&claim_key=eq.${encodeURIComponent(claimKey)}&limit=1`,{headers:sbHeaders(cfg),cache:'no-store'});
+  if(!lookup.ok)throw new Error(`TikTok claim lookup failed: Supabase ${lookup.status}`);
+  const rows=await lookup.json();
+  if(rows.length){
+    const age=Date.now()-new Date(rows[0].claimed_at).getTime();
+    if(Number.isFinite(age)&&age<CLAIM_TTL_MS)return false;
+    const expired=await fetch(`${url}?claim_key=eq.${encodeURIComponent(claimKey)}`,{method:'DELETE',headers:sbHeaders(cfg)});
+    if(!expired.ok)throw new Error(`TikTok stale claim release failed: Supabase ${expired.status}`);
+  }
+  const claimed=await fetch(url,{method:'POST',headers:sbHeaders(cfg,{'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({claim_key:claimKey})});
+  if(claimed.status===409)return false;
+  if(!claimed.ok)throw new Error(`TikTok claim failed: Supabase ${claimed.status}`);
+  return true;
+}
+async function releaseClaim(cfg,id){
+  const claimKey=PUBLISH_PREFIX+id;
+  const r=await fetch(`${cfg.url}/rest/v1/buffer_publish_claims?claim_key=eq.${encodeURIComponent(claimKey)}`,{method:'DELETE',headers:sbHeaders(cfg)});
+  if(!r.ok)console.error('TikTok claim release failed',{id,status:r.status});
+}
 async function remember(cfg,id,i,p){
   await fetch(`${cfg.url}/rest/v1/poll_responses`,{method:'POST',headers:sbHeaders(cfg,{'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({poll_id:PUBLISH_PREFIX+id,answer:JSON.stringify({storyId:id,title:i.title,bufferPostId:p.id,channel:'tiktok',createdAt:new Date().toISOString()})})});
 }
@@ -81,15 +104,25 @@ async function run(){
   if(!candidate)return{ok:true,published:false,reason:'No fresh unpublished TikTok story'};
   const channel=await tiktokChannel();
   if(!channel)return{ok:false,published:false,reason:'TikTok channel is not connected or is locked in Buffer'};
-  const post=await publish(channel,candidate.i);
-  await remember(cfg,candidate.id,candidate.i,post);
-  return{ok:true,published:true,title:candidate.i.title,postId:post.id,channel:{id:channel.id,name:channel.displayName||channel.name}};
+  if(!(await claimPublish(cfg,candidate.id)))return{ok:true,published:false,reason:'TikTok story already claimed or published',title:candidate.i.title};
+  let post=null;
+  try{
+    post=await publish(channel,candidate.i);
+    await remember(cfg,candidate.id,candidate.i,post);
+    return{ok:true,published:true,title:candidate.i.title,postId:post.id,channel:{id:channel.id,name:channel.displayName||channel.name}};
+  }catch(error){
+    if(!post)await releaseClaim(cfg,candidate.id);
+    throw error;
+  }
 }
 module.exports=async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
     const cron=String(req.headers['user-agent']||'').toLowerCase().includes('vercel-cron');
-    if(!cron&&String(req.query?.run||'')!=='1')return res.status(200).json({ok:true,mode:'diagnostic-safe',publishing:'tiktok-dedicated',note:'TikTok checks hourly via Vercel cron and only contacts Buffer when a fresh story is pending.'});
+    if(!cron){
+      if(String(req.query?.run||'')==='1')console.warn('Blocked non-cron TikTok publish request');
+      return res.status(200).json({ok:true,mode:'diagnostic-safe',publishing:'tiktok-dedicated',note:'Publishing is restricted to authenticated Vercel Cron requests.'});
+    }
     return res.status(200).json(await run());
   }catch(e){
     console.error('TikTok Buffer publisher failed',e);
