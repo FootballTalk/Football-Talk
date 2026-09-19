@@ -2,7 +2,7 @@
   const REFRESH_MS = 60000;
   const PAST_DAYS = 14;
   const FUTURE_DAYS = 120;
-  const LIVE_STATUSES = new Set(['1H','2H','ET','BT','P','LIVE','HT']);
+  const LIVE_STATUSES = new Set(['1H','2H','ET','BT','P','LIVE','HT','INT']);
   const FINISHED_STATUSES = new Set(['FT','AET','PEN']);
   const strip = document.getElementById('date-strip');
   const content = document.getElementById('fixtures-content');
@@ -173,6 +173,7 @@
   function fixtureRow(fixture) {
     const row=document.createElement('div');row.className='fixture';row.dataset.fixtureId=fixture.id||'';
     const status=displayStatus(fixture);
+    if(status.className)row.classList.add(status.className);
     const score=document.createElement('div');score.className=`scorebox ${status.className}`.trim();
     const main=document.createElement('span');main.className='score-main';main.textContent=status.main;score.appendChild(main);
     if(status.sub){const sub=document.createElement('span');sub.className='score-sub';sub.textContent=status.sub;score.appendChild(sub);}
