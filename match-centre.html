@@ -78,6 +78,26 @@
         border-color: #f7c600;
         transform: translateY(-1px);
       }
+      .game.is-live {
+        background: #157347;
+        border-color: #0f5c38;
+      }
+      .game.is-finished {
+        background: #b4232f;
+        border-color: #8f1822;
+      }
+      .game.is-live .game-main,
+      .game.is-finished .game-main {
+        color: #fff !important;
+      }
+      .game.is-live .time,
+      .game.is-finished .time {
+        color: #fff;
+      }
+      .game.is-live .league,
+      .game.is-finished .league {
+        color: rgba(255, 255, 255, 0.82);
+      }
       .game-main {
         min-width: 0;
         padding: 14px;
@@ -415,7 +435,12 @@
                 const alertControl = ft
                   ? ""
                   : `<button class="goal-alert" type="button" aria-label="Goal alerts for ${esc(g.home)} versus ${esc(g.away)}" aria-pressed="false" data-match-id="${esc(g.id)}" data-home="${esc(g.home)}" data-away="${esc(g.away)}" data-kickoff="${esc(g.date)}" data-home-goals="${hasScore ? esc(g.homeGoals) : ""}" data-away-goals="${hasScore ? esc(g.awayGoals) : ""}" data-status="${esc(st)}"><span aria-hidden="true">🔔</span><span>Notify me of goals</span></button>`;
-                return `<article class="game"><a class="game-main" href="match.html?id=${encodeURIComponent(g.id)}"><div class="time ${live ? "live" : ""}">${esc(time)}</div><div><div class="teams">${esc(g.home)}<br>${esc(g.away)}</div><div class="league">${esc(g.leagueName)}</div></div><div class="score">${esc(score)}</div></a>${alertControl}</article>`;
+                const stateClass = live
+                  ? " is-live"
+                  : ft
+                    ? " is-finished"
+                    : "";
+                return `<article class="game${stateClass}"><a class="game-main" href="match.html?id=${encodeURIComponent(g.id)}"><div class="time ${live ? "live" : ""}">${esc(time)}</div><div><div class="teams">${esc(g.home)}<br>${esc(g.away)}</div><div class="league">${esc(g.leagueName)}</div></div><div class="score">${esc(score)}</div></a>${alertControl}</article>`;
               })
               .join("");
           } catch (e) {
