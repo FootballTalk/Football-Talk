@@ -1,0 +1,18 @@
+const RESEND_API='https://api.resend.com';
+function validEmail(value){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)&&value.length<=254}
+function welcomeHtml(email){return `<!doctype html><html><body style="margin:0;background:#f3f3f3;font-family:Arial,sans-serif;color:#111"><div style="max-width:620px;margin:auto;background:#fff"><div style="background:#0b0b0e;color:#fff;padding:26px;border-bottom:6px solid #f7c600"><div style="font-size:25px;font-weight:900"><span style="color:#f7c600">FT</span> FOOTBALL TALK</div><div style="font-size:11px;letter-spacing:1.4px;color:#ccc">WHERE FANS HAVE THEIR SAY</div></div><div style="padding:32px 26px"><p style="font-size:12px;font-weight:900;color:#8a6d00;letter-spacing:1px">FOOTBALL TALK WEEKLY</p><h1 style="font-size:34px;line-height:1.05;margin:8px 0 18px">WELCOME TO THE TEAM.</h1><p style="font-size:17px;line-height:1.65">You’re now signed up for Football Talk Weekly — one email bringing you the biggest stories, weekend talking points, fixtures, Ref Watch, polls, competitions and Football Talk updates.</p><p style="font-size:17px;line-height:1.65">Your first weekly edition will arrive on Friday.</p><p style="margin:28px 0"><a href="https://www.footballtalk.uk/" style="background:#f7c600;color:#111;text-decoration:none;font-weight:900;padding:14px 19px;border-radius:6px;display:inline-block">VISIT FOOTBALL TALK →</a></p><p style="font-size:13px;color:#666;line-height:1.5">You signed up using ${email}. You can unsubscribe at any time from <a href="https://www.footballtalk.uk/unsubscribe.html">FootballTalk.uk</a>.</p></div><div style="background:#111;color:#aaa;padding:20px 26px;font-size:12px">FootballTalk.uk · Where Fans Have Their Say</div></div></body></html>`}
+export default async function handler(req,res){
+ if(req.method==='GET')return res.status(200).json({ok:true,resendConfigured:Boolean(process.env.RESEND_API_KEY)});
+ if(req.method!=='POST'){res.setHeader('Allow','POST');return res.status(405).json({error:'Method not allowed'})}
+ const email=String(req.body?.email||'').trim().toLowerCase();
+ if(!validEmail(email)||req.body?.consent!==true)return res.status(400).json({error:'Valid email and consent are required'});
+ const key=String(process.env.RESEND_API_KEY||'').trim();if(!key)return res.status(503).json({error:'Email delivery is not configured'});
+ const headers={Authorization:`Bearer ${key}`,'Content-Type':'application/json'};
+ try{
+  const contact=await fetch(RESEND_API+'/contacts',{method:'POST',headers,body:JSON.stringify({email,unsubscribed:false})});
+  if(!contact.ok&&contact.status!==409){const detail=await contact.text();throw new Error('Contact sync failed: '+detail.slice(0,180))}
+  const sent=await fetch(RESEND_API+'/emails',{method:'POST',headers,body:JSON.stringify({from:'Football Talk Weekly <weekly@footballtalk.uk>',to:[email],reply_to:'Mark@footballtalk.uk',subject:"Welcome to Football Talk Weekly ⚽",html:welcomeHtml(email),text:"Welcome to Football Talk Weekly. You are signed up for the biggest stories, weekend talking points, fixtures, Ref Watch, polls, competitions and Football Talk updates. Your first weekly edition will arrive on Friday. Visit https://www.footballtalk.uk/ or unsubscribe at https://www.footballtalk.uk/unsubscribe.html"})});
+  if(!sent.ok){const detail=await sent.text();throw new Error('Welcome email failed: '+detail.slice(0,180))}
+  return res.status(200).json({ok:true});
+ }catch(error){console.error('Newsletter subscribe error',error);return res.status(502).json({error:'Unable to complete email delivery setup'})}
+}
