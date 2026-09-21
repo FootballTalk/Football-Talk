@@ -54,6 +54,14 @@
     return String(value).toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
   }
 
+  function isWorldCupName(name) {
+    return /\bworld cup\b/.test(name) && !/\bclub world cup\b/.test(name);
+  }
+
+  function isEurosName(name) {
+    return /^(uefa )?(euro(pean)? championship|uefa euro|euro [0-9]{4}|euros?)\b/.test(name);
+  }
+
   function isFeaturedCompetition(league) {
     const name = normalText(league?.name);
     const country = normalText(league?.country);
@@ -67,6 +75,8 @@
     if (england && /^(carabao cup|efl cup|league cup)$/.test(name)) return true;
     if (/^(uefa )?champions league$/.test(name)) return true;
     if (/^(uefa )?europa league$/.test(name)) return true;
+    if (isWorldCupName(name)) return true;
+    if (isEurosName(name)) return true;
     if (/^(international )?friendlies?( women)?$/.test(name) || /^friendly international(s)?$/.test(name)) return true;
     return false;
   }
@@ -80,7 +90,9 @@
     if (/^(carabao cup|efl cup|league cup)$/.test(name)) return 50;
     if (/^(uefa )?champions league$/.test(name)) return 60;
     if (/^(uefa )?europa league$/.test(name)) return 70;
-    if (/^(international )?friendlies?( women)?$/.test(name) || /^friendly international(s)?$/.test(name)) return 80;
+    if (isWorldCupName(name)) return 80;
+    if (isEurosName(name)) return 90;
+    if (/^(international )?friendlies?( women)?$/.test(name) || /^friendly international(s)?$/.test(name)) return 100;
     return 999;
   }
 
