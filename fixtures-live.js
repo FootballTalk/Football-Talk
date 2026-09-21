@@ -67,6 +67,7 @@
     if (england && /^(carabao cup|efl cup|league cup)$/.test(name)) return true;
     if (/^(uefa )?champions league$/.test(name)) return true;
     if (/^(uefa )?europa league$/.test(name)) return true;
+    if (/^(international )?friendlies?( women)?$/.test(name) || /^friendly international(s)?$/.test(name)) return true;
     return false;
   }
 
@@ -79,6 +80,7 @@
     if (/^(carabao cup|efl cup|league cup)$/.test(name)) return 50;
     if (/^(uefa )?champions league$/.test(name)) return 60;
     if (/^(uefa )?europa league$/.test(name)) return 70;
+    if (/^(international )?friendlies?( women)?$/.test(name) || /^friendly international(s)?$/.test(name)) return 80;
     return 999;
   }
 
