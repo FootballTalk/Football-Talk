@@ -265,7 +265,7 @@
         <h1>Match Centre</h1>
         <p>
           Today’s football from the Premier League, Championship, Scottish
-          Premiership, FA Cup, Carabao Cup, Champions League and Europa League.
+          Premiership, FA Cup, Carabao Cup, Champions League, Europa League and international friendlies.
           Tap any match to open its dedicated Match Centre.
         </p>
       </section>
@@ -377,6 +377,8 @@
           )
             return true;
           if ((id === 3 || id === 73) && /^(uefa )?europa league$/i.test(name))
+            return true;
+          if (/^(international )?friendlies?( women)?$/i.test(name) || /^friendly international(s)?$/i.test(name))
             return true;
           return false;
         };
