@@ -6,7 +6,8 @@ const FEEDS = [
 
 const PRIORITY_TERMS = [
   'premier league','championship','arsenal','aston villa','bournemouth','brentford','brighton','burnley','chelsea','crystal palace','everton','fulham','leeds','liverpool','manchester city','man city','manchester united','man utd','newcastle','nottingham forest','nottingham','sunderland','tottenham','west ham','wolves','wolverhampton',
-  'birmingham','blackburn','bristol city','charlton','coventry','derby','hull','ipswich','leicester','middlesbrough','millwall','norwich','oxford united','portsmouth','preston','qpr','queens park rangers','sheffield united','sheffield wednesday','southampton','stoke','swansea','watford','west brom','wrexham'
+  'birmingham','blackburn','bristol city','charlton','coventry','derby','hull','ipswich','leicester','middlesbrough','millwall','norwich','oxford united','portsmouth','preston','qpr','queens park rangers','sheffield united','sheffield wednesday','southampton','stoke','swansea','watford','west brom','wrexham',
+  'england','three lions','england squad','nations league','world cup','euros','european championship','squad withdrawal','squad withdrawals','ruled out','called up'
 ];
 
 const STOP_WORDS = new Set(['the','a','an','and','or','to','of','for','in','on','at','is','are','was','were','be','been','with','from','as','by','after','before','still','your','club','clubs','what','does','do','why','how','this','that','their','its','it']);
