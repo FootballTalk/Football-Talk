@@ -80,20 +80,28 @@ async function graph(pathname,{method='GET',params={}}={}){
   for(const [k,v] of Object.entries({...params,access_token:token}))if(v!==undefined&&v!==null)url.searchParams.set(k,String(v));
   const r=await fetch(url,{method,cache:'no-store'});
   const data=await r.json().catch(()=>({}));
-  if(!r.ok||data.error)throw new Error(data.error?.message||`Threads HTTP ${r.status}`);
+  if(!r.ok||data.error){
+    const e=new Error(data.error?.message||`Threads HTTP ${r.status}`);
+    e.threads={status:r.status,type:data.error?.type||null,code:data.error?.code??null,subcode:data.error?.error_subcode??null};
+    throw e;
+  }
   return data;
 }
 async function profile(){
   const configuredId=clean(process.env.THREADS_USER_ID);
   const me=await graph('/me',{params:{fields:'id,username'}});
-  return {id:configuredId||me.id,username:me.username||null};
+  return {id:me.id,username:me.username||null,configuredId:configuredId||null,idMatches:!configuredId||configuredId===me.id};
 }
 async function publishText(text,userId){
   if(!userId)throw new Error('Threads user ID could not be resolved');
   const base=`/${encodeURIComponent(userId)}`;
-  const created=await graph(`${base}/threads`,{method:'POST',params:{media_type:'TEXT',text}});
+  let created;
+  try{created=await graph(`${base}/threads`,{method:'POST',params:{media_type:'TEXT',text}});}
+  catch(error){throw new Error(`Threads container creation failed: ${error.message}; details=${JSON.stringify(error.threads||{})}`);}
   if(!created.id)throw new Error('Threads did not return a creation id');
-  const published=await graph(`${base}/threads_publish`,{method:'POST',params:{creation_id:created.id}});
+  let published;
+  try{published=await graph(`${base}/threads_publish`,{method:'POST',params:{creation_id:created.id}});}
+  catch(error){throw new Error(`Threads container publication failed: ${error.message}; details=${JSON.stringify(error.threads||{})}`);}
   if(!published.id)throw new Error('Threads did not return a published post id');
   return {containerId:created.id,postId:published.id};
 }
