@@ -1,6 +1,14 @@
 {
   "items": [
     {
+      "id": "2026-09-22-buffer-facebook-route-test",
+      "enabled": true,
+      "title": "Football Talk publishing check",
+      "facebook": "Football Talk publishing check. Our Facebook publishing connection is working.",
+      "instagram": "",
+      "x": ""
+    },
+    {
       "id": "2026-09-06-everton-2-2-man-utd-ft",
       "enabled": false,
       "title": "Everton 2-2 Manchester United",
