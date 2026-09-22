@@ -4,6 +4,7 @@ const crypto=require('crypto');
 
 const BUFFER_ENDPOINT='https://api.buffer.com';
 const SITE_URL='https://www.footballtalk.uk/';
+const FALLBACK_TIKTOK_IMAGE=`${SITE_URL}api/instagram-card-image`;
 const PUBLISH_PREFIX='buffer-publish:tiktok:';
 const BACKOFF_PREFIX='buffer-backoff:';
 const CHANNEL_CACHE_PREFIX='buffer-channels:';
@@ -111,6 +112,19 @@ function artwork(i){
   const stamp=crypto.createHash('sha1').update(`${i.link||''}|${i.title||''}|${src}`).digest('hex').slice(0,12);
   return `${SITE_URL}api/instagram-story-image?src=${encodeURIComponent(src)}&title=${encodeURIComponent(clean(i.title))}&story=${stamp}`;
 }
+async function readableImage(url){
+  try{
+    const r=await fetch(url,{cache:'no-store',headers:{'User-Agent':'FootballTalk TikTok Artwork Preflight/1.0'}});
+    return r.ok&&/^image\//i.test(String(r.headers.get('content-type')||''))&&r.headers.get('x-ft-instagram-image-mode')!=='missing-story-image';
+  }catch{return false;}
+}
+async function artworkFor(i){
+  const generated=artwork(i);
+  if(await readableImage(generated))return generated;
+  console.warn('TikTok artwork fallback selected',{title:i.title,generated});
+  if(await readableImage(FALLBACK_TIKTOK_IMAGE))return FALLBACK_TIKTOK_IMAGE;
+  throw new Error('TikTok artwork unavailable: generated and fallback images failed preflight');
+}
 async function alreadyDone(cfg,id){
   const r=await fetch(`${cfg.url}/rest/v1/poll_responses?select=poll_id&poll_id=eq.${encodeURIComponent(PUBLISH_PREFIX+id)}&limit=1`,{headers:sbHeaders(cfg),cache:'no-store'});
   return r.ok&&(await r.json()).length>0;
@@ -161,7 +175,8 @@ async function tiktokChannel(cfg){
 }
 async function publish(channel,i){
   const q=`mutation P($channelId: ChannelId!,$text: String,$image: String!,$title: String) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:shareNow,saveToDraft:false,assets:[{image:{url:$image}}],metadata:{tiktok:{title:$title}}}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`;
-  const result=await gql(q,{channelId:channel.id,text:caption(i),image:artwork(i),title:clean(i.title).slice(0,90)});
+  const image=await artworkFor(i);
+  const result=await gql(q,{channelId:channel.id,text:caption(i),image,title:clean(i.title).slice(0,90)});
   const p=result.data?.createPost;
   if(!p?.post)throw new Error(p?.message||'Buffer did not create TikTok post');
   return p.post;
