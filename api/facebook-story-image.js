@@ -15,9 +15,18 @@ module.exports=async(req,res)=>{
     const src=bestSource(requested);
     if(!/^https:\/\//i.test(src))throw new Error('Invalid image URL');
 
-    let r=await fetch(src,{cache:'no-store'});
-    if(!r.ok&&src!==requested)r=await fetch(requested,{cache:'no-store'});
-    if(!r.ok)throw new Error(`Image fetch failed: ${r.status}`);
+    const headers={
+      'User-Agent':'Mozilla/5.0 (compatible; FootballTalk/1.0; +https://www.footballtalk.uk/)',
+      'Accept':'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+      'Referer':'https://www.footballtalk.uk/'
+    };
+    let r=await fetch(src,{cache:'no-store',headers,redirect:'follow'});
+    if(!r.ok&&src!==requested)r=await fetch(requested,{cache:'no-store',headers,redirect:'follow'});
+    if(!r.ok){
+      console.warn('Facebook source image unavailable; using branded fallback',{status:r.status,host:(()=>{try{return new URL(requested).hostname}catch{return 'invalid'}})()});
+      r=await fetch(FALLBACK,{cache:'no-store',headers:{'User-Agent':headers['User-Agent'],'Accept':'image/*,*/*;q=0.8'},redirect:'follow'});
+    }
+    if(!r.ok)throw new Error(`Fallback image fetch failed: ${r.status}`);
 
     const input=Buffer.from(await r.arrayBuffer());
     const meta=await sharp(input).metadata();
