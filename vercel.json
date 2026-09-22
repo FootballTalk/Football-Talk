@@ -38,10 +38,6 @@
       "schedule": "*/25 * * * *"
     },
     {
-      "path": "/api/buffer-tiktok",
-      "schedule": "5-59/25 * * * *"
-    },
-    {
       "path": "/api/threads",
       "schedule": "20 * * * *"
     },
