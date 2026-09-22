@@ -43,7 +43,7 @@
     },
     {
       "path": "/api/weekend-tv-social",
-      "schedule": "*/10 17,18 * * 4"
+      "schedule": "*/10 17,18,19 * * 4"
     },
     {
       "path": "/api/ref-watch",
@@ -51,7 +51,7 @@
     },
     {
       "path": "/api/weekly-newsletter",
-      "schedule": "0 9 * * 5"
+      "schedule": "0 8,9 * * 5"
     }
   ],
   "rewrites": [
