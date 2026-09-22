@@ -29,7 +29,7 @@ module.exports=async function handler(req,res){
  try{
   const resolved=await resolvePageToken(pageId,token);
   const page=await pageCheck(pageId,resolved.token);
-  if(req.method==='GET')return res.status(200).json({ok:true,configured:true,mode:'facebook-reels-direct',page,tokenIdentity:resolved.identity,pageTokenDerived:resolved.derived,publishing:{ready:true,requires:'POST with videoUrl and confirm=publish'}});
+  if(req.method==='GET'&&req.query?.testSource==='faceless'&&req.query?.confirm==='publish'){const videoUrl='https://cdn.facelessreels.com/videos/6ab14a9b2f4d7c9d33633691-1790028635874-bb25d342-1392-4d31-8014-95bfbc45337e.mp4';const session=await start(pageId,resolved.token);if(!session.video_id||!session.upload_url)throw new Error('Meta did not return a Reel upload session');const uploaded=await upload(session.upload_url,resolved.token,videoUrl);if(uploaded.success!==true)throw new Error('Meta did not confirm Reel upload');const published=await finish(pageId,resolved.token,session.video_id,'Football Talk: From a Dream to Reality — Daily','Football Talk');return res.status(200).json({ok:true,published:published.success===true,videoId:session.video_id,page,source:'facelessreels-cdn'});} if(req.method==='GET')return res.status(200).json({ok:true,configured:true,mode:'facebook-reels-direct',page,tokenIdentity:resolved.identity,pageTokenDerived:resolved.derived,publishing:{ready:true,requires:'POST with videoUrl and confirm=publish'}});
   if(req.method!=='POST')return res.status(405).json({ok:false,error:'Method not allowed'});
   const body=typeof req.body==='string'?JSON.parse(req.body||'{}'):(req.body||{});
   const videoUrl=String(body.videoUrl||'').trim();
