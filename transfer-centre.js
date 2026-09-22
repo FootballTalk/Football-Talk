@@ -106,7 +106,7 @@
       if(confirmed.status==='fulfilled')items.push(...(confirmed.value.items||[]));
       if(!items.length)throw new Error('No transfer data');
       render(items);
-    }catch(e){if(!grid.querySelector('.ft-tc-card'))grid.innerHTML='<div class="ft-tc-empty">Transfer tracker is temporarily unavailable. Please try again shortly.</div>';}finally{loading=false}
+    }catch(e){if(!grid.querySelector('.ft-tc-card'))grid.innerHTML='<div class="ft-tc-empty"><strong>Latest transfer coverage</strong><br>Fresh tracker updates are being refreshed. You can continue with the latest Football Talk transfer stories below.</div>'; updated.textContent='LATEST COVERAGE';}finally{loading=false}
   }
   load();setInterval(load,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
 })();
