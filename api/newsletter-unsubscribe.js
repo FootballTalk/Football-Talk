@@ -6,7 +6,7 @@ export default async function handler(req,res){
  res.setHeader('Cache-Control','no-store');
  if(!['GET','POST'].includes(req.method)){res.setHeader('Allow','GET, POST');return res.status(405).json({error:'Method not allowed'})}
  const key=String(process.env.RESEND_API_KEY||'').trim();if(!key)return res.status(503).json({error:'Email delivery is not configured'});
- if(req.method==='GET'&&!req.query?.id)return res.status(200).json({ok:true,configured:true});
+ if(req.method==='GET')return res.status(200).json({ok:true,configured:true});
  const id=String(req.query?.id||req.body?.id||'').trim();
  const email=String(req.body?.email||'').trim().toLowerCase();
  if(!id&&!validEmail(email))return res.status(400).json({error:'Subscriber reference or valid email is required'});
