@@ -1,30 +1,9 @@
 const GRAPH_VERSION='v26.0';
 
-function configured(){
-  return Boolean(process.env.FACEBOOK_PAGE_ID&&process.env.FACEBOOK_PAGE_ACCESS_TOKEN);
-}
-
-async function pageCheck(){
-  const pageId=process.env.FACEBOOK_PAGE_ID;
-  const token=process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
-  const url=new URL(`https://graph.facebook.com/${GRAPH_VERSION}/${encodeURIComponent(pageId)}`);
-  url.searchParams.set('fields','id,name');
-  url.searchParams.set('access_token',token);
-  const r=await fetch(url,{cache:'no-store'});
-  const data=await r.json().catch(()=>({}));
-  if(!r.ok)throw new Error(data?.error?.message||`Facebook Graph HTTP ${r.status}`);
-  return{id:data.id||null,name:data.name||null};
-}
-
-module.exports=async function handler(req,res){
-  res.setHeader('Cache-Control','no-store');
-  if(req.method!=='GET')return res.status(405).json({ok:false,error:'Method not allowed'});
-  if(!configured())return res.status(503).json({ok:false,configured:false,pageIdConfigured:Boolean(process.env.FACEBOOK_PAGE_ID),tokenConfigured:Boolean(process.env.FACEBOOK_PAGE_ACCESS_TOKEN)});
-  try{
-    const page=await pageCheck();
-    return res.status(200).json({ok:true,configured:true,mode:'facebook-reels-direct',page});
-  }catch(error){
-    console.error('Facebook Reels connection check failed',error);
-    return res.status(502).json({ok:false,configured:true,error:String(error?.message||error)});
-  }
-};
+function env(){return{pageId:process.env.FACEBOOK_PAGE_ID,token:process.env.FACEBOOK_PAGE_ACCESS_TOKEN};}
+async function json(r){const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d?.error?.message||d?.message||`HTTP ${r.status}`);return d;}
+async function pageCheck(pageId,token){const u=new URL(`https://graph.facebook.com/${GRAPH_VERSION}/${encodeURIComponent(pageId)}`);u.searchParams.set('fields','id,name');u.searchParams.set('access_token',token);const d=await json(await fetch(u,{cache:'no-store'}));return{id:d.id||null,name:d.name||null};}
+async function start(pageId,token){const u=new URL(`https://graph.facebook.com/${GRAPH_VERSION}/${encodeURIComponent(pageId)}/video_reels`);u.searchParams.set('upload_phase','start');u.searchParams.set('access_token',token);return json(await fetch(u,{method:'POST',cache:'no-store'}));}
+async function upload(uploadUrl,token,videoUrl){return json(await fetch(uploadUrl,{method:'POST',headers:{Authorization:`OAuth ${token}`,file_url:videoUrl},cache:'no-store'}));}
+async function finish(pageId,token,videoId,description,title){const u=new URL(`https://graph.facebook.com/${GRAPH_VERSION}/${encodeURIComponent(pageId)}/video_reels`);u.searchParams.set('upload_phase','finish');u.searchParams.set('video_id',videoId);u.searchParams.set('video_state','PUBLISHED');if(description)u.searchParams.set('description',description);if(title)u.searchParams.set('title',title);u.searchParams.set('access_token',token);return json(await fetch(u,{method:'POST',cache:'no-store'}));}
+module.exports=async function handler(req,res){res.setHeader('Cache-Control','no-store');const {pageId,token}=env();if(!pageId||!token)return res.status(503).json({ok:false,configured:false,pageIdConfigured:Boolean(pageId),tokenConfigured:Boolean(token)});try{const page=await pageCheck(pageId,token);if(req.method==='GET')return res.status(200).json({ok:true,configured:true,mode:'facebook-reels-direct',page,publishing:{ready:true,requires:'POST with videoUrl and confirm=publish'}});if(req.method!=='POST')return res.status(405).json({ok:false,error:'Method not allowed'});const body=typeof req.body==='string'?JSON.parse(req.body||'{}'):(req.body||{});const videoUrl=String(body.videoUrl||'').trim();if(!videoUrl)return res.status(400).json({ok:false,error:'videoUrl is required'});if(body.confirm!=='publish')return res.status(400).json({ok:false,error:'confirm must equal publish; nothing was published'});const session=await start(pageId,token);if(!session.video_id||!session.upload_url)throw new Error('Meta did not return a Reel upload session');const uploaded=await upload(session.upload_url,token,videoUrl);if(uploaded.success!==true)throw new Error('Meta did not confirm Reel upload');const published=await finish(pageId,token,session.video_id,String(body.description||''),String(body.title||''));return res.status(200).json({ok:true,published:published.success===true,videoId:session.video_id,page});}catch(e){console.error('Facebook Reels publishing failed',e);return res.status(502).json({ok:false,error:String(e?.message||e)});}};
