@@ -22,11 +22,7 @@ async function connectionInfo(){const a=await gql(`query { account { organizatio
 function channel(info,service){return(info.channels||[]).find(c=>String(c.service||'').toLowerCase()===service&&(service==='facebook'?/football\s*talk/i.test(`${c.name||''} ${c.displayName||''}`):service==='instagram'?/football\s*talk|footballtalk/i.test(`${c.name||''} ${c.displayName||''}`):true));}
 async function matches(start){const end=addDays(start,3),r=await fetch(`${SITE_URL}api/tv-guide`,{headers:{'User-Agent':'FootballTalk Weekend TV Social/1.0'},cache:'no-store'});if(!r.ok)throw new Error(`TV guide ${r.status}`);const data=await r.json();return(data.matches||[]).filter(x=>x.date>=start&&x.date<=end&&allowed(x));}
 function lines(items){const out=[];let day='';for(const m of items){if(m.date!==day){day=m.date;out.push(`\n${shortDate(day).toUpperCase()}`);}out.push(`${m.time} - ${m.home} v ${m.away} (${m.channel})`);}return out.join('\n').trim();}
-function captions(items){const listing=lines(items),link=`${SITE_URL}tv-guide.html`;return{
-  facebook:`📺 FOOTBALL TALK: WEEKEND TV GUIDE\n\nHere are the confirmed live UK TV games from Friday through Monday:\n\n${listing}\n\nSchedules can change. Check the full seven-day guide:\n🔗 ${link}\n\nWhich match will you be watching?\n\n#FootballTalk #WhereFansHaveTheirSay`,
-  instagram:`📺 WEEKEND TV GUIDE\n\nConfirmed live UK TV games from Friday through Monday:\n\n${listing}\n\nFull seven-day guide at FootballTalk.uk\n\nWhich match will you be watching? 👇\n\n#FootballTalk #FootballOnTV #WhereFansHaveTheirSay`,
-  tiktok:`📺 Football on TV this weekend — Friday through Monday. Which match will you be watching? Full guide: FootballTalk.uk #FootballTalk #FootballOnTV`
-};}
+function captions(items){const listing=lines(items),link=`${SITE_URL}tv-guide.html`;return{facebook:`📺 FOOTBALL TALK: WEEKEND TV GUIDE\n\nHere are the confirmed live UK TV games from Friday through Monday:\n\n${listing}\n\nSchedules can change. Check the full seven-day guide:\n🔗 ${link}\n\nWhich match will you be watching?\n\n#FootballTalk #WhereFansHaveTheirSay`};}
 async function recorded(cfg,start,service){const id=`${RECORD_PREFIX}${start}:${service}`,r=await fetch(`${cfg.url}/rest/v1/poll_responses?select=poll_id&poll_id=eq.${encodeURIComponent(id)}&limit=1`,{headers:sbHeaders(cfg),cache:'no-store'});return r.ok&&(await r.json()).length>0;}
 async function remember(cfg,start,service,post){const r=await fetch(`${cfg.url}/rest/v1/poll_responses`,{method:'POST',headers:sbHeaders(cfg,{'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({poll_id:`${RECORD_PREFIX}${start}:${service}`,answer:JSON.stringify({kind:'weekend-tv-guide',start,service,postId:post.id,createdAt:new Date().toISOString()})})});if(!r.ok)throw new Error(`Supabase ${r.status}`);}
 async function publish(channelId,text,service,image){const metadata=service==='instagram'?',metadata:{instagram:{type:post,shouldShareToFeed:true}}':service==='facebook'?',metadata:{facebook:{type:post}}':'';const q=`mutation P($channelId: ChannelId!,$text: String,$image: String!) { createPost(input:{text:$text,channelId:$channelId,schedulingType:automatic,mode:shareNow,saveToDraft:false,assets:[{image:{url:$image}}]${metadata}}) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }`;const data=await gql(q,{channelId,text,image});const payload=data?.createPost;if(!payload?.post)throw new Error(payload?.message||`Buffer did not create ${service} post`);return payload.post;}
@@ -36,7 +32,7 @@ async function run(force=false){
   const start=fridayFor(),items=await matches(start);if(!items.length)return{ok:true,published:false,reason:'No confirmed in-scope televised fixtures',start};
   const cfg=siteConfig(),info=await connectionInfo(),copy=captions(items),image=`${SITE_URL}api/weekend-tv-image?start=${encodeURIComponent(start)}`;
   const results=[],errors=[];
-  for(const service of['facebook','instagram','tiktok']){
+  for(const service of['facebook']){
     if(await recorded(cfg,start,service)){results.push({service,status:'already-published'});continue;}
     const target=channel(info,service);if(!target){errors.push({service,error:'Buffer channel is not connected'});continue;}
     try{const post=await publish(target.id,copy[service],service,image);await remember(cfg,start,service,post);results.push({service,status:'published',postId:post.id});}
@@ -53,8 +49,8 @@ module.exports=async function handler(req,res){
   try{
     if(cron){if(!authorised)return res.status(401).json({error:'Unauthorized'});return res.status(200).json(await run(false));}
     const start=fridayFor(),cfg=siteConfig(),published={};
-    for(const service of['facebook','instagram','tiktok'])published[service]=await recorded(cfg,start,service);
-    return res.status(200).json({ok:true,mode:'diagnostic-only',nextWindow:'Thursday 18:00-19:59 Europe/London',start,published,services:['facebook','instagram','tiktok'],note:'Publishing is restricted to authenticated Vercel Cron requests.'});
+    for(const service of['facebook'])published[service]=await recorded(cfg,start,service);
+    return res.status(200).json({ok:true,mode:'diagnostic-only',nextWindow:'Thursday 18:00-19:59 Europe/London',start,published,services:['facebook'],note:'Publishing is restricted to authenticated Vercel Cron requests. Weekend TV publishing is Facebook-only; Instagram and TikTok are excluded.'});
   }
   catch(error){console.error('Weekend TV social publish failed',error);return res.status(502).json({ok:false,error:'Weekend TV social publishing unavailable',detail:String(error.message||error)});}
 };
