@@ -100,9 +100,19 @@ async function publishText(text,userId){
   catch(error){throw new Error(`Threads container creation failed: ${error.message}; details=${JSON.stringify(error.threads||{})}`);}
   if(!created.id)throw new Error('Threads did not return a creation id');
   let published;
-  try{published=await graph(`${base}/threads_publish`,{method:'POST',params:{creation_id:created.id}});}
-  catch(error){throw new Error(`Threads container publication failed: ${error.message}; details=${JSON.stringify(error.threads||{})}`);}
-  if(!published.id)throw new Error('Threads did not return a published post id');
+  let lastError=null;
+  for(let attempt=1;attempt<=4;attempt++){
+    if(attempt>1)await new Promise(resolve=>setTimeout(resolve,attempt*1500));
+    try{
+      published=await graph(`${base}/threads_publish`,{method:'POST',params:{creation_id:created.id}});
+      if(published?.id)break;
+    }catch(error){
+      lastError=error;
+      const transient=error.threads?.code===24&&error.threads?.subcode===4279009;
+      if(!transient||attempt===4)throw new Error(`Threads container publication failed: ${error.message}; details=${JSON.stringify(error.threads||{})}`);
+    }
+  }
+  if(!published?.id)throw new Error(`Threads did not return a published post id${lastError?`: ${lastError.message}`:''}`);
   return {containerId:created.id,postId:published.id};
 }
 async function diagnostics(){
