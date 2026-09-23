@@ -52,10 +52,6 @@
     {
       "path": "/api/weekly-newsletter",
       "schedule": "0 8,9 * * 5"
-    },
-    {
-      "path": "/api/facebook-reels-auto",
-      "schedule": "*/25 * * * *"
     }
   ],
   "rewrites": [
