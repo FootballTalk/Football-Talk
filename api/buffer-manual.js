@@ -50,18 +50,16 @@ async function createPost(channelId,text,service,image){const variables={channel
 function textFor(item,service){const raw=service==='facebook'?item.facebook:service==='instagram'?item.instagram:item.x;const text=String(raw||'').trim();if(service==='twitter'&&text.length>280)return text.slice(0,279).trimEnd()+'…';return text;}
 function imageFor(item,service){if(service==='instagram')return item.instagramImage||item.image||INSTAGRAM_SOCIAL_IMAGE;if(service==='facebook'){const src=item.image||DEFAULT_SOCIAL_IMAGE;return`${SITE_URL}api/facebook-story-image?src=${encodeURIComponent(src)}&story=${encodeURIComponent(item.id||'manual')}`;}return item.image||DEFAULT_SOCIAL_IMAGE;}
 async function pendingState(cfg,items){const state=[];for(const item of items){if(!item?.id||item.enabled===false)continue;const done={};for(const service of['facebook','instagram','twitter'])done[service]=await alreadyRecorded(cfg,item.id,service);state.push({id:item.id,title:item.title||'',done});}return state;}
-async function firstPending(cfg,items){for(const item of items){if(!item?.id||item.enabled===false)continue;const services=[];for(const service of['facebook','instagram','twitter'])if(!(await alreadyRecorded(cfg,item.id,service)))services.push(service);if(services.length)return{item,services};}return null;}
+async function firstPending(cfg,items,targets){for(const item of items){if(!item?.id||item.enabled===false)continue;const services=[];for(const service of['facebook','instagram','twitter'])if(targets[service]&&textFor(item,service)&&!(await alreadyRecorded(cfg,item.id,service)))services.push(service);if(services.length)return{item,services};}return null;}
 
 async function publishPending(){
   const backoff=backoffState();if(backoff.active)return{ok:true,published:false,reason:'Buffer rate-limit backoff active',backoff};
   const cfg=siteConfig();const items=loadQueue();
-  const work=await firstPending(cfg,items);
-  if(!work)return{ok:true,published:false,reason:'No pending manual Buffer posts',rateLimit:lastRateLimit};
-
   const info=await connectionInfo();
   const targets={facebook:channelFor(info,'facebook'),instagram:channelFor(info,'instagram'),twitter:channelFor(info,'twitter')};
-  const missing=work.services.filter(service=>!targets[service]);
-  if(missing.length)throw new Error(`Buffer channel not found: ${missing.join(', ')}`);
+  const unavailableDestinations=['facebook','instagram','twitter'].filter(service=>!targets[service]);
+  const work=await firstPending(cfg,items,targets);
+  if(!work)return{ok:true,published:false,reason:'No pending posts for connected Buffer channels',unavailableDestinations,rateLimit:lastRateLimit};
 
   const posts=[];const errors=[];
   for(const service of work.services){
@@ -81,7 +79,7 @@ async function publishPending(){
       if(/HTTP 429|quota low|backing off/i.test(detail))break;
     }
   }
-  return{ok:posts.length>0||errors.length===0,published:posts.length>0,id:work.item.id,title:work.item.title,posts,errors,instagram:'automatic-square-image',facebook:'hq-landscape-image',backoff:backoffState()};
+  return{ok:posts.length>0||errors.length===0,published:posts.length>0,id:work.item.id,title:work.item.title,posts,errors,unavailableDestinations,instagram:'automatic-square-image',facebook:'hq-landscape-image',backoff:backoffState()};
 }
 
 module.exports=async function handler(req,res){res.setHeader('Cache-Control','no-store');if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({error:'Method not allowed'});}try{const isCron=String(req.headers['user-agent']||'').toLowerCase().includes('vercel-cron');if(isCron)return res.status(200).json(await publishPending());const cfg=siteConfig();const items=loadQueue();return res.status(200).json({ok:true,mode:'diagnostic-only',note:'Publishing is restricted to Vercel Cron requests.',instagram:'automatic-square-image',instagramImage:INSTAGRAM_SOCIAL_IMAGE,facebook:'hq-landscape-image',queue:await pendingState(cfg,items),backoff:backoffState()});}catch(error){console.error('Manual Buffer publish failed',error);const backoff=backoffState();if(backoff.active)return res.status(200).json({ok:true,published:false,reason:'Buffer rate-limit backoff active',detail:String(error.message||error),backoff});return res.status(502).json({ok:false,error:'Manual Buffer publishing unavailable',detail:String(error.message||error)});}};
