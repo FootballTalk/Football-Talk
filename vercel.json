@@ -43,7 +43,7 @@
     },
     {
       "path": "/api/buffer-manual",
-      "schedule": "35 * * * *"
+      "schedule": "*/25 * * * *"
     },
     {
       "path": "/api/weekend-tv-social",
