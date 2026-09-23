@@ -47,6 +47,7 @@ function renderCurrent(){
   if(activeIndex>=questions.length){submit.hidden=false;return}
   submit.hidden=true;
   if(!deadline)deadline=Date.now()+DURATION;
+  if(activeIndex>0)boxes[activeIndex].scrollIntoView({block:'center'});
   saveProgress();
   updateClock();
   timer=setInterval(updateClock,100);
