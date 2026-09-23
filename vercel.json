@@ -30,6 +30,10 @@
   ],
   "crons": [
     {
+      "path": "/api/facebook-reels-auto",
+      "schedule": "*/25 * * * *"
+    },
+    {
       "path": "/api/buffer",
       "schedule": "*/25 * * * *"
     },
