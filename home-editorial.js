@@ -3,6 +3,7 @@ const feed=document.getElementById('dynamic-posts');
 if(!feed)return;
 
 const storyDate=card=>{
+  const exact=card.dataset.publishedAt;if(exact){const time=Date.parse(exact);if(Number.isFinite(time))return time;}
   const raw=(card.querySelector('.card-meta')?.textContent||'').trim();
   if(!raw)return 0;
   const now=new Date();
@@ -29,6 +30,7 @@ const score=(card,i)=>{
   else n-=120;
 
   // Priority only breaks ties among reasonably fresh stories.
+  if(ageHours<=24&&card.classList.contains('home-wire-lead'))n+=300;
   if(ageHours<=168){
     if(/breaking/.test(type))n+=55;
     else if(/transfer|var|matchday|full time/.test(type))n+=25;
@@ -42,7 +44,7 @@ const score=(card,i)=>{
 
 const labelFor=card=>{
   const type=(card.querySelector('.tag')?.textContent||'').toLowerCase();
-  if(type.includes('breaking'))return'BREAKING';
+  if(type.includes('breaking'))return'BREAKING NEWS';
   if(type.includes('transfer')||type.includes("it's a go")||type.includes('its a go'))return'TRANSFER';
   if(type.includes('var'))return'VAR';
   if(type.includes('matchday')||type.includes('full time'))return'MATCHDAY';
@@ -59,16 +61,17 @@ const enhance=()=>{
     .sort((a,b)=>b.n-a.n||b.published-a.published||a.i-b.i);
 
   const lead=ranked[0]?.card||cards[0];
+  const leadIsFresh=Boolean(ranked[0]?.published&&Date.now()-ranked[0].published<48*3600000);
   if(lead&&feed.firstElementChild!==lead)feed.prepend(lead);
 
   const ordered=[...feed.querySelectorAll('.post-card')];
   ordered.forEach((card,i)=>{
-    card.classList.toggle('editorial-lead',i===0);
+    card.classList.toggle('editorial-lead',i===0&&leadIsFresh);
     card.classList.toggle('editorial-support',i>0&&i<4);
     card.classList.toggle('editorial-more',i>=4);
     card.querySelector('.editorial-kicker')?.remove();
     const body=card.querySelector('.post-card-body');
-    if(i===0&&body){
+    if(i===0&&body&&leadIsFresh){
       const tag=body.querySelector('.tag');
       const k=document.createElement('span');
       k.className='editorial-kicker';
