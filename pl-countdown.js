@@ -17,5 +17,4 @@
     const tick=()=>{if(!target)return;const diff=target-Date.now();if(diff<=0){target=0;group=[];load();return;}const t=formatTime(diff);box.querySelector('[data-unit="days"]').textContent=pad(t.days);box.querySelector('[data-unit="hours"]').textContent=pad(t.hours);box.querySelector('[data-unit="mins"]').textContent=pad(t.mins);box.querySelector('[data-unit="secs"]').textContent=pad(t.secs);};await load();tick();setInterval(tick,1000);setInterval(load,300000);
   }if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
-if(!document.querySelector('script[data-ft-draw-news]')){const drawNews=document.createElement('script');drawNews.src='draw-news.js?v=20260826-1';drawNews.dataset.ftDrawNews='1';document.body.appendChild(drawNews);}
 if(!document.querySelector('script[data-ft-header-logo]')){const headerLogo=document.createElement('script');headerLogo.src='header-logo.js?v=20260827-1';headerLogo.dataset.ftHeaderLogo='1';document.body.appendChild(headerLogo);}
