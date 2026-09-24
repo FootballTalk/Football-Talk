@@ -25,8 +25,47 @@
   function transferMatches(item,aliases){const haystack=normalise(`${item.title||''} ${item.description||''}`);return aliases.some(alias=>alias&&haystack.includes(alias))}
   function renderTransferResults(query=''){const block=document.getElementById('auto-live-transfers');if(!block)return;const grid=block.querySelector('.auto-editorial-grid');const status=document.getElementById('club-transfer-status');const q=clean(query);const aliases=aliasesFor(q);const results=q?latestTransferItems.filter(item=>transferMatches(item,aliases)).slice(0,MAX_SEARCH_TRANSFERS):latestTransferItems.slice(0,MAX_TRANSFERS);grid.innerHTML=results.length?results.map(item=>card(item)).join(''):`<div class="auto-card"><p>${q?`No completed or gaining-pace transfers found for ${esc(q)}. Try the full club name or check again shortly.`:'No completed or gaining-pace transfers on the live feed right now.'}</p></div>`;if(status)status.textContent=q?`Showing ${results.length} transfer ${results.length===1?'story':'stories'} for ${q}`:''}
   function ensureTransferSearch(transferLive,block){let search=document.getElementById('club-transfer-search');if(search){if(block&&search.nextElementSibling!==block)transferLive.insertBefore(search,block);return search}search=document.createElement('div');search.id='club-transfer-search';search.className='club-transfer-search';search.innerHTML=`<h4>Find your club’s transfers</h4><p>Search completed deals and transfers that are gaining pace. “Here We Go” updates stay exclusive to the Members Area.</p><div class="club-transfer-search-row"><input id="club-transfer-input" type="search" placeholder="e.g. Liverpool, Arsenal, Man Utd" autocomplete="off" aria-label="Search transfer updates by club"><button id="club-transfer-button" type="button">Search</button><button id="club-transfer-clear" class="clear" type="button">Clear</button></div><p id="club-transfer-status" class="club-transfer-status" aria-live="polite"></p>`;transferLive.insertBefore(search,block||transferLive.firstChild);const input=search.querySelector('#club-transfer-input');const doSearch=()=>renderTransferResults(input.value);search.querySelector('#club-transfer-button').addEventListener('click',doSearch);search.querySelector('#club-transfer-clear').addEventListener('click',()=>{input.value='';renderTransferResults('');input.focus()});input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();doSearch()}});return search}
-  function render(data){const items=(data.items||[]).filter(item=>item&&item.title);const latest=[...items].sort((a,b)=>timeValue(b)-timeValue(a)).slice(0,MAX_LATEST);latestTransferItems=items.filter(item=>item.type==='TRANSFER'&&(item.stage==='OFFICIAL'||item.stage==='DEVELOPING')).sort((a,b)=>timeValue(b)-timeValue(a)||(b.relevance||0)-(a.relevance||0));const debates=items.filter(item=>item.debatePrompt).sort((a,b)=>(b.relevance||0)-(a.relevance||0)||timeValue(b)-timeValue(a)).slice(0,MAX_DEBATES);const latestSection=document.getElementById('latest');if(latestSection){const grid=document.getElementById('dynamic-posts');const anchor=grid?.parentElement||latestSection;const block=ensureBlock(anchor,'auto-live-news','Live from the wire','Newest stories first · refreshes every 3 minutes');block.querySelector('.auto-editorial-grid').innerHTML=latest.map(item=>card(item)).join('')}const transferSection=document.getElementById('transfers');if(transferSection){const transferLive=transferSection.querySelector('.transfer-live')||transferSection;const block=ensureBlock(transferLive,'auto-live-transfers','Transfer Centre','Completed deals + transfers gaining pace · “Here We Go” stays members-only');ensureTransferSearch(transferLive,block);const currentQuery=document.getElementById('club-transfer-input')?.value||'';renderTransferResults(currentQuery)}const debateSection=document.getElementById('debate');if(debateSection){const feed=debateSection.querySelector('.debate-feed')||debateSection;const block=ensureBlock(feed,'auto-live-debates','Debates from today’s stories','Generated automatically from the strongest live talking points');block.querySelector('.auto-editorial-grid').innerHTML=debates.map(item=>debateCard(item)).join('')}}
+
+  // The large headline uses a recent sourced event, never a pinned archive card.
+  const eventHeadline=/\b(?:leaves?|depart(?:s|ed)?|sack(?:ed|s)?|appoint(?:ed|s)?|confirm(?:ed|s)?|withdrew|withdraw(?:s|n)?|ruled out|charg(?:ed|es)|ban(?:ned|s)?|suspend(?:ed|s)?|terminat(?:ed|es)|agree(?:d|s)?|announc(?:ed|es))\b/i;
+  let lastLiveItems=[];
+  function selectLead(items){
+    const now=Date.now();
+    const news=items.filter(item=>item?.type==='NEWS'&&clean(item.title)&&timeValue(item)>0&&now-timeValue(item)>=0&&now-timeValue(item)<24*3600000&&/^https:\/\//i.test(item.link||''));
+    const events=news.filter(item=>eventHeadline.test(item.title));
+    const pool=events.length?events:news;
+    return [...pool].sort((a,b)=>timeValue(b)-timeValue(a)||(b.relevance||0)-(a.relevance||0))[0]||null;
+  }
+  function renderLead(items){
+    const grid=document.getElementById('dynamic-posts');
+    if(!grid)return null;
+    const item=selectLead(items);
+    let old=grid.querySelector('.home-wire-lead');
+    if(!item){old?.remove();return null;}
+    const isBreaking=eventHeadline.test(item.title)&&Date.now()-timeValue(item)<12*3600000;
+    const source=clean(item.source||'Football news');
+    const label=isBreaking?'Breaking News':'Latest News';
+    if(!old||old.dataset.storyUrl!==item.link){
+      const card=document.createElement('article');
+      card.className='post-card home-wire-lead';
+      card.dataset.storyUrl=item.link;
+      const body=document.createElement('div');
+      body.className='post-card-body';
+      const tag=document.createElement('span');tag.className='tag';tag.textContent=label;body.appendChild(tag);
+      const meta=document.createElement('p');meta.className='card-meta';meta.textContent=source+' · '+fmt(item.publishedAt);body.appendChild(meta);
+      const title=document.createElement('h3');title.textContent=clean(item.title);body.appendChild(title);
+      const desc=document.createElement('p');desc.textContent=clean(item.description||'').slice(0,260);body.appendChild(desc);
+      const link=document.createElement('a');link.className='read-story';link.href=item.link;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Read at '+source+' →';body.appendChild(link);
+      card.appendChild(body);
+      old?.remove();old=card;
+    }
+    old.dataset.publishedAt=item.publishedAt;
+    old.querySelector('.tag').textContent=label;
+    if(grid.firstElementChild!==old)grid.prepend(old);
+    return item.link;
+  }
+  function render(data){lastLiveItems=data.items||[];const leadUrl=renderLead(lastLiveItems);const items=(data.items||[]).filter(item=>item&&item.title);const latest=[...items].sort((a,b)=>timeValue(b)-timeValue(a)).slice(0,MAX_LATEST);latestTransferItems=items.filter(item=>item.type==='TRANSFER'&&(item.stage==='OFFICIAL'||item.stage==='DEVELOPING')).sort((a,b)=>timeValue(b)-timeValue(a)||(b.relevance||0)-(a.relevance||0));const debates=items.filter(item=>item.debatePrompt).sort((a,b)=>(b.relevance||0)-(a.relevance||0)||timeValue(b)-timeValue(a)).slice(0,MAX_DEBATES);const latestSection=document.getElementById('latest');if(latestSection){const grid=document.getElementById('dynamic-posts');const anchor=grid?.parentElement||latestSection;const block=ensureBlock(anchor,'auto-live-news','Live from the wire','Newest stories first · refreshes every 3 minutes');block.querySelector('.auto-editorial-grid').innerHTML=latest.filter(item=>item.link!==leadUrl).map(item=>card(item)).join('')}const transferSection=document.getElementById('transfers');if(transferSection){const transferLive=transferSection.querySelector('.transfer-live')||transferSection;const block=ensureBlock(transferLive,'auto-live-transfers','Transfer Centre','Completed deals + transfers gaining pace · “Here We Go” stays members-only');ensureTransferSearch(transferLive,block);const currentQuery=document.getElementById('club-transfer-input')?.value||'';renderTransferResults(currentQuery)}const debateSection=document.getElementById('debate');if(debateSection){const feed=debateSection.querySelector('.debate-feed')||debateSection;const block=ensureBlock(feed,'auto-live-debates','Debates from today’s stories','Generated automatically from the strongest live talking points');block.querySelector('.auto-editorial-grid').innerHTML=debates.map(item=>debateCard(item)).join('')}}
   async function load(){try{const response=await fetch(`/api/news?t=${Date.now()}`,{cache:'no-store'});if(!response.ok)return;render(await response.json())}catch(_){}}
-  function start(){ensureStyles();load();setInterval(load,REFRESH_MS)}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+  function start(){ensureStyles();const grid=document.getElementById('dynamic-posts');if(grid)new MutationObserver(()=>{if(lastLiveItems.length&&!grid.querySelector('.home-wire-lead'))renderLead(lastLiveItems)}).observe(grid,{childList:true});load();setInterval(load,REFRESH_MS)}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
 // Football Talk automatic editorial feed enabled.
