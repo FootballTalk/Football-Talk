@@ -70,7 +70,7 @@
       }
       if(['latest','transfers'].includes(view)){
         const auto=document.createElement('script');
-        auto.src='auto-editorial.js?v=20260924-live-lead-1';
+        auto.src='auto-editorial.js?v=20260924-live-lead-2';
         auto.dataset.autoEditorial='1';
         document.body.appendChild(auto);
       }
