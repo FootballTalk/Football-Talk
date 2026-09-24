@@ -57,12 +57,6 @@
       reactions.src='fan-reactions.js?v=20260831-1';
       reactions.dataset.ftFanReactions='1';
       document.body.appendChild(reactions);
-      if(view==='latest'){
-        const draw=document.createElement('script');
-        draw.src='draw-news.js?v=20260826-1';
-        draw.dataset.ftDrawNews='1';
-        document.body.appendChild(draw);
-      }
       if(view==='matchday'){
         const extra=document.createElement('script');
         extra.src='matchday-extra.js?v=20260831-live-now-1';
@@ -76,7 +70,7 @@
       }
       if(['latest','transfers'].includes(view)){
         const auto=document.createElement('script');
-        auto.src='auto-editorial.js?v=20260828-2';
+        auto.src='auto-editorial.js?v=20260924-live-lead-1';
         auto.dataset.autoEditorial='1';
         document.body.appendChild(auto);
       }
