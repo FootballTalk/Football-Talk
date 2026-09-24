@@ -1,3 +1,5 @@
+import { timingSafeEqual } from 'node:crypto';
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -5,8 +7,16 @@ export default async function handler(req, res) {
   }
 
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-  if (!webhookUrl) {
-    return res.status(500).json({ ok: false, error: 'Discord webhook is not configured' });
+  const testToken = process.env.DISCORD_TEST_TOKEN;
+  if (!webhookUrl || !testToken) {
+    return res.status(503).json({ ok: false, error: 'Discord test is unavailable' });
+  }
+
+  const supplied = req.headers.authorization?.replace(/^Bearer /, '') ?? '';
+  const expected = Buffer.from(testToken);
+  const actual = Buffer.from(supplied);
+  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
+    return res.status(401).json({ ok: false, error: 'Unauthorized' });
   }
 
   try {
@@ -15,7 +25,7 @@ export default async function handler(req, res) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username: 'Football Talk',
-        content: '⚽ **Football Talk Discord is LIVE!**\nWhere fans have their say.\nhttps://FootballTalk.uk'
+        content: '⚽ Football Talk Discord webhook test — where fans have their say.'
       })
     });
 
