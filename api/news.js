@@ -1,7 +1,8 @@
 const FEEDS = [
   { url: 'https://feeds.bbci.co.uk/sport/football/rss.xml', source: 'BBC Sport' },
   { url: 'https://feeds.bbci.co.uk/sport/football/premier-league/rss.xml', source: 'BBC Sport' },
-  { url: 'https://www.theguardian.com/football/rss', source: 'The Guardian' }
+  { url: 'https://www.theguardian.com/football/rss', source: 'The Guardian' },
+  { url: 'https://www.theguardian.com/football/manchestercity/rss', source: 'The Guardian' }
 ];
 
 const PRIORITY_TERMS = [
