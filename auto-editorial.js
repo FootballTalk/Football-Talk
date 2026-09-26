@@ -49,6 +49,8 @@
       const card=document.createElement('article');
       card.className='post-card home-wire-lead';
       card.dataset.storyUrl=item.link;
+      const imageUrl=clean(item.image||'');
+      if(/^https:\/\//i.test(imageUrl)){const img=document.createElement('img');img.className='home-lead-image';img.src=imageUrl;img.alt='';img.loading='eager';img.fetchPriority='high';img.referrerPolicy='no-referrer';card.appendChild(img);}
       const body=document.createElement('div');
       body.className='post-card-body';
       const tag=document.createElement('span');tag.className='tag';tag.textContent=label;body.appendChild(tag);
