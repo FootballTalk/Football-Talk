@@ -1,89 +1,11 @@
-(()=>{
-  const PREFIX='ft-goal-alert-';
-  const EDGE='https://cwilgnubzfpmfvoldttm.supabase.co/functions/v1/goal-push';
-  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
-  const standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
-  const supported='serviceWorker'in navigator&&'PushManager'in window&&'Notification'in window;
-
-  function decodeKey(value){
-    const padding='='.repeat((4-value.length%4)%4);
-    const base64=(value+padding).replace(/-/g,'+').replace(/_/g,'/');
-    const raw=atob(base64),out=new Uint8Array(raw.length);
-    for(let i=0;i<raw.length;i++)out[i]=raw.charCodeAt(i);
-    return out;
-  }
-
-  function key(matchId){return`${PREFIX}${matchId}`;}
-  function enabled(matchId){return localStorage.getItem(key(matchId))==='1';}
-  function setEnabled(matchId,value){value?localStorage.setItem(key(matchId),'1'):localStorage.removeItem(key(matchId));}
-
-  function paint(button,on){
-    button.classList.toggle('on',on);
-    button.setAttribute('aria-pressed',String(on));
-    button.innerHTML=on?'<span aria-hidden="true">🔔</span><span>Goal alerts on</span>':'<span aria-hidden="true">🔔</span><span>Notify me of goals</span>';
-  }
-
-  function show(message){
-    let notice=document.getElementById('goal-alert-notice');
-    if(!notice){notice=document.createElement('div');notice.id='goal-alert-notice';notice.className='goal-alert-notice';notice.setAttribute('role','status');notice.setAttribute('aria-live','polite');document.body.appendChild(notice);}
-    notice.textContent=message;notice.classList.add('show');
-    clearTimeout(show.timer);show.timer=setTimeout(()=>notice.classList.remove('show'),4500);
-  }
-
-  async function registration(){
-    await navigator.serviceWorker.register('/sw.js');
-    return navigator.serviceWorker.ready;
-  }
-
-  async function serverRequest(method,body){
-    const response=await fetch(`${EDGE}/subscribe`,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body),cache:'no-store'});
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok)throw new Error(data.error||'Goal alerts are temporarily unavailable');
-    return data;
-  }
-
-  async function turnOn(button){
-    if(!supported)throw new Error('Goal alerts are not supported by this browser.');
-    if(ios&&!standalone)throw new Error('On iPhone, install Football Talk to your Home Screen first, then open it and switch on goal alerts.');
-    const permission=await Notification.requestPermission();
-    if(permission!=='granted')throw new Error('Notifications were not allowed. You can change this in your browser settings.');
-    const reg=await registration();
-    let subscription=await reg.pushManager.getSubscription();
-    if(!subscription){
-      const keyResponse=await fetch(`${EDGE}/key`,{cache:'no-store'}),keyData=await keyResponse.json().catch(()=>({}));
-      if(!keyResponse.ok||!keyData.publicKey)throw new Error(keyData.error||'Goal alerts are temporarily unavailable');
-      subscription=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:decodeKey(keyData.publicKey)});
-    }
-    await serverRequest('POST',{
-      subscription:subscription.toJSON(),
-      matchId:button.dataset.matchId,
-      home:button.dataset.home,
-      away:button.dataset.away,
-      kickoffAt:button.dataset.kickoff,
-      homeGoals:button.dataset.homeGoals,
-      awayGoals:button.dataset.awayGoals,
-      status:button.dataset.status
-    });
-    setEnabled(button.dataset.matchId,true);paint(button,true);show(`Goal alerts are on for ${button.dataset.home} v ${button.dataset.away}.`);
-  }
-
-  async function turnOff(button){
-    const reg=await registration();
-    const subscription=await reg.pushManager.getSubscription();
-    if(subscription)await serverRequest('DELETE',{endpoint:subscription.endpoint,matchId:button.dataset.matchId});
-    setEnabled(button.dataset.matchId,false);paint(button,false);show(`Goal alerts are off for ${button.dataset.home} v ${button.dataset.away}.`);
-  }
-
-  document.addEventListener('click',async event=>{
-    const button=event.target.closest('.goal-alert');
-    if(!button||button.disabled)return;
-    event.preventDefault();event.stopPropagation();button.disabled=true;button.classList.add('busy');
-    try{enabled(button.dataset.matchId)?await turnOff(button):await turnOn(button);}
-    catch(error){show(String(error?.message||error));}
-    finally{button.disabled=false;button.classList.remove('busy');}
-  });
-
-  function refresh(root=document){root.querySelectorAll('.goal-alert[data-match-id]').forEach(button=>paint(button,enabled(button.dataset.matchId)));}
-  document.addEventListener('DOMContentLoaded',()=>refresh());
-  new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.nodeType===1)refresh(node.matches?.('.goal-alert')?node.parentNode:node);}).observe(document.documentElement,{childList:true,subtree:true});
-})();
+(()=>{const PREFIX='ft-match-alert-',EDGE='https://cwilgnubzfpmfvoldttm.supabase.co/functions/v1/goal-push',ios=/iphone|ipad|ipod/i.test(navigator.userAgent),standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true,supported='serviceWorker'in navigator&&'PushManager'in window&&'Notification'in window;
+const defaults={goals:true,redCards:false,yellowCards:false,halfTime:false,fullTime:false},labels=[['goals','⚽','Goals'],['redCards','🟥','Red cards'],['yellowCards','🟨','Yellow cards'],['halfTime','⏱️','Half-time'],['fullTime','🏁','Full-time']];
+const key=id=>PREFIX+id;function prefs(id){try{return{...defaults,...JSON.parse(localStorage.getItem(key(id))||'{}')}}catch{return{...defaults}}}const active=p=>Object.values(p).some(Boolean);function save(id,p){active(p)?localStorage.setItem(key(id),JSON.stringify(p)):localStorage.removeItem(key(id))}
+function paint(b){const on=active(prefs(b.dataset.matchId));b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));b.innerHTML='<span aria-hidden="true">🔔</span>';b.title=on?'Match alerts on':'Choose match alerts';b.setAttribute('aria-label',on?'Match alerts on — change notification choices':'Choose match alerts')}
+function show(msg){let n=document.getElementById('goal-alert-notice');if(!n){n=document.createElement('div');n.id='goal-alert-notice';n.className='goal-alert-notice';n.setAttribute('role','status');document.body.appendChild(n)}n.textContent=msg;n.classList.add('show');clearTimeout(show.t);show.t=setTimeout(()=>n.classList.remove('show'),4000)}
+function decode(v){const p='='.repeat((4-v.length%4)%4),r=atob((v+p).replace(/-/g,'+').replace(/_/g,'/')),o=new Uint8Array(r.length);for(let i=0;i<r.length;i++)o[i]=r.charCodeAt(i);return o}
+async function reg(){await navigator.serviceWorker.register('/sw.js');return navigator.serviceWorker.ready}async function request(method,body){const r=await fetch(EDGE+'/subscribe',{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body),cache:'no-store'}),d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Match alerts are temporarily unavailable');return d}
+async function apply(b,p){if(!active(p)){const r=await reg(),s=await r.pushManager.getSubscription();if(s)await request('DELETE',{endpoint:s.endpoint,matchId:b.dataset.matchId});save(b.dataset.matchId,p);paint(b);show('Match alerts switched off.');return}if(!supported)throw new Error('Match alerts are not supported by this browser.');if(ios&&!standalone)throw new Error('On iPhone, add Football Talk to your Home Screen first, then open it and switch on alerts.');if(await Notification.requestPermission()!=='granted')throw new Error('Notifications were not allowed. You can change this in your browser settings.');const r=await reg();let s=await r.pushManager.getSubscription();if(!s){const kr=await fetch(EDGE+'/key',{cache:'no-store'}),kd=await kr.json();if(!kr.ok||!kd.publicKey)throw new Error('Match alerts are temporarily unavailable');s=await r.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:decode(kd.publicKey)})}await request('POST',{subscription:s.toJSON(),matchId:b.dataset.matchId,home:b.dataset.home,away:b.dataset.away,kickoffAt:b.dataset.kickoff,homeGoals:b.dataset.homeGoals,awayGoals:b.dataset.awayGoals,status:b.dataset.status,preferences:p});save(b.dataset.matchId,p);paint(b);show('Match alert choices saved.')}
+function close(){document.querySelector('.match-alert-menu')?.remove();document.querySelectorAll('.goal-alert[aria-expanded="true"]').forEach(b=>b.setAttribute('aria-expanded','false'))}
+function menu(b){close();const p=prefs(b.dataset.matchId),m=document.createElement('div');m.className='match-alert-menu';m.setAttribute('role','dialog');m.setAttribute('aria-label','Choose match alerts');m.innerHTML='<strong>Notify me when…</strong>'+labels.map(([k,i,l])=>`<label><span>${i} ${l}</span><input type="checkbox" data-pref="${k}" ${p[k]?'checked':''}></label>`).join('')+'<button type="button" class="match-alert-save">SAVE ALERTS</button><button type="button" class="match-alert-off">TURN ALL OFF</button>';b.parentElement.style.position='relative';b.parentElement.appendChild(m);b.setAttribute('aria-expanded','true');m.querySelector('.match-alert-save').onclick=async e=>{e.stopPropagation();const next={};labels.forEach(([k])=>next[k]=m.querySelector(`[data-pref="${k}"]`).checked);const btn=e.currentTarget;btn.disabled=true;try{await apply(b,next);close()}catch(err){show(String(err?.message||err));btn.disabled=false}};m.querySelector('.match-alert-off').onclick=async e=>{e.stopPropagation();const btn=e.currentTarget;btn.disabled=true;try{await apply(b,{goals:false,redCards:false,yellowCards:false,halfTime:false,fullTime:false});close()}catch(err){show(String(err?.message||err));btn.disabled=false}}}
+document.addEventListener('click',e=>{const b=e.target.closest('.goal-alert');if(b&&!b.disabled){e.preventDefault();e.stopPropagation();menu(b);return}if(!e.target.closest('.match-alert-menu'))close()});function refresh(root=document){root.querySelectorAll?.('.goal-alert[data-match-id]').forEach(paint)}document.addEventListener('DOMContentLoaded',()=>refresh());new MutationObserver(rs=>rs.forEach(r=>r.addedNodes.forEach(n=>{if(n.nodeType===1)refresh(n)}))).observe(document.documentElement,{childList:true,subtree:true})})();
