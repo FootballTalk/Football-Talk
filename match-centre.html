@@ -128,39 +128,20 @@
         font-weight: 1000;
         font-size: 21px;
       }
-      .goal-alert {
-        width: 126px;
-        border: 0;
-        border-left: 1px solid #ddd;
-        background: #111;
-        color: #fff;
-        padding: 12px 10px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 5px;
-        font: inherit;
-        font-size: 11px;
-        font-weight: 900;
-        line-height: 1.25;
-        text-align: center;
-        cursor: pointer;
-      }
-      .goal-alert:hover,
-      .goal-alert:focus-visible,
-      .goal-alert.on {
-        background: #f7c600;
-        color: #111;
-        outline: none;
-      }
-      .goal-alert.busy {
-        opacity: 0.65;
-        cursor: wait;
-      }
-      .goal-alert span[aria-hidden="true"] {
-        font-size: 18px;
-      }
+      .goal-alert { width:52px;min-width:52px;border:0;border-left:1px solid #ddd;background:transparent;color:#111;display:flex;align-items:center;justify-content:center;cursor:pointer;font:inherit; }
+      .game.is-live .goal-alert {color:#fff;border-left-color:rgba(255,255,255,.25)}
+      .goal-alert:hover,.goal-alert:focus-visible {background:rgba(247,198,0,.16);outline:none}
+      .goal-alert.on {color:#d6a900;background:transparent}
+      .game.is-live .goal-alert.on {color:#ffe047}
+      .goal-alert.busy {opacity:.65;cursor:wait}
+      .goal-alert span[aria-hidden="true"] {font-size:24px;line-height:1}
+      .match-alert-menu {position:absolute;z-index:9999;right:8px;top:calc(100% - 8px);width:245px;padding:14px;border-radius:12px;background:#111;color:#fff;box-shadow:0 12px 32px rgba(0,0,0,.3);border:1px solid #333}
+      .match-alert-menu strong {display:block;margin-bottom:9px;color:#f7c600;font-size:13px}
+      .match-alert-menu label {display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 2px;font-size:13px;font-weight:800}
+      .match-alert-menu input {width:20px;height:20px;accent-color:#f7c600}
+      .match-alert-save,.match-alert-off {width:100%;border:0;border-radius:8px;padding:10px;margin-top:8px;font-weight:1000;cursor:pointer}
+      .match-alert-save {background:#f7c600;color:#111}
+      .match-alert-off {background:#2b2b2b;color:#fff;font-size:11px}
       .goal-alert-notice {
         position: fixed;
         z-index: 10000;
@@ -233,14 +214,9 @@
         .game-main {
           grid-template-columns: 58px minmax(0, 1fr) auto;
         }
-        .goal-alert {
-          width: 100%;
-          min-height: 42px;
-          border-left: 0;
-          border-top: 1px solid #ddd;
-          flex-direction: row;
-          padding: 9px 12px;
-        }
+        .goal-alert {width:48px;min-width:48px;min-height:48px;border-left:1px solid #ddd;border-top:0;padding:0}
+        .game {grid-template-columns:minmax(0,1fr) 48px}
+        .match-alert-menu {right:4px;top:calc(100% - 4px);width:min(245px,calc(100vw - 48px))}
         .feature-grid {
           grid-template-columns: 1fr;
         }
@@ -449,7 +425,7 @@
                     : "—";
                 const alertControl = ft
                   ? ""
-                  : `<button class="goal-alert" type="button" aria-label="Goal alerts for ${esc(g.home)} versus ${esc(g.away)}" aria-pressed="false" data-match-id="${esc(g.id)}" data-home="${esc(g.home)}" data-away="${esc(g.away)}" data-kickoff="${esc(g.date)}" data-home-goals="${hasScore ? esc(g.homeGoals) : ""}" data-away-goals="${hasScore ? esc(g.awayGoals) : ""}" data-status="${esc(st)}"><span aria-hidden="true">🔔</span><span>Notify me of goals</span></button>`;
+                  : `<button class="goal-alert" type="button" aria-label="Choose match alerts for ${esc(g.home)} versus ${esc(g.away)}" aria-pressed="false" aria-expanded="false" data-match-id="${esc(g.id)}" data-home="${esc(g.home)}" data-away="${esc(g.away)}" data-kickoff="${esc(g.date)}" data-home-goals="${hasScore ? esc(g.homeGoals) : ""}" data-away-goals="${hasScore ? esc(g.awayGoals) : ""}" data-status="${esc(st)}"><span aria-hidden="true">🔔</span></button>`;
                 const stateClass = live
                   ? " is-live"
                   : ft
@@ -473,6 +449,6 @@
         });
       });
     </script>
-    <script src="goal-alerts.js?v=20260919-1"></script>
+    <script src="goal-alerts.js?v=20260926-2"></script>
   </body>
 </html>
