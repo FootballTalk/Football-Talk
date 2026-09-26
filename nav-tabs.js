@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded',()=>{
  const path=(location.pathname.split('/').pop()||'index.html').toLowerCase(),params=new URLSearchParams(location.search),view=(params.get('view')||'').toLowerCase(),isHome=path==='index.html'||path==='';
- if(!document.querySelector('script[data-site-share]')){const s=document.createElement('script');s.src='site-share.js?v=20260926-desktop-right-1';s.dataset.siteShare='1';document.body.appendChild(s)}
+ if(!document.querySelector('script[data-site-share]')){const s=document.createElement('script');s.src='site-share.js?v=20260926-desktop-sticky-stack-1';s.dataset.siteShare='1';document.body.appendChild(s)}
  if(path==='match.html'&&!document.querySelector('script[data-prematch-intelligence]')){const s=document.createElement('script');s.src='pre-match-intelligence.js?v=20260831-1';s.dataset.prematchIntelligence='1';document.body.appendChild(s)}
  if(path==='match.html'&&!document.querySelector('script[data-match-fan-experience]')){const s=document.createElement('script');s.src='match-centre-fan-experience.js?v=20260909-1';s.dataset.matchFanExperience='1';document.body.appendChild(s)}
  if(path==='ref-watch.html'&&!document.querySelector('script[data-ref-watch-live]')){const s=document.createElement('script');s.src='ref-watch-live.js?v=20260914-1';s.dataset.refWatchLive='1';document.body.appendChild(s)}
