@@ -52,6 +52,16 @@ function extractSkyWidget(html = '') {
   return '';
 }
 
+function articleVideoId(url = '') {
+  const m = String(url).match(/\/watch\/video\/(\d+)/i);
+  return m ? m[1] : '';
+}
+
+function officialEmbedFromArticle(url = '') {
+  const id = articleVideoId(url);
+  return id ? `https://www.skysports.com/embed/video/${id}` : '';
+}
+
 function pageTitle(html = '') {
   const og = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i) ||
              html.match(/<meta\s+content=["']([^"']+)["']\s+property=["']og:title["']/i);
@@ -85,7 +95,7 @@ module.exports = async function handler(req, res) {
       try {
         const html = await getText(href);
         if (!looksLikeRefWatch(html)) continue;
-        const embedUrl = extractSkyWidget(html);
+        const embedUrl = extractSkyWidget(html) || officialEmbedFromArticle(href);
         if (!embedUrl) continue;
         const title = pageTitle(html);
         res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=21600');
@@ -103,7 +113,7 @@ module.exports = async function handler(req, res) {
     // Keep the most recent verified Ref Watch edition on the page if the author-page scan misses it.
     try {
       const html = await getText(FALLBACK_ARTICLE);
-      const embedUrl = extractSkyWidget(html);
+      const embedUrl = extractSkyWidget(html) || officialEmbedFromArticle(FALLBACK_ARTICLE);
       if (embedUrl) {
         res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=21600');
         return res.status(200).json({
