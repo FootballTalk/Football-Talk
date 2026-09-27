@@ -29,6 +29,10 @@
   const updated=document.getElementById('ft-tc-updated');
 
   function clean(v=''){return String(v).replace(/\s+/g,' ').trim()}
+  function transferHeadline(item){
+    const title=clean(item.title);
+    return /\b(?:transfer(?:s)?|gossip|rumou?rs?|target(?:s|ing)?|linked|loan(?:ed)?|bid|medical|personal terms|sign(?:s|ed|ing)?|join(?:s|ed|ing)?|switch(?:es|ed)?|negotiations?)\b|\b(?:move|moves|moved)\s+(?:to|from|for)\b|\b(?:talks|deal)\s+(?:to sign|over a move|for a transfer)\b/i.test(title);
+  }
   function suspiciousOfficial(item){const t=clean(item.title).toLowerCase();return /\b(rumou?r|rumou?rs|to sign|could sign|may sign|might sign|wants to sign|target|targets|targeting|eyes|eyeing|linked with|interested in)\b/.test(t)}
   function stageFor(item){
     const s=String(item.stage||'').toUpperCase();
@@ -79,7 +83,7 @@
   }
   function render(items){
     const seen=new Set();
-    const transfers=items.filter(i=>String(i.type||'').toUpperCase()==='TRANSFER').map(i=>({...i,_stage:stageFor(i)})).sort((a,b)=>dateValue(b)-dateValue(a)).filter(i=>{const k=clean(i.title).toLowerCase();if(!k||seen.has(k))return false;seen.add(k);return true}).slice(0,16);
+    const transfers=items.filter(i=>String(i.type||'').toUpperCase()==='TRANSFER'&&transferHeadline(i)).map(i=>({...i,_stage:stageFor(i)})).sort((a,b)=>dateValue(b)-dateValue(a)).filter(i=>{const k=clean(i.title).toLowerCase();if(!k||seen.has(k))return false;seen.add(k);return true}).slice(0,16);
     grid.replaceChildren();
     if(!transfers.length){const e=document.createElement('div');e.className='ft-tc-empty';e.textContent='No live transfer updates are available right now.';grid.appendChild(e);return;}
     transfers.forEach(item=>{
