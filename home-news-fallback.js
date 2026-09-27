@@ -72,7 +72,7 @@
     lastAttempt = now;
     inFlight = true;
     try {
-      const response = await fetch(`/api/news?t=${now}`, {cache:'no-store'});
+      const response = await (window.ftFetchNews ? window.ftFetchNews() : fetch(`/api/news?t=${now}`, {cache:'no-store'}));
       if (!response.ok) throw new Error('news unavailable');
       const data = await response.json();
       const items = data.items || [];

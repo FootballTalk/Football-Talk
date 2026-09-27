@@ -10,7 +10,7 @@
   const liveNow=document.getElementById('ft-live-now');
   if(liveNow)liveNow.parentNode.insertBefore(box,liveNow);else latest.parentNode.insertBefore(box,latest);
   const select=box.querySelector('#ft-mf-select'),title=box.querySelector('#ft-mf-title'),sub=box.querySelector('#ft-mf-sub'),content=box.querySelector('#ft-mf-content');
-  async function json(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error(url);return r.json()}
+  async function json(url){const r=await (url==='/api/news'&&window.ftFetchNews?window.ftFetchNews():fetch(url,{cache:'no-store'}));if(!r.ok)throw new Error(url);return r.json()}
   function mentions(item,club){return `${item.title||''} ${item.description||item.summary||''}`.toLowerCase().includes(club.toLowerCase())}
   function storyLink(item){if(String(item.type||'').toUpperCase()==='TRANSFER')return `transfer-story.html?title=${encodeURIComponent(item.title||'')}&summary=${encodeURIComponent(item.description||item.summary||'')}&stage=${encodeURIComponent(item.stage||'')}&source=${encodeURIComponent(item.link||'')}`;return item.link||'#'}
   async function render(club){

@@ -63,7 +63,7 @@
 
     const loadNews=async force=>{
       if(!force&&mode==='news'&&Date.now()-lastNewsLoad<90000)return;
-      try{const r=await fetch(`/api/news?t=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error();const data=await r.json();lastNewsLoad=Date.now();renderNews(data.items||[]);}catch(_){if(mode!=='news'||!track.children.length){mode='news';label.textContent='LATEST NEWS';more.textContent='NEWS →';more.href='news.html';track.innerHTML='<span class="ftnt-loading">Latest football news is temporarily unavailable.</span>';}}
+      try{const r=await (window.ftFetchNews ? window.ftFetchNews() : fetch(`/api/news?t=${Date.now()}`,{cache:'no-store'}));if(!r.ok)throw new Error();const data=await r.json();lastNewsLoad=Date.now();renderNews(data.items||[]);}catch(_){if(mode!=='news'||!track.children.length){mode='news';label.textContent='LATEST NEWS';more.textContent='NEWS →';more.href='news.html';track.innerHTML='<span class="ftnt-loading">Latest football news is temporarily unavailable.</span>';}}
     };
 
     const refresh=async()=>{

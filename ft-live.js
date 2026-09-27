@@ -134,7 +134,7 @@
 
     async function loadAutomaticNews(){
       try{
-        const response=await fetch(`/api/news?t=${Date.now()}`,{cache:'no-store'});
+        const response=await (window.ftFetchNews ? window.ftFetchNews() : fetch(`/api/news?t=${Date.now()}`,{cache:'no-store'}));
         if(!response.ok) return;
         const data=await response.json();
         automaticNewsItems=(data.items||[]).slice(0,8).map(item=>{
