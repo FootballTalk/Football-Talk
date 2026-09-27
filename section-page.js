@@ -16,7 +16,7 @@
   if(view==='transfers'){
     mount.innerHTML='<section id="transfers" class="section" style="max-width:1180px;margin:auto"><div class="section-heading"><div><p class="eyebrow">FOOTBALL TALK • TRANSFERS</p><h1>Transfer Centre</h1><p>Reports, developing moves and confirmed deals from attributed football sources. Check the linked report before treating a rumour as a completed transfer.</p></div></div><p><a href="news.html">News and Football Talk analysis →</a></p></section>';
     const tracker=document.createElement('script');
-    tracker.src='transfer-centre.js?v=20260927-1';
+    tracker.src='transfer-centre.js?v=20260927-2';
     document.body.appendChild(tracker);
     return;
   }
