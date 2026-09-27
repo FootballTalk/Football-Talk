@@ -1,5 +1,6 @@
 const SKY_AUTHOR = 'https://www.skysports.com/author/dermot-gallagher-648';
 const SKY_ORIGIN = 'https://www.skysports.com';
+const FALLBACK_ARTICLE = 'https://www.skysports.com/watch/video/13590388/ref-watch-was-elliot-andersons-handball-vs-sunderland-in-a-natural-position-or-deliberate';
 
 function clean(text = '') {
   return String(text)
@@ -98,6 +99,23 @@ module.exports = async function handler(req, res) {
         });
       } catch {}
     }
+
+    // Keep the most recent verified Ref Watch edition on the page if the author-page scan misses it.
+    try {
+      const html = await getText(FALLBACK_ARTICLE);
+      const embedUrl = extractSkyWidget(html);
+      if (embedUrl) {
+        res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=21600');
+        return res.status(200).json({
+          available: true,
+          provider: 'Sky Sports',
+          title: pageTitle(html),
+          embedUrl,
+          articleUrl: FALLBACK_ARTICLE,
+          rights: 'Video is streamed from Sky Sports. Football Talk does not host or re-upload the footage.'
+        });
+      }
+    } catch {}
 
     res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=3600');
     return res.status(200).json({ available: false, provider: 'Sky Sports' });
