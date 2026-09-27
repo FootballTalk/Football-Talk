@@ -11,6 +11,37 @@
   document.title=`${titleMap[view]} | Football Talk`;
   const mount=document.getElementById('section-page-content');
 
+  // These sections were removed from the homepage. Keep their existing URLs
+  // useful without depending on a hidden copy of index.html.
+  if(view==='transfers'){
+    mount.innerHTML='<section id="transfers" class="section" style="max-width:1180px;margin:auto"><div class="section-heading"><div><p class="eyebrow">FOOTBALL TALK • TRANSFERS</p><h1>Transfer Centre</h1><p>Reports, developing moves and confirmed deals from attributed football sources. Check the linked report before treating a rumour as a completed transfer.</p></div></div><p><a href="news.html">News and Football Talk analysis →</a></p></section>';
+    const tracker=document.createElement('script');
+    tracker.src='transfer-centre.js?v=20260927-1';
+    document.body.appendChild(tracker);
+    return;
+  }
+
+  if(view==='matchday'){
+    mount.innerHTML='<section class="section" style="max-width:1180px;margin:auto"><div class="section-heading"><div><p class="eyebrow">FT LIVE • MATCHDAY</p><h1>Matchday Feed</h1><p>Live scores and sourced football updates.</p></div></div><p><a href="match-centre.html">Open live Match Centre →</a> &nbsp; <a href="fixtures.html">Fixtures and results →</a></p><h2>Latest football updates</h2><div id="matchday-news" aria-live="polite">Loading updates…</div></section>';
+    const feed=mount.querySelector('#matchday-news');
+    fetch('/api/news',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('news unavailable');return r.json()}).then(data=>{
+      const items=(data.items||[]).filter(i=>i.type!=='TRANSFER').slice(0,12);
+      feed.replaceChildren();
+      if(!items.length){feed.textContent='No new updates are available right now. The live Match Centre remains available above.';return;}
+      for(const item of items){
+        const article=document.createElement('article');
+        article.className='post-card';article.style.padding='16px';article.style.margin='12px 0';
+        const link=document.createElement('a');
+        try{const url=new URL(item.link);if(url.protocol!=='https:')continue;link.href=url.href}catch{continue}
+        link.target='_blank';link.rel='noopener noreferrer';link.textContent=item.title||'Read football update';
+        const summary=document.createElement('p');summary.textContent=String(item.description||item.summary||'').slice(0,240);
+        const source=document.createElement('small');source.textContent=item.source||'Football source';
+        article.append(link,summary,source);feed.appendChild(article);
+      }
+    }).catch(()=>{feed.textContent='Updates could not be refreshed. Live scores are still available in the Match Centre.'});
+    return;
+  }
+
   if(view==='stats'){
     const stats=document.createElement('script');
     stats.src='stats-section.js?v=20260827-1';
@@ -25,22 +56,6 @@
     if(!selected)throw new Error('section missing');
     mount.innerHTML='';
     mount.appendChild(selected.cloneNode(true));
-
-    if(view==='transfers'){
-      mount.querySelectorAll('.transfer-update-grid,.transfer-live-head,.latest-transfer-head,#transfer-stories').forEach(el=>el.style.display='none');
-      const keepClubSearchAtTop=()=>{
-        const section=mount.querySelector('#transfers');
-        const search=document.getElementById('club-transfer-search');
-        if(!section||!search)return;
-        const heading=section.querySelector('.section-heading');
-        const target=heading?heading.nextSibling:section.firstChild;
-        if(search.parentNode!==section||search!==target){section.insertBefore(search,target||null);}
-      };
-      const observer=new MutationObserver(()=>keepClubSearchAtTop());
-      observer.observe(mount,{childList:true,subtree:true});
-      setTimeout(keepClubSearchAtTop,150);
-      setTimeout(keepClubSearchAtTop,700);
-    }
 
     if(view!=='latest'){
       const latest=doc.getElementById('latest');
@@ -57,18 +72,7 @@
       reactions.src='fan-reactions.js?v=20260831-1';
       reactions.dataset.ftFanReactions='1';
       document.body.appendChild(reactions);
-      if(view==='matchday'){
-        const extra=document.createElement('script');
-        extra.src='matchday-extra.js?v=20260831-live-now-1';
-        document.body.appendChild(extra);
-      }
-      if(view==='transfers'){
-        const tracker=document.createElement('script');
-        tracker.src='transfer-centre.js?v=20260831-2';
-        tracker.dataset.ftTransferCentre='1';
-        document.body.appendChild(tracker);
-      }
-      if(['latest','transfers'].includes(view)){
+      if(view==='latest'){
         const auto=document.createElement('script');
         auto.src='auto-editorial.js?v=20260924-live-lead-2';
         auto.dataset.autoEditorial='1';
