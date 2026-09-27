@@ -88,27 +88,31 @@ async function getText(url) {
 
 module.exports = async function handler(req, res) {
   try {
-    const authorHtml = await getText(SKY_AUTHOR);
-    const candidates = articleCandidates(authorHtml);
+    // Sky can block server-side requests to the author index. Treat discovery as optional
+    // so the known latest edition still renders through Sky's own official embed endpoint.
+    try {
+      const authorHtml = await getText(SKY_AUTHOR);
+      const candidates = articleCandidates(authorHtml);
 
-    for (const href of candidates) {
-      try {
-        const html = await getText(href);
-        if (!looksLikeRefWatch(html)) continue;
-        const embedUrl = extractSkyWidget(html) || officialEmbedFromArticle(href);
-        if (!embedUrl) continue;
-        const title = pageTitle(html);
-        res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=21600');
-        return res.status(200).json({
-          available: true,
-          provider: 'Sky Sports',
-          title,
-          embedUrl,
-          articleUrl: href,
-          rights: 'Video is streamed from Sky Sports. Football Talk does not host or re-upload the footage.'
-        });
-      } catch {}
-    }
+      for (const href of candidates) {
+        try {
+          const html = await getText(href);
+          if (!looksLikeRefWatch(html)) continue;
+          const embedUrl = extractSkyWidget(html) || officialEmbedFromArticle(href);
+          if (!embedUrl) continue;
+          const title = pageTitle(html);
+          res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=21600');
+          return res.status(200).json({
+            available: true,
+            provider: 'Sky Sports',
+            title,
+            embedUrl,
+            articleUrl: href,
+            rights: 'Video is streamed from Sky Sports. Football Talk does not host or re-upload the footage.'
+          });
+        } catch {}
+      }
+    } catch {}
 
     // Keep the most recent verified Ref Watch edition on the page if the author-page scan misses it.
     try {
