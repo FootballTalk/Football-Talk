@@ -41,9 +41,9 @@ function articleCandidates(html = '') {
 
 function extractSkyWidget(html = '') {
   const patterns = [
-    /https:\/\/www\.skysports\.com\/iframe\/widget\/video\/([a-f0-9-]{20,})/i,
-    /\/iframe\/widget\/video\/([a-f0-9-]{20,})/i,
-    /iframe\/widget\/video\/([a-f0-9-]{20,})/i
+    /https:\/\/www\.skysports\.com\/iframe\/widget\/video\/([A-Za-z0-9_-]{16,})/i,
+    /\/iframe\/widget\/video\/([A-Za-z0-9_-]{16,})/i,
+    /iframe\/widget\/video\/([A-Za-z0-9_-]{16,})/i
   ];
   for (const pattern of patterns) {
     const m = html.match(pattern);
@@ -68,7 +68,7 @@ function looksLikeRefWatch(html = '') {
 async function getText(url) {
   const response = await fetch(url, {
     headers: {
-      'User-Agent': 'FootballTalk/1.0 (+https://footballtalk.uk)',
+      'User-Agent': 'Mozilla/5.0 (compatible; FootballTalk/1.0; +https://www.footballtalk.uk)',
       'Accept-Language': 'en-GB,en;q=0.9'
     }
   });
