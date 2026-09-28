@@ -12,7 +12,7 @@
     if(window.matchMedia('(min-width:901px)').matches){const partnerBanner=document.getElementById('ft-partner-banner');if(partnerBanner)partnerBanner.insertAdjacentElement('afterend',ticker);else if(countdown)countdown.insertAdjacentElement('afterend',ticker);else hero.insertAdjacentElement('beforebegin',ticker)}else if(countdown)countdown.insertAdjacentElement('beforebegin',ticker);else hero.insertAdjacentElement('beforebegin',ticker);
 
     const style=document.createElement('style');
-    style.textContent=`#ft-home-news-ticker{background:#09090b;color:#fff;border-bottom:3px solid #f7c600;overflow:hidden}.ftnt-inner{max-width:1180px;margin:auto;display:flex;align-items:center;min-height:56px}@media(min-width:901px){#ft-home-news-ticker{width:100%;margin:0}.ftnt-inner{max-width:none;width:100%;box-sizing:border-box}}.ftnt-badge{align-self:stretch;display:flex;align-items:center;gap:6px;background:#b5121b;color:#fff;padding:0 15px;font-size:12px;font-weight:1000;letter-spacing:.08em;white-space:nowrap}.ftnt-live-dot{width:7px;height:7px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.18);animation:ftntPulse 1.2s infinite}.ftnt-label{color:#f7c600;font-size:12px;font-weight:1000;letter-spacing:.08em;padding:0 16px;white-space:nowrap}.ftnt-window{flex:1;min-width:0;overflow:hidden;mask-image:linear-gradient(to right,transparent 0,#000 3%,#000 97%,transparent 100%);-webkit-mask-image:linear-gradient(to right,transparent 0,#000 3%,#000 97%,transparent 100%)}.ftnt-track{display:flex;align-items:center;width:max-content;white-space:nowrap;will-change:transform}.ftnt-track.running{animation:ftntScroll var(--ftnt-speed,48s) linear infinite}.ftnt-item{display:inline-flex;align-items:center;color:#fff;text-decoration:none;font-size:14px;font-weight:800;padding:0 20px}.ftnt-item:hover{color:#f7c600}.ftnt-score{display:inline-flex;align-items:center;color:#fff;font-size:14px;font-weight:900;padding:0 20px}.ftnt-score strong{color:#f7c600;margin:0 6px}.ftnt-live-status{color:#ff4a54;margin-left:6px;font-size:10px}.ftnt-ft-status{color:#aaa;margin-left:6px;font-size:10px}.ftnt-sep{color:#f7c600;font-weight:1000}.ftnt-source{color:#9b9ba3;font-size:10px;margin-left:7px}.ftnt-loading{color:#b7b7bd;font-size:12px;font-weight:700;padding:0 16px}.ftnt-more{color:#f7c600;text-decoration:none;font-size:11px;font-weight:1000;padding:0 15px;white-space:nowrap}@keyframes ftntScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}@keyframes ftntPulse{0%,100%{opacity:1}50%{opacity:.4}}@media(max-width:620px){.ftnt-inner{min-height:48px}.ftnt-badge{padding:0 8px;font-size:9px}.ftnt-label{font-size:9px;padding:0 8px}.ftnt-item,.ftnt-score{font-size:11px;padding:0 12px}.ftnt-source{display:none}.ftnt-more{font-size:9px;padding:0 8px}}`;
+    style.textContent=`#ft-home-news-ticker{background:#09090b;color:#fff;border-bottom:3px solid #f7c600;overflow:hidden}.ftnt-inner{max-width:1180px;margin:auto;display:flex;align-items:center;min-height:56px}@media(min-width:901px){#ft-home-news-ticker{width:100%;margin:0}.ftnt-inner{max-width:none;width:100%;box-sizing:border-box}}.ftnt-badge{align-self:stretch;display:flex;align-items:center;gap:6px;background:#b5121b;color:#fff;padding:0 15px;font-size:12px;font-weight:1000;letter-spacing:.08em;white-space:nowrap}.ftnt-live-dot{width:7px;height:7px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.18);animation:ftntPulse 1.2s infinite}.ftnt-label{color:#f7c600;font-size:12px;font-weight:1000;letter-spacing:.08em;padding:0 16px;white-space:nowrap}.ftnt-window{flex:1;min-width:0;overflow:hidden;mask-image:linear-gradient(to right,transparent 0,#000 3%,#000 97%,transparent 100%);-webkit-mask-image:linear-gradient(to right,transparent 0,#000 3%,#000 97%,transparent 100%)}.ftnt-track{display:flex;align-items:center;width:max-content;white-space:nowrap;will-change:transform}.ftnt-track.running{animation:ftntScroll var(--ftnt-speed,48s) linear infinite}.ftnt-item{display:inline-flex;align-items:center;color:#fff;text-decoration:none;font-size:14px;font-weight:800;padding:0 20px}.ftnt-item:hover{color:#f7c600}.ftnt-score{display:inline-flex;align-items:center;color:#fff;font-size:14px;font-weight:900;padding:0 20px}.ftnt-score strong{color:#f7c600;margin:0 6px}.ftnt-competition{color:#9b9ba3;font-size:10px;margin-left:7px}.ftnt-live-status{color:#ff4a54;margin-left:6px;font-size:10px}.ftnt-ft-status{color:#aaa;margin-left:6px;font-size:10px}.ftnt-sep{color:#f7c600;font-weight:1000}.ftnt-source{color:#9b9ba3;font-size:10px;margin-left:7px}.ftnt-loading{color:#b7b7bd;font-size:12px;font-weight:700;padding:0 16px}.ftnt-more{color:#f7c600;text-decoration:none;font-size:11px;font-weight:1000;padding:0 15px;white-space:nowrap}@keyframes ftntScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}@keyframes ftntPulse{0%,100%{opacity:1}50%{opacity:.4}}@media(max-width:620px){.ftnt-inner{min-height:48px}.ftnt-badge{padding:0 8px;font-size:9px}.ftnt-label{font-size:9px;padding:0 8px}.ftnt-item,.ftnt-score{font-size:11px;padding:0 12px}.ftnt-source{display:none}.ftnt-more{font-size:9px;padding:0 8px}}`;
     document.head.appendChild(style);
 
     const track=ticker.querySelector('#ftnt-track');
@@ -25,7 +25,23 @@
 
     const londonYmd=d=>{const p=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d).reduce((a,x)=>(a[x.type]=x.value,a),{});return`${p.year}-${p.month}-${p.day}`};
     const today=()=>londonYmd(new Date());
-    const leagueLabel=l=>{const name=String(l?.name||'').trim();const country=String(l?.country||'').trim();const id=Number(l?.id);const england=/^(england|eng)$/i.test(country);if(/^premier league$/i.test(name)&&(country===''||england))return'Premier League';if(/^(efl )?championship$/i.test(name)&&(country===''||england))return'EFL Championship';if(england&&id===39)return'Premier League';if(england&&id===40)return'EFL Championship';return null};
+    const normalText=value=>String(value||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+    const leagueLabel=l=>{
+      const name=normalText(l?.name);
+      const country=normalText(l?.country);
+      const id=Number(l?.id);
+      const england=country==='england'||country==='eng'||country==='';
+      const senior=!/\b(u ?1[56789]|u ?2[013]|under ?(1[56789]|2[013])|youth|reserves?|academy)\b/.test(name);
+      if(england&&(id===39||id===47||name==='premier league'))return'Premier League';
+      if(england&&(id===40||/^(efl )?championship$/.test(name)))return'EFL Championship';
+      if(!senior||/\bclub world cup\b/.test(name))return null;
+      if(/\b(fifa )?world cup\b/.test(name))return /qualif/.test(name)?'FIFA World Cup Qualifying':'FIFA World Cup';
+      if(/\bworld cup (qualification|qualifying)\b/.test(name)||/\bwc qualification\b/.test(name))return'FIFA World Cup Qualifying';
+      if(/\buefa nations league\b/.test(name))return'UEFA Nations League';
+      if(/\b(euro(pean)? championship|uefa euro|euros?)\b/.test(name))return /qualif/.test(name)?'UEFA European Qualifiers':'UEFA European Championship';
+      if(/\b(european|uefa) qualifiers?\b/.test(name))return'UEFA European Qualifiers';
+      return null;
+    };
 
     const setRunning=itemsCount=>{
       track.classList.remove('running');
@@ -57,7 +73,7 @@
       track.classList.remove('running');track.replaceChildren();
       const visible=games.filter(f=>liveStatuses.has(String(f.status||'').toUpperCase())||doneStatuses.has(String(f.status||'').toUpperCase()));
       if(!visible.length){track.innerHTML='<span class="ftnt-loading">Matchday scores will appear here from kick-off.</span>';return;}
-      const make=f=>{const wrap=document.createElement('span');wrap.className='ftnt-score';const s=String(f.status||'').toUpperCase();const home=document.createElement('span');home.textContent=f.home||'';const score=document.createElement('strong');score.textContent=`${f.homeGoals??0} – ${f.awayGoals??0}`;const away=document.createElement('span');away.textContent=f.away||'';const status=document.createElement('span');status.className=liveStatuses.has(s)?'ftnt-live-status':'ftnt-ft-status';status.textContent=scoreStatus(f);const sep=document.createElement('span');sep.className='ftnt-sep';sep.textContent='  •  ';wrap.append(home,score,away,status,sep);return wrap;};
+      const make=f=>{const wrap=document.createElement('span');wrap.className='ftnt-score';const s=String(f.status||'').toUpperCase();const home=document.createElement('span');home.textContent=f.home||'';const score=document.createElement('strong');score.textContent=`${f.homeGoals??0} – ${f.awayGoals??0}`;const away=document.createElement('span');away.textContent=f.away||'';const status=document.createElement('span');status.className=liveStatuses.has(s)?'ftnt-live-status':'ftnt-ft-status';status.textContent=scoreStatus(f);const competition=document.createElement('span');competition.className='ftnt-competition';competition.textContent=f.league||'';const sep=document.createElement('span');sep.className='ftnt-sep';sep.textContent='  •  ';wrap.append(home,score,away,status,competition,sep);return wrap;};
       const fragment=document.createDocumentFragment();[...visible,...visible].forEach(f=>fragment.appendChild(make(f)));track.appendChild(fragment);setRunning(visible.length);
     };
 
@@ -68,7 +84,8 @@
 
     const refresh=async()=>{
       try{
-        const r=await fetch(`/api/fixtures?t=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error();const data=await r.json();const games=[];
+        const date=today();
+        const r=await fetch(`/api/fixtures?date=${encodeURIComponent(date)}&t=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error();const data=await r.json();const games=[];
         (data.leagues||[]).forEach(l=>{const league=leagueLabel(l);if(!league)return;(l.fixtures||[]).forEach(f=>{if(f.date&&londonYmd(new Date(f.date))===today())games.push({...f,league});});});
         if(!games.length){await loadNews(false);return;}
         const started=games.some(f=>liveStatuses.has(String(f.status||'').toUpperCase())||doneStatuses.has(String(f.status||'').toUpperCase()));
