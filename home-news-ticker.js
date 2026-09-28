@@ -20,6 +20,7 @@
     const more=ticker.querySelector('#ftnt-more');
     const liveStatuses=new Set(['1H','2H','HT','ET','P','LIVE','INT','BT']);
     const doneStatuses=new Set(['FT','AET','PEN']);
+    const resultsWindowMs=4*60*60*1000;
     let mode='';
     let lastNewsLoad=0;
 
@@ -68,8 +69,8 @@
     };
 
     const scoreStatus=f=>{const s=String(f.status||'').toUpperCase();if(liveStatuses.has(s))return f.elapsed?`${f.elapsed}′`:'LIVE';if(doneStatuses.has(s))return'FT';return s;};
-    const renderScores=games=>{
-      mode='scores';label.textContent='MATCHDAY SCORES';more.textContent='MATCH CENTRE →';more.href='match-centre.html';
+    const renderScores=(games,allFinished=false)=>{
+      mode='scores';label.textContent=allFinished?'FULL-TIME RESULTS':'MATCHDAY SCORES';more.textContent='MATCH CENTRE →';more.href='match-centre.html';
       track.classList.remove('running');track.replaceChildren();
       const visible=games.filter(f=>liveStatuses.has(String(f.status||'').toUpperCase())||doneStatuses.has(String(f.status||'').toUpperCase()));
       if(!visible.length){track.innerHTML='<span class="ftnt-loading">Matchday scores will appear here from kick-off.</span>';return;}
@@ -90,7 +91,9 @@
         if(!games.length){await loadNews(false);return;}
         const started=games.some(f=>liveStatuses.has(String(f.status||'').toUpperCase())||doneStatuses.has(String(f.status||'').toUpperCase()));
         const allFinished=games.every(f=>doneStatuses.has(String(f.status||'').toUpperCase()));
-        if(started&&!allFinished)renderScores(games);else await loadNews(mode!=='news');
+        const latestKickoff=Math.max(...games.map(f=>new Date(f.date||0).getTime()).filter(Number.isFinite));
+        const resultsStillFresh=allFinished&&Number.isFinite(latestKickoff)&&Date.now()<=latestKickoff+resultsWindowMs;
+        if(started&&(!allFinished||resultsStillFresh))renderScores(games,allFinished);else await loadNews(mode!=='news');
       }catch(_){await loadNews(mode!=='news');}
     };
 
