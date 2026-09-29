@@ -2,3 +2,5 @@ User-agent: *
 Allow: /
 
 Sitemap: https://www.footballtalk.uk/sitemap.xml
+
+Sitemap: https://www.footballtalk.uk/news-sitemap.xml
