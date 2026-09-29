@@ -66,6 +66,11 @@
   ],
   "redirects": [
     {
+      "source": "/22law",
+      "destination": "https://www.22law.co.uk/?utm_source=footballtalk&utm_medium=social&utm_campaign=22law_featured_partner",
+      "permanent": false
+    },
+    {
       "source": "/members.html",
       "destination": "/more.html",
       "permanent": true
