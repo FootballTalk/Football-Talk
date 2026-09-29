@@ -1,0 +1,24 @@
+const GRAPH_VERSION='v26.0';
+const BUSINESS_ID='1028244990024733';
+const PREFIX='22law-instagram:2026-09-29';
+const IMAGE_URL='https://d2jqrm6oza8nb6.cloudfront.net/datasets/c33beca5-8162-4e43-b6e1-99e85a952420.jpeg?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiMjk1NTJiOGQ0ODE4NWI4YiIsImJ1Y2tldCI6InJ1bndheS1kYXRhc2V0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5MDgxMzk2NX0.c0HUGOGgi4lftWOTii5MpXDuXbhKPY5bsqsHr8bCOIM';
+const CAPTION=`⚽ FOOTBALL TALK FEATURED PARTNER
+
+We're proud to feature 22 Law as a Football Talk partner.
+
+Property Law • Family Law • Wills & Probate • Dispute Resolution
+
+Find out more:
+FootballTalk.uk/22law
+
+#FootballTalk #WhereFansHaveTheirSay #22Law`;
+function cfg(){const fs=require('fs'),path=require('path');const t=fs.readFileSync(path.join(process.cwd(),'config.js'),'utf8');return{url:(t.match(/SUPABASE_URL:\s*'([^']+)'/)||[])[1],key:(t.match(/SUPABASE_ANON_KEY:\s*'([^']+)'/)||[])[1]};}
+function h(c,x={}){return{apikey:c.key,Authorization:`Bearer ${c.key}`,...x};}
+async function json(r){const raw=await r.text();let d={};try{d=JSON.parse(raw)}catch{}if(!r.ok||d.error)throw new Error(d.error?.message||`Meta HTTP ${r.status}`);return d;}
+async function identity(token){const u=new URL(`https://graph.facebook.com/${GRAPH_VERSION}/me`);u.searchParams.set('fields','id,name');u.searchParams.set('access_token',token);return json(await fetch(u,{cache:'no-store'}));}
+async function pageToken(pageId,token){const me=await identity(token);if(String(me.id)===String(pageId))return token;const u=new URL(`https://graph.facebook.com/${GRAPH_VERSION}/${BUSINESS_ID}/owned_pages`);u.searchParams.set('fields','id,name,access_token');u.searchParams.set('access_token',token);const d=await json(await fetch(u,{cache:'no-store'}));const p=(d.data||[]).find(x=>String(x.id)===String(pageId));if(!p?.access_token)throw new Error('Could not derive Football Talk Page token');return p.access_token;}
+async function igAccount(pageId,token){const u=new URL(`https://graph.facebook.com/${GRAPH_VERSION}/${pageId}`);u.searchParams.set('fields','instagram_business_account,connected_instagram_account');u.searchParams.set('access_token',token);const d=await json(await fetch(u,{cache:'no-store'}));const id=d.instagram_business_account?.id||d.connected_instagram_account?.id;if(!id)throw new Error('Football Talk Instagram business account is not linked');return id;}
+async function seen(c){const r=await fetch(`${c.url}/rest/v1/poll_responses?select=poll_id,answer&poll_id=eq.${encodeURIComponent(PREFIX)}&limit=1`,{headers:h(c),cache:'no-store'});return r.ok?(await r.json()):[];}
+async function remember(c,id){await fetch(`${c.url}/rest/v1/poll_responses`,{method:'POST',headers:h(c,{'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({poll_id:PREFIX,answer:JSON.stringify({mediaId:id,createdAt:new Date().toISOString()})})});}
+async function publish(ig,token){const create=new URL(`https://graph.facebook.com/${GRAPH_VERSION}/${ig}/media`);create.searchParams.set('image_url',IMAGE_URL);create.searchParams.set('caption',CAPTION);create.searchParams.set('access_token',token);const made=await json(await fetch(create,{method:'POST',cache:'no-store'}));if(!made.id)throw new Error('Instagram did not create media container');for(let i=0;i<8;i++){if(i)await new Promise(r=>setTimeout(r,1500));const s=new URL(`https://graph.facebook.com/${GRAPH_VERSION}/${made.id}`);s.searchParams.set('fields','status_code');s.searchParams.set('access_token',token);const st=await json(await fetch(s,{cache:'no-store'}));if(st.status_code==='FINISHED')break;if(st.status_code==='ERROR'||st.status_code==='EXPIRED')throw new Error('Instagram media container '+st.status_code);if(i===7)throw new Error('Instagram media container not ready');}const pub=new URL(`https://graph.facebook.com/${GRAPH_VERSION}/${ig}/media_publish`);pub.searchParams.set('creation_id',made.id);pub.searchParams.set('access_token',token);const out=await json(await fetch(pub,{method:'POST',cache:'no-store'}));if(!out.id)throw new Error('Instagram did not return published media id');return out.id;}
+module.exports=async(req,res)=>{res.setHeader('Cache-Control','no-store');try{const c=cfg(),old=await seen(c);if(old.length)return res.status(200).json({ok:true,published:false,skipped:'already posted',record:old[0]});if(String(req.query?.confirm||'')!=='1')return res.status(200).json({ok:true,ready:true});const pageId=process.env.FACEBOOK_PAGE_ID,base=process.env.FACEBOOK_PAGE_ACCESS_TOKEN;if(!pageId||!base)throw new Error('Football Talk Meta credentials are not configured');const token=await pageToken(pageId,base),ig=await igAccount(pageId,token),id=await publish(ig,token);await remember(c,id);return res.status(200).json({ok:true,published:true,mediaId:id});}catch(e){console.error('22 Law Instagram publish failed',e);return res.status(502).json({ok:false,error:String(e.message||e)});}};
