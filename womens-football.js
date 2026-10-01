@@ -51,20 +51,49 @@
     return response.json();
   }
 
+  const allLeagueFixtures = data => (data.leagues || []).flatMap(league => (league.fixtures || []).map(fixture => ({ ...fixture, leagueName: league.name })));
+  const londonDay = value => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(value));
+  const matchList = fixtures => `<div class="wf-match-list">${fixtures.map(match).join('') || '<div class="wf-empty">No matches are listed in the current window.</div>'}</div>`;
+  const leagueSections = (leagues, predicate, emptyText) => (leagues || []).map(league => {
+    const fixtures = [...(league.fixtures || [])].filter(predicate).sort(matchdayOrder);
+    return `<section class="wf-section"><div class="wf-section-head"><h2>${escapeHtml(league.name)}</h2></div><div class="wf-match-list">${fixtures.map(fixture => match({ ...fixture, leagueName: league.name })).join('') || `<div class="wf-empty">${escapeHtml(emptyText)}</div>`}</div></section>`;
+  }).join('');
+
   async function load() {
     try {
       if (view === 'home') {
         const [data, news] = await Promise.all([json('/api/womens?view=summary'), json('/api/news?game=women')]);
-        root.innerHTML = `<section class="wf-grid"><a class="wf-card" href="womens-matches.html"><small>LIVE & UPCOMING</small><strong>Women’s Matches</strong><p>WSL and WSL2 fixtures, scores and recent results.</p></a><a class="wf-card" href="womens-tables.html"><small>STANDINGS</small><strong>Women’s Tables</strong><p>Current positions across the top two English divisions.</p></a><a class="wf-card" href="womens-stats.html"><small>NUMBERS</small><strong>Women’s Stats</strong><p>Leading scorers, assists, ratings and performance data.</p></a><a class="wf-card" href="womens-transfers.html"><small>PLAYER MOVEMENT</small><strong>Women’s Transfers</strong><p>Reported moves and confirmed deals from attributed sources.</p></a><a class="wf-card" href="womens-news.html"><small>LATEST</small><strong>Women’s News</strong><p>WSL, WSL2, Lionesses and European competition coverage.</p></a><a class="wf-card" href="fan-debate.html"><small>WHERE FANS HAVE THEIR SAY</small><strong>Fan Debate</strong><p>Talking points, opinions and the stories supporters are discussing.</p></a></section><section class="wf-section"><div class="wf-section-head"><h2>Next matches</h2><a href="womens-matches.html">All matches</a></div><div class="wf-match-list">${(data.next || []).map(match).join('') || '<div class="wf-empty">The next WSL and WSL2 fixtures will appear here.</div>'}</div></section><section class="wf-section"><div class="wf-section-head"><h2>Latest women’s football</h2><a href="womens-news.html">All news</a></div>${newsCards((news.items || []).slice(0, 4))}</section>`;
+        root.innerHTML = `<section class="wf-grid"><a class="wf-card" href="womens-match-centre.html"><small>TODAY & LIVE</small><strong>Match Centre</strong><p>Women’s live scores, matchday status and the next WSL and WSL2 fixtures.</p></a><a class="wf-card" href="womens-tables-stats.html"><small>DATA HUB</small><strong>Tables & Stats</strong><p>Standings, leading scorers, assists, ratings and performance data.</p></a><a class="wf-card" href="womens-transfers.html"><small>PLAYER MOVEMENT</small><strong>Transfers</strong><p>Reported moves and confirmed deals from attributed sources.</p></a><a class="wf-card" href="womens-news.html"><small>LATEST</small><strong>News</strong><p>WSL, WSL2, Lionesses and European competition coverage.</p></a><a class="wf-card" href="womens-ref-watch.html"><small>BIG DECISIONS</small><strong>Ref Watch</strong><p>Women’s refereeing, VAR and major match incidents.</p></a><a class="wf-card" href="womens-highlights.html"><small>WATCH</small><strong>Highlights</strong><p>Women’s match highlights and video reports from attributed publishers.</p></a><a class="wf-card" href="womens-more.html"><small>MORE</small><strong>Explore the women’s game</strong><p>Lionesses, Europe, fan debate and Football Talk features.</p></a><a class="wf-card" href="fan-debate.html"><small>WHERE FANS HAVE THEIR SAY</small><strong>Fan Debate</strong><p>Talking points, opinions and the stories supporters are discussing.</p></a></section><section class="wf-section"><div class="wf-section-head"><h2>Next matches</h2><a href="womens-fixtures.html">All fixtures</a></div>${matchList(data.next || [])}</section><section class="wf-section"><div class="wf-section-head"><h2>Recent results</h2><a href="womens-results.html">All results</a></div>${matchList((data.recent || []).slice(0, 6))}</section><section class="wf-section"><div class="wf-section-head"><h2>Latest women’s football</h2><a href="womens-news.html">All news</a></div>${newsCards((news.items || []).slice(0, 4))}</section>`;
+      } else if (view === 'match-centre') {
+        const data = await json('/api/womens?view=fixtures');
+        const fixtures = allLeagueFixtures(data);
+        const today = londonDay(new Date());
+        const todayGames = fixtures.filter(fixture => fixture.date && londonDay(fixture.date) === today).sort(matchdayOrder);
+        const next = fixtures.filter(fixture => !['FT', 'AET', 'PEN'].includes(fixture.status) && Number(fixture.timestamp || 0) * 1000 >= Date.now()).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0)).slice(0, 8);
+        const recent = fixtures.filter(fixture => ['FT', 'AET', 'PEN'].includes(fixture.status)).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 8);
+        root.innerHTML = todayGames.length
+          ? `<section class="wf-section"><div class="wf-section-head"><h2>Today’s women’s football</h2><a href="womens-fixtures.html">All fixtures</a></div>${matchList(todayGames)}</section>`
+          : `<div class="wf-empty">There are no WSL or WSL2 matches today. The next fixtures and latest results are below.</div><section class="wf-section"><div class="wf-section-head"><h2>Next fixtures</h2><a href="womens-fixtures.html">All fixtures</a></div>${matchList(next)}</section><section class="wf-section"><div class="wf-section-head"><h2>Latest results</h2><a href="womens-results.html">All results</a></div>${matchList(recent)}</section>`;
       } else if (view === 'matches') {
         const data = await json('/api/womens?view=fixtures');
-        root.innerHTML = (data.leagues || []).map(league => {
-          const fixtures = [...(league.fixtures || [])].sort(matchdayOrder);
-          return `<section class="wf-section"><div class="wf-section-head"><h2>${escapeHtml(league.name)}</h2></div><div class="wf-match-list">${fixtures.map(fixture => match({ ...fixture, leagueName: league.name })).join('') || '<div class="wf-empty">No fixtures are listed in the current window.</div>'}</div></section>`;
-        }).join('');
+        root.innerHTML = leagueSections(data.leagues, () => true, 'No matches are listed in the current window.');
+      } else if (view === 'fixtures') {
+        const data = await json('/api/womens?view=fixtures');
+        root.innerHTML = leagueSections(data.leagues, fixture => !['FT', 'AET', 'PEN'].includes(fixture.status), 'No upcoming fixtures are listed in the current window.');
+      } else if (view === 'results') {
+        const data = await json('/api/womens?view=fixtures');
+        root.innerHTML = leagueSections(data.leagues, fixture => ['FT', 'AET', 'PEN'].includes(fixture.status), 'No recent results are listed in the current window.');
+      } else if (view === 'lineups') {
+        const data = await json('/api/womens?view=fixtures');
+        const fixtures = allLeagueFixtures(data).filter(fixture => !['FT', 'AET', 'PEN'].includes(fixture.status)).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0)).slice(0, 12);
+        root.innerHTML = `<div class="wf-empty">Confirmed women’s team lineups will appear here when they are released close to kick-off.</div><section class="wf-section"><div class="wf-section-head"><h2>Upcoming lineup checks</h2><a href="womens-match-centre.html">Match Centre</a></div>${matchList(fixtures)}</section>`;
       } else if (view === 'tables') {
         const data = await json('/api/womens?view=standings');
         root.innerHTML = tableBlock(data.leagues || []);
+        bindTabs();
+      } else if (view === 'tables-stats') {
+        const data = await json('/api/womens?view=summary');
+        root.innerHTML = `<section class="wf-section"><div class="wf-section-head"><h2>League tables</h2><a href="womens-tables.html">Full tables</a></div>${tableBlock(data.tables || [])}</section><section class="wf-section"><div class="wf-section-head"><h2>Stats leaders</h2><a href="womens-stats.html">Full Stats Zone</a></div>${stats((data.leaders || []).slice(0, 3))}</section>`;
         bindTabs();
       } else if (view === 'stats') {
         const data = await json('/api/womens?view=stats');
@@ -73,9 +102,15 @@
         const data = await json('/api/news?game=women');
         let items = data.items || [];
         if (view === 'transfers') items = items.filter(item => item.type === 'TRANSFER');
+        if (view === 'ref-watch') items = items.filter(item => /\b(var|referee|refereeing|official|penalty|offside|red card|decision)\b/i.test(`${item.title || ''} ${item.description || ''}`));
+        if (view === 'highlights') items = items.filter(item => /\b(highlight|highlights|watch|video|goals?)\b/i.test(`${item.title || ''} ${item.description || ''}`));
+        if (view === 'more') {
+          root.innerHTML = `<section class="wf-grid"><a class="wf-card" href="womens-news.html"><small>INTERNATIONAL</small><strong>Lionesses</strong><p>England women’s news, fixtures and tournament coverage.</p></a><a class="wf-card" href="womens-news.html"><small>EUROPE</small><strong>European football</strong><p>Women’s Champions League and major European stories.</p></a><a class="wf-card" href="fan-debate.html"><small>HAVE YOUR SAY</small><strong>Fan Debate</strong><p>Join the wider Football Talk conversation.</p></a><a class="wf-card" href="advertise.html"><small>WORK WITH US</small><strong>Partnerships</strong><p>Commercial and promotional opportunities across Football Talk.</p></a></section>`;
+        } else {
         root.innerHTML = items.length
           ? newsCards(items.slice(0, 30))
-          : `<div class="wf-empty">No new women’s ${view === 'transfers' ? 'transfer reports' : 'football stories'} are available right now. This page will update automatically when trusted sources publish them.</div>`;
+          : `<div class="wf-empty">No new women’s ${view === 'transfers' ? 'transfer reports' : view === 'ref-watch' ? 'Ref Watch reports' : view === 'highlights' ? 'highlight reports' : 'football stories'} are available right now. This page will update automatically when trusted sources publish them.</div>`;
+        }
       }
       root.insertAdjacentHTML('beforeend', '<p class="wf-source-note">Live competition data is refreshed automatically. News links open the original attributed publisher. Football Talk distinguishes confirmed developments from reports and opinion.</p>');
     } catch {
