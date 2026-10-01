@@ -3,6 +3,15 @@ import { FOTMOB_LEAGUES, fotmobJson, getFotmobLeagueMatches, getFotmobStandings,
 const COMPETITIONS = [FOTMOB_LEAGUES.wsl, FOTMOB_LEAGUES.wsl2];
 const FINISHED = new Set(['FT', 'AET', 'PEN']);
 
+function matchdayOrder(a, b) {
+  const aFinished = FINISHED.has(a.status);
+  const bFinished = FINISHED.has(b.status);
+  if (aFinished !== bFinished) return aFinished ? 1 : -1;
+  return aFinished
+    ? (b.timestamp || 0) - (a.timestamp || 0)
+    : (a.timestamp || 0) - (b.timestamp || 0);
+}
+
 function playerPhoto(id) {
   return id ? `https://images.fotmob.com/image_resources/logo/playerphotos/${id}.png` : '';
 }
@@ -33,7 +42,7 @@ async function allFixtures() {
     id: league.siteId,
     name: league.name,
     fixtures: withinRange(await getFotmobLeagueMatches(league), from, to)
-      .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+      .sort(matchdayOrder)
   })));
 }
 
