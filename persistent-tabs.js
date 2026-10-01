@@ -124,8 +124,7 @@
       .ft-persistent-tabs a{position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;color:#fff!important;padding:14px 8px 16px!important;font-size:13px!important;font-weight:900!important;text-decoration:none!important;white-space:nowrap!important}
       .ft-persistent-tabs a.active-tab{color:#f7c600!important}
       .ft-persistent-tabs a.active-tab:after{content:'';position:absolute;left:10px;right:10px;bottom:0;height:5px;background:#f7c600}
-      .ft-womens-tabs{position:sticky!important;top:calc(var(--ft-tabs-top,76px) + 47px)!important;z-index:174!important;display:grid!important;grid-template-columns:minmax(150px,1.25fr) repeat(8,minmax(0,1fr))!important;background:#f7c600!important;border-bottom:1px solid #cba500!important;padding:0 10px!important}
-      .ft-womens-label{display:flex!important;align-items:center!important;justify-content:center!important;padding:11px 10px!important;background:#111!important;color:#f7c600!important;font-size:11px!important;font-weight:1000!important;letter-spacing:.08em!important;white-space:nowrap!important}
+      .ft-womens-tabs{position:sticky!important;top:calc(var(--ft-tabs-top,76px) + 47px)!important;z-index:174!important;display:grid!important;grid-template-columns:repeat(8,minmax(0,1fr))!important;background:#f7c600!important;border-bottom:1px solid #cba500!important;padding:0 10px!important}
       .ft-womens-tabs a{position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:11px 8px 12px!important;color:#111!important;font-size:12px!important;font-weight:1000!important;text-decoration:none!important;white-space:nowrap!important}
       .ft-womens-tabs a:hover,.ft-womens-tabs a:focus-visible{background:rgba(255,255,255,.4)!important}
       .ft-womens-tabs a.active-tab{background:#111!important;color:#fff!important}
@@ -137,7 +136,6 @@
         .ft-persistent-tabs{grid-template-columns:none!important;grid-auto-flow:column!important;grid-auto-columns:max-content!important;justify-content:start!important;overflow-x:auto!important;padding:0 8px!important}
         .ft-persistent-tabs a{min-width:92px!important;padding:11px 12px 13px!important;font-size:11px!important}
         .ft-womens-tabs{top:calc(var(--ft-tabs-top,66px) + 37px)!important;grid-template-columns:none!important;grid-auto-flow:column!important;grid-auto-columns:max-content!important;justify-content:start!important;overflow-x:auto!important;padding:0!important}
-        .ft-womens-label{position:sticky!important;left:0!important;z-index:2!important;padding:10px 12px!important;font-size:10px!important}
         .ft-womens-tabs a{min-width:78px!important;padding:10px 12px 11px!important;font-size:11px!important}
         .section-tools{top:calc(var(--ft-tabs-top,66px) + 76px)!important;padding:8px 10px!important}
       }
@@ -177,10 +175,6 @@
     }
     womensTabs.setAttribute('aria-label', 'Women’s football sections');
     womensTabs.replaceChildren();
-    const label = document.createElement('span');
-    label.className = 'ft-womens-label';
-    label.textContent = 'WOMEN’S FOOTBALL';
-    womensTabs.appendChild(label);
     const activeWomen = womensKey();
     WOMENS_LINKS.forEach(([text, href]) => {
       const link = document.createElement('a');
