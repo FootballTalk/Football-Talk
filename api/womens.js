@@ -33,7 +33,7 @@ async function allFixtures() {
     id: league.siteId,
     name: league.name,
     fixtures: withinRange(await getFotmobLeagueMatches(league), from, to)
-      .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
+      .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
   })));
 }
 
