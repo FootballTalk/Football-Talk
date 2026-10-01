@@ -1,14 +1,17 @@
 const FEEDS = [
   { url: 'https://feeds.bbci.co.uk/sport/football/rss.xml', source: 'BBC Sport' },
   { url: 'https://feeds.bbci.co.uk/sport/football/premier-league/rss.xml', source: 'BBC Sport' },
+  { url: 'https://feeds.bbci.co.uk/sport/football/womens/rss.xml', source: 'BBC Sport', game: 'women' },
   { url: 'https://www.theguardian.com/football/rss', source: 'The Guardian' },
+  { url: 'https://www.theguardian.com/football/womensfootball/rss', source: 'The Guardian', game: 'women' },
   { url: 'https://www.theguardian.com/football/manchestercity/rss', source: 'The Guardian' }
 ];
 
 const PRIORITY_TERMS = [
   'premier league','championship','arsenal','aston villa','bournemouth','brentford','brighton','burnley','chelsea','crystal palace','everton','fulham','leeds','liverpool','manchester city','man city','manchester united','man utd','newcastle','nottingham forest','nottingham','sunderland','tottenham','west ham','wolves','wolverhampton',
   'birmingham','blackburn','bristol city','charlton','coventry','derby','hull','ipswich','leicester','middlesbrough','millwall','norwich','oxford united','portsmouth','preston','qpr','queens park rangers','sheffield united','sheffield wednesday','southampton','stoke','swansea','watford','west brom','wrexham',
-  'england','three lions','england squad','nations league','world cup','euros','european championship','squad withdrawal','squad withdrawals','ruled out','called up'
+  'england','three lions','england squad','nations league','world cup','euros','european championship','squad withdrawal','squad withdrawals','ruled out','called up',
+  'women\'s super league','wsl','wsl 2','lionesses','women\'s champions league','women\'s football'
 ];
 
 const STOP_WORDS = new Set(['the','a','an','and','or','to','of','for','in','on','at','is','are','was','were','be','been','with','from','as','by','after','before','still','your','club','clubs','what','does','do','why','how','this','that','their','its','it']);
@@ -179,7 +182,7 @@ function relevanceScore(item) {
   return score;
 }
 
-function parseFeed(xml, source) {
+function parseFeed(xml, source, game = 'all') {
   return [...xml.matchAll(/<item\b[\s\S]*?<\/item>/gi)].map(match => {
     const block = match[0];
     const title = tagValue(block, 'title');
@@ -190,17 +193,19 @@ function parseFeed(xml, source) {
     const published = publishedRaw ? Date.parse(publishedRaw) : 0;
     const type = classify(title, description);
     const stage = type === 'TRANSFER' ? transferStage(title, description) : null;
-    return { title, link, description, image, published, source, type, stage };
+    return { title, link, description, image, published, source, type, stage, game };
   }).filter(item => item.title);
 }
 
 module.exports = async function handler(req, res) {
   try {
-    const settled = await Promise.allSettled(FEEDS.map(async feed => {
+    const requestedGame = String(req.query?.game || '').toLowerCase();
+    const feeds = requestedGame === 'women' ? FEEDS.filter(feed => feed.game === 'women') : FEEDS;
+    const settled = await Promise.allSettled(feeds.map(async feed => {
       const response = await fetch(feed.url, { headers: { 'User-Agent': 'FootballTalk/1.0 (+https://footballtalk.uk)' } });
       if (!response.ok) throw new Error(`Feed ${response.status}`);
       const xml = await response.text();
-      return parseFeed(xml, feed.source);
+      return parseFeed(xml, feed.source, feed.game || 'all');
     }));
 
     const combined = settled.filter(result => result.status === 'fulfilled').flatMap(result => result.value).sort((a, b) => b.published - a.published);
