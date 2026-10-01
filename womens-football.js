@@ -19,6 +19,14 @@
       : fixture.elapsed
         ? `${fixture.elapsed}'`
         : (fixture.status || 'LIVE');
+  const matchdayOrder = (a, b) => {
+    const aFinished = ['FT', 'AET', 'PEN'].includes(a.status);
+    const bFinished = ['FT', 'AET', 'PEN'].includes(b.status);
+    if (aFinished !== bFinished) return aFinished ? 1 : -1;
+    return aFinished
+      ? (b.timestamp || 0) - (a.timestamp || 0)
+      : (a.timestamp || 0) - (b.timestamp || 0);
+  };
   const match = fixture => `<article class="wf-match"><div class="wf-match-meta">${escapeHtml(fixture.leagueName || fixture.competition || 'Women\'s Football')}<br>${escapeHtml(when(fixture.date))}</div><div class="wf-teams"><span class="wf-team"><img src="${safeUrl(fixture.homeLogo)}" alt="">${escapeHtml(fixture.home)}</span><span class="wf-team"><img src="${safeUrl(fixture.awayLogo)}" alt="">${escapeHtml(fixture.away)}</span></div><div class="wf-score${fixture.status !== 'NS' && !['FT', 'AET', 'PEN'].includes(fixture.status) ? ' live' : ''}">${escapeHtml(score(fixture))}</div></article>`;
   const table = (league, index = 0) => `<section class="wf-table-panel" data-table="${index}"${index ? ' hidden' : ''}><div class="wf-table-wrap"><table class="wf-table"><thead><tr><th>Pos</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead><tbody>${(league.standings || []).map(row => `<tr><td>${escapeHtml(row.rank)}</td><td>${row.logo ? `<img src="${safeUrl(row.logo)}" alt="">` : ''}${escapeHtml(row.team)}</td><td>${escapeHtml(row.played)}</td><td>${escapeHtml(row.win)}</td><td>${escapeHtml(row.draw)}</td><td>${escapeHtml(row.lose)}</td><td>${Number(row.goalsDiff) > 0 ? '+' : ''}${escapeHtml(row.goalsDiff)}</td><td><strong>${escapeHtml(row.points)}</strong></td></tr>`).join('')}</tbody></table></div></section>`;
   const tableBlock = leagues => `<div class="wf-tabs" role="tablist">${leagues.map((league, index) => `<button class="wf-tab${index === 0 ? ' active' : ''}" data-table-tab="${index}" role="tab" aria-selected="${index === 0}">${escapeHtml(league.name)}</button>`).join('')}</div><div class="wf-panel">${leagues.map(table).join('')}</div>`;
@@ -51,7 +59,7 @@
       } else if (view === 'matches') {
         const data = await json('/api/womens?view=fixtures');
         root.innerHTML = (data.leagues || []).map(league => {
-          const fixtures = [...(league.fixtures || [])].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+          const fixtures = [...(league.fixtures || [])].sort(matchdayOrder);
           return `<section class="wf-section"><div class="wf-section-head"><h2>${escapeHtml(league.name)}</h2></div><div class="wf-match-list">${fixtures.map(fixture => match({ ...fixture, leagueName: league.name })).join('') || '<div class="wf-empty">No fixtures are listed in the current window.</div>'}</div></section>`;
         }).join('');
       } else if (view === 'tables') {
