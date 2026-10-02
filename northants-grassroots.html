@@ -29,10 +29,7 @@
 </section>
 
 <section class="ng-view" data-panel="results" hidden>
-  <div class="ng-link-panels">
-    <article class="ng-link-panel"><h2>Old Grammarians results</h2><p>Results remain verified against FA Full-Time.</p><a href="https://fulltime.thefa.com/" target="_blank" rel="noopener noreferrer">VIEW OFFICIAL RESULTS</a></article>
-    <article class="ng-link-panel"><h2>Whitworths results</h2><p>Results remain verified against the United Counties League.</p><a href="https://theucl.co.uk/results/" target="_blank" rel="noopener noreferrer">VIEW OFFICIAL RESULTS</a></article>
-  </div>
+  <div id="grassroots-results" class="ng-loading">Loading the latest verified grassroots results…</div>
 </section>
 
 <section class="ng-view" data-panel="tables" hidden>
@@ -52,12 +49,14 @@ function show(view){
   tabs.forEach(b=>b.classList.toggle('active',b.dataset.view===view));
   panels.forEach(p=>p.hidden=p.dataset.panel!==view);
   if(view==='fixtures') loadFixtures();
+  if(view==='results') loadResults();
 }
 tabs.forEach(b=>b.addEventListener('click',()=>show(b.dataset.view)));
 document.querySelectorAll('[data-jump]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.jump)));
 
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let loaded=false;
+let resultsLoaded=false;
 async function loadFixtures(){
   if(loaded) return; loaded=true;
   const root=document.getElementById('grassroots-fixtures');
@@ -79,6 +78,35 @@ async function loadFixtures(){
   }catch(e){
     root.className='ng-empty';
     root.textContent='The grassroots fixture feed is temporarily unavailable. Please try again shortly.';
+  }
+}
+
+async function loadResults(){
+  if(resultsLoaded) return; resultsLoaded=true;
+  const root=document.getElementById('grassroots-results');
+  try{
+    const r=await fetch('/api/grassroots');
+    if(!r.ok) throw new Error('feed');
+    const data=await r.json();
+    root.className='ng-fixtures';
+    root.innerHTML=(data.clubs||[]).map(club=>`
+      <article class="ng-fixture-panel">
+        <div class="ng-head"><small>${esc(club.competition)}</small><h2>${esc(club.name)}</h2></div>
+        <div class="ng-fixture-list">
+          ${(club.results||[]).length ? club.results.map(result=>`
+            <div class="ng-fixture">
+              <div class="ng-date">${esc(result.dateTime)}</div>
+              <div class="ng-match">
+                <strong>${esc(result.home)} ${esc(result.homeGoals)}–${esc(result.awayGoals)} ${esc(result.away)}</strong>
+                ${result.note?'<small>'+esc(result.note)+'</small>':''}
+              </div>
+            </div>`).join('') :
+            '<div class="ng-empty">'+esc(club.resultsNote || 'No verified recent results are currently published for this team.')+'</div>'}
+        </div>
+      </article>`).join('');
+  }catch(e){
+    root.className='ng-empty';
+    root.textContent='The grassroots results feed is temporarily unavailable. Please try again shortly.';
   }
 }
 </script>
