@@ -5,13 +5,15 @@ const clubs = [
     url: 'https://fulltime.thefa.com/displayTeam.html?divisionseason=140849173&teamID=906916334',
     source: 'FA Full-Time',
     fixtures: [],
+    results: [],
     ok: true,
-    note: 'FA Full-Time currently publishes no upcoming fixtures for this team.'
+    note: 'No current-season upcoming fixtures are published on the verified source.',
+    resultsNote: 'No current-season verified results are available from the published source yet.'
   },
   {
     name: 'Wellingborough Whitworth Reserves',
     competition: 'United Counties League',
-    url: 'https://fulltime.thefa.com/displayTeam.html?id=724541063',
+    url: 'https://fulltime.thefa.com/displayTeam.html?divisionseason=679659509&teamID=724541063',
     source: 'FA Full-Time',
     ok: true,
     verifiedAt: '2026-10-02',
@@ -23,6 +25,13 @@ const clubs = [
       { dateTime: '24/10/26 14:00', home: 'Huntingdon Town Reserves', away: 'Wellingborough Whitworth Reserves', venue: 'Long Buckby AFC' },
       { dateTime: '27/10/26 19:45', home: 'Wellingborough Town Development', away: 'Wellingborough Whitworth Reserves', venue: 'Dog and Duck Ground' },
       { dateTime: '31/10/26 15:00', home: 'Wellingborough Whitworth Reserves', away: 'Bugbrooke St.Michael Reserves', venue: 'Victoria Mill Ground' }
+    ],
+    results: [
+      { dateTime: '25/04/26 15:00', home: 'Bugbrooke St.Michaels Reserves', away: 'Wellingborough Whitworth Reserves', homeGoals: 8, awayGoals: 3, note: 'HT 6-1' },
+      { dateTime: '21/04/26 19:45', home: 'Godmanchester Rovers Reserves', away: 'Wellingborough Whitworth Reserves', homeGoals: 3, awayGoals: 0, note: 'HT 1-0' },
+      { dateTime: '18/04/26 15:00', home: 'Wellingborough Whitworth Reserves', away: 'Buckingham Development', homeGoals: 1, awayGoals: 1, note: 'HT 0-1' },
+      { dateTime: '11/04/26 15:00', home: 'Wellingborough Whitworth Reserves', away: 'Rothwell Corinthians Reserves', homeGoals: 3, awayGoals: 1, note: 'HT 3-0' },
+      { dateTime: '08/04/26 19:45', home: 'St Ives Town FC Reserves', away: 'Wellingborough Whitworth Reserves', homeGoals: 2, awayGoals: 3, note: 'HT 1-1' }
     ]
   }
 ];
@@ -40,7 +49,8 @@ export default function handler(req, res) {
     updatedAt: new Date().toISOString(),
     clubs: clubs.map(club => ({
       ...club,
-      fixtures: (club.fixtures || []).filter(f => fixtureDate(f.dateTime) >= now)
+      fixtures: (club.fixtures || []).filter(f => fixtureDate(f.dateTime) >= now),
+      results: [...(club.results || [])].sort((a,b) => fixtureDate(b.dateTime) - fixtureDate(a.dateTime))
     }))
   });
 }
