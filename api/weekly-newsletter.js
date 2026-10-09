@@ -195,9 +195,11 @@ async function prepare(now, secret, resendKey, dryRun) {
   const config = siteConfig();
   const contacts = await listResendContacts(resendKey);
   const unsubscribedEmails = contacts.filter(contact => contact.unsubscribed === true).map(contact => String(contact.email).trim().toLowerCase()).filter(Boolean);
-  const reconciled = await supabaseRpc(config, 'ft_newsletter_reconcile_unsubscribed', { p_secret: secret, p_emails: unsubscribedEmails });
+  const reconciled = dryRun ? 0 : await supabaseRpc(config, 'ft_newsletter_reconcile_unsubscribed', { p_secret: secret, p_emails: unsubscribedEmails });
   const active = await supabaseRpc(config, 'ft_newsletter_list_active', { p_secret: secret });
-  const recipients = Array.isArray(active) ? active.filter(item => item.email && item.id) : [];
+  const excluded = new Set(unsubscribedEmails);
+  const recipients = (Array.isArray(active) ? active.filter(item => item.email && item.id) : [])
+    .filter(item => !dryRun || !excluded.has(String(item.email).trim().toLowerCase()));
   const content = await edition(now);
   const contactMap = new Map(contacts.map(contact => [String(contact.email).toLowerCase(), contact]));
   const missingContacts = recipients.filter(item => !contactMap.has(String(item.email).toLowerCase())).length;
