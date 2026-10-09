@@ -1,5 +1,6 @@
 (() => {
   const MAIN_LINKS = [
+    ['Meet the Founder', 'meet-the-founder.html'],
     ['Home', './'],
     ['Match Centre', 'match-centre.html'],
     ['Tables & Stats', 'tables-stats.html'],
@@ -120,7 +121,7 @@
     const style = document.createElement('style');
     style.id = 'ft-persistent-tabs-style';
     style.textContent = `
-      .ft-persistent-tabs{position:sticky!important;top:var(--ft-tabs-top,76px)!important;z-index:175!important;display:grid!important;grid-template-columns:repeat(9,minmax(0,1fr))!important;padding:0 10px!important;background:#0b0b0e!important;border-bottom:1px solid #2b2b31!important}
+      .ft-persistent-tabs{position:sticky!important;top:var(--ft-tabs-top,76px)!important;z-index:175!important;display:grid!important;grid-template-columns:repeat(10,minmax(0,1fr))!important;padding:0 10px!important;background:#0b0b0e!important;border-bottom:1px solid #2b2b31!important}
       .ft-persistent-tabs a{position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;color:#fff!important;padding:14px 8px 16px!important;font-size:12px!important;font-weight:900!important;text-decoration:none!important;white-space:nowrap!important}
       .ft-persistent-tabs a.active-tab{color:#f7c600!important}
       .ft-persistent-tabs a.active-tab:after{content:'';position:absolute;left:10px;right:10px;bottom:0;height:5px;background:#f7c600}
