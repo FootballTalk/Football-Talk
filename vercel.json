@@ -2,6 +2,9 @@
   "functions": {
     "api/womens.js": {
       "maxDuration": 30
+    },
+    "api/weekly-newsletter.js": {
+      "maxDuration": 60
     }
   },
   "headers": [
