@@ -1,4 +1,4 @@
-create schema if not exists private;
+-- Provision private.newsletter_dispatch_config.secret_hash separately as the SHA-256 digest of Vercel CRON_SECRET. Never commit the plain secret.\ncreate schema if not exists private;
 revoke all on schema private from public, anon, authenticated;
 
 create table if not exists private.newsletter_dispatch_config (
