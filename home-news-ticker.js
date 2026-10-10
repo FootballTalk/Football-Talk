@@ -52,10 +52,10 @@
     };
 
     const makeNewsItem=item=>{
-      const a=document.createElement('a');a.className='ftnt-item';a.href=item.link||'news.html';
-      if(item.link){a.target='_blank';a.rel='noopener';}
+      const a=document.createElement('a');a.className='ftnt-item';a.href=item.link?('/football-talk-story.html?source='+encodeURIComponent(item.link)):'news.html';
+      
       const title=document.createElement('span');title.textContent=item.title||'Football news';a.appendChild(title);
-      if(item.source){const source=document.createElement('span');source.className='ftnt-source';source.textContent=item.source;a.appendChild(source);}
+      
       const sep=document.createElement('span');sep.className='ftnt-sep';sep.textContent='  •  ';a.appendChild(sep);return a;
     };
 
