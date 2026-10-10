@@ -72,6 +72,9 @@
       reactions.src='fan-reactions.js?v=20260831-1';
       reactions.dataset.ftFanReactions='1';
       document.body.appendChild(reactions);
+      const comments=document.createElement('script');
+      comments.src='story-comments.js?v=20261010-1';
+      document.body.appendChild(comments);
       if(view==='latest'){
         const auto=document.createElement('script');
         auto.src='auto-editorial.js?v=20260924-live-lead-2';
