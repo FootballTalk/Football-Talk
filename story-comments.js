@@ -14,6 +14,7 @@
     .ft-comment-form textarea{resize:vertical;min-height:110px}
     .ft-comment-form button{justify-self:start;border:0;border-radius:8px;background:#111;color:#f7c600;padding:12px 18px;font:inherit;font-weight:900;cursor:pointer}
     .ft-comment-form button:disabled{opacity:.6;cursor:wait}
+    .ft-comment-privacy{margin:0;color:#555;font-size:13px;line-height:1.45}.ft-comment-privacy a{color:#111;font-weight:800;text-decoration-color:#f7c600;text-decoration-thickness:2px}
     .ft-comment-status{min-height:20px;margin:0;color:#555;font-size:14px}
     .ft-comment-list{display:grid;gap:12px}
     .ft-comment{border-left:4px solid #f7c600;background:#fff;padding:12px 15px;box-shadow:0 3px 12px rgba(0,0,0,.05)}
@@ -117,7 +118,12 @@
     trapLabel.append(trap);
     const submit = createElement('button', '', 'Post comment');
     submit.type = 'submit';
-    form.append(nameLabel, commentLabel, trapLabel, submit);
+    const privacyNote = createElement('p', 'ft-comment-privacy');
+    privacyNote.append(document.createTextNode('Your name and comment will be visible publicly. See our '));
+    const privacyLink = createElement('a', '', 'Privacy Policy');
+    privacyLink.href = 'privacy.html';
+    privacyNote.append(privacyLink, document.createTextNode('.'));
+    form.append(nameLabel, commentLabel, privacyNote, trapLabel, submit);
     const status = createElement('p', 'ft-comment-status');
     status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
     form.append(status);
