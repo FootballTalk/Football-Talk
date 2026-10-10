@@ -28,7 +28,7 @@ function group(fixtures, event, competition, label, now){
   return {event, competition, fixtureIds:ids, eventKey:`${fotmobDate(now)}:${competition}:${event}:${ids.join(',')}`, title:label, text:`⚽ ${label}\n\n${lines.join('\n')}${footer}`, matchCount:rows.length};
 }
 function officialLineups(fixture, payload){
-  const rows=(payload?.fixtures||[]).find(f=>String(f.fixtureId)===String(fixture.id));
+  const rows=(payload?.fixtures||[]).find(f=>(norm(f.home).toLowerCase()===norm(fixture.home).toLowerCase() && norm(f.away).toLowerCase()===norm(fixture.away).toLowerCase()));
   if(!rows || rows.lineupType!=='confirmed' || !Array.isArray(rows.lineups) || rows.lineups.length!==2)return null;
   if(rows.lineups.some(t=>!Array.isArray(t.startXI)||t.startXI.length!==11))return null;
   const text=rows.lineups.map(t=>`🔹 ${t.team} ${t.formation?'('+t.formation+')':''}\n${t.startXI.map(p=>p.name).join(', ')}`).join('\n\n');
@@ -95,7 +95,7 @@ export default async function handler(req,res){
             const r=await fetch(`https://v3.football.api-sports.io/fixtures/lineups?fixture=${id}`,{headers:{'x-apisports-key':key}});
             if(!r.ok)continue;
             const lineups=(await r.json()).response||[];
-            fixtures.push({fixtureId:id,lineupType:lineups.length===2?'confirmed':'pending',lineups:lineups.map(t=>({team:t.team?.name,formation:t.formation,startXI:(t.startXI||[]).map(p=>({name:p.player?.name}))}))});
+            fixtures.push({fixtureId:id,home:row.teams?.home?.name,away:row.teams?.away?.name,lineupType:lineups.length===2?'confirmed':'pending',lineups:lineups.map(t=>({team:t.team?.name,formation:t.formation,startXI:(t.startXI||[]).map(p=>({name:p.player?.name}))}))});
           }
           lineupData={fixtures};
         }
