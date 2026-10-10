@@ -50,7 +50,7 @@
     feed.innerHTML = useful.map(item => {
       const title = esc(clean(item.title));
       const description = esc(clean(item.description || item.summary || '').slice(0, 260));
-      const source = esc(clean(item.source || 'Football Talk'));
+      const source = 'Football Talk';
       const time = esc(formatTime(item));
       const link = clean(item.link || item.url || '');
       const type = clean(item.type || 'NEWS');
