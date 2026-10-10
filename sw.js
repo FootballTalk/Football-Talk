@@ -1,4 +1,4 @@
-const CACHE='football-talk-shell-v2';
+const CACHE='football-talk-shell-v3-news-guard';
 const SHELL=['/','/index.html','/styles.css','/pwa-icon.svg'];
 
 self.addEventListener('install',event=>{
