@@ -2,7 +2,7 @@
   const feed = document.getElementById('dynamic-posts');
   if (!feed) return;
 
-  const CACHE_KEY = 'ft-home-news-cache-v1';
+  const CACHE_KEY = 'ft-home-news-cache-v2';
   const MAX_CACHE_AGE = 12 * 60 * 60 * 1000;
   const esc = (value = '') => String(value)
     .replace(/&/g, '&amp;')
@@ -28,7 +28,7 @@
     return date.toLocaleString('en-GB', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
   }
   function usefulItems(items) {
-    return (items || []).filter(item => clean(item.title) && Number(item.relevance ?? 1) > 0).slice(0, 12);
+    return (items || []).filter(item => { const raw=item.publishedAt||item.published_at||item.published; const time=Date.parse(String(raw||'')); return clean(item.title) && Number(item.relevance ?? 1)>0 && Number.isFinite(time) && Date.now()-time>=0 && Date.now()-time<36*60*60*1000; }).slice(0, 12);
   }
   function saveCache(items) {
     const useful = usefulItems(items);
