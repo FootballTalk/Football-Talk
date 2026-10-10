@@ -18,7 +18,7 @@
   function labelFor(item){if(item.type!=='TRANSFER')return'HOT NEWS';if(item.stage==='OFFICIAL')return'OFFICIAL / DEAL DONE';if(item.stage==='DEVELOPING')return'GAINING PACE';return'TRANSFER UPDATE'}
   function classFor(item){if(item.stage==='OFFICIAL')return'official';if(item.stage==='DEVELOPING')return'developing';return''}
   function summaryFor(item){const desc=clean(item.description);if(desc)return desc;return item.stage==='DEVELOPING'?'Transfer gaining pace from the live football news feed.':item.type==='TRANSFER'?'Confirmed transfer story from the live football news feed.':'A fresh football story from the live news feed.'}
-  function card(item,extraClass=''){const href=item.link?` href="${esc(item.link)}" target="_blank" rel="noopener noreferrer"`:'';return `<article class="auto-card ${extraClass}"><span class="auto-tag ${classFor(item)}">${esc(labelFor(item))}</span><div class="auto-meta">${esc(item.source||'Live feed')}${item.publishedAt?` · ${esc(fmt(item.publishedAt))}`:''}</div><h4>${esc(item.title)}</h4><p>${esc(summaryFor(item))}</p>${href?`<a class="auto-link"${href}>Read source →</a>`:''}</article>`}
+  function card(item,extraClass=''){const href=item.link?` href="/football-talk-story.html?source=${encodeURIComponent(item.link)}"`:'';return `<article class="auto-card ${extraClass}"><span class="auto-tag ${classFor(item)}">${esc(labelFor(item))}</span><div class="auto-meta">${esc(item.source||'Live feed')}${item.publishedAt?` · ${esc(fmt(item.publishedAt))}`:''}</div><h4>${esc(item.title)}</h4><p>${esc(summaryFor(item))}</p>${href?`<a class="auto-link"${href}>Read on Football Talk →</a>`:''}</article>`}
   function debateCard(item){const prompt=clean(item.debatePrompt)||`${clean(item.title)} — what do you think?`;return `<article class="auto-card auto-debate"><span class="auto-tag">FAN DEBATE</span><div class="auto-meta">Generated from a live story</div><h4>${esc(prompt)}</h4><p>Have your say on the latest talking point.</p></article>`}
   function ensureBlock(parent,id,title,note){let wrap=document.getElementById(id);if(wrap)return wrap;wrap=document.createElement('div');wrap.id=id;wrap.className='auto-editorial-wrap';wrap.innerHTML=`<div class="auto-editorial-head"><h3>${esc(title)}</h3><small>${esc(note)}</small></div><div class="auto-editorial-grid"></div>`;parent.prepend(wrap);return wrap}
   function aliasesFor(query=''){const q=normalise(query);if(!q)return[];for(const[club,aliases]of Object.entries(CLUB_ALIASES)){if(club===q||aliases.some(alias=>normalise(alias)===q))return[...new Set([club,...aliases].map(normalise))]}return[q]}
@@ -54,10 +54,10 @@
       const body=document.createElement('div');
       body.className='post-card-body';
       const tag=document.createElement('span');tag.className='tag';tag.textContent=label;body.appendChild(tag);
-      const meta=document.createElement('p');meta.className='card-meta';meta.textContent=source+' · '+fmt(item.publishedAt);body.appendChild(meta);
+      const meta=document.createElement('p');meta.className='card-meta';meta.textContent='Football Talk · '+fmt(item.publishedAt);body.appendChild(meta);
       const title=document.createElement('h3');title.textContent=clean(item.title);body.appendChild(title);
       const desc=document.createElement('p');desc.textContent=clean(item.description||'').slice(0,260);body.appendChild(desc);
-      const link=document.createElement('a');link.className='read-story';link.href=item.link;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Read at '+source+' →';body.appendChild(link);
+      const link=document.createElement('a');link.className='read-story';link.href='/football-talk-story.html?source='+encodeURIComponent(item.link);link.textContent='Read on Football Talk →';body.appendChild(link);
       card.appendChild(body);
       old?.remove();old=card;
     }
