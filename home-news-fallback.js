@@ -57,7 +57,7 @@
       const stage = clean(item.stage || '');
       const label = type === 'TRANSFER' ? (stage === 'OFFICIAL' ? 'DEAL DONE' : stage === 'DEVELOPING' ? 'TRANSFER UPDATE' : 'TRANSFER') : 'LATEST NEWS';
       const image = clean(item.image || '');
-      return `<article class="post-card home-api-fallback">${image ? `<img src="${esc(image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}<div class="post-card-body"><span class="tag">${esc(label)}</span><p class="card-meta">${source}${time ? ` · ${time}` : ''}</p><h3>${title}</h3>${description ? `<p>${description}</p>` : ''}${link ? `<a class="read-story" href="${esc(link)}" target="_blank" rel="noopener noreferrer">Read story →</a>` : ''}</div></article>`;
+      return `<article class="post-card home-api-fallback">${image ? `<img src="${esc(image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}<div class="post-card-body"><span class="tag">${esc(label)}</span><p class="card-meta">${source}${time ? ` · ${time}` : ''}</p><h3>${title}</h3>${description ? `<p>${description}</p>` : ''}${link ? `<a class="read-story" href="/football-talk-story.html?source=${encodeURIComponent(link)}">Read on Football Talk →</a>` : ''}</div></article>`;
     }).join('');
     return true;
   }

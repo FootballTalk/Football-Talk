@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Football Talk | Latest story</title><meta name="robots" content="noindex,follow">
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:#f4f5f6;color:#171717}*{box-sizing:border-box}body{margin:0}header{background:#111;color:#f7c600;border-bottom:5px solid #f7c600;padding:20px max(20px,calc((100vw - 920px)/2))}header a{color:inherit;text-decoration:none;font-weight:900;font-size:24px;letter-spacing:.6px}.wrap{max-width:920px;margin:28px auto;padding:0 20px}main{background:#fff;border:1px solid #ddd;border-radius:12px;padding:clamp(22px,5vw,46px)}.eyebrow{font-weight:850;color:#927000;text-transform:uppercase;letter-spacing:.08em;font-size:13px}h1{font-size:clamp(27px,4vw,43px);line-height:1.17;margin:12px 0 16px}p{line-height:1.65}#summary{font-size:18px;white-space:pre-line}#byline{color:#555;font-size:14px}#image{display:none;width:100%;height:auto;max-height:440px;object-fit:cover;border-radius:8px;margin:24px 0}.source-note{background:#faf8e9;border-left:4px solid #f7c600;padding:13px 16px;margin-top:26px;font-size:14px}.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:25px}a.button{background:#111;color:#f7c600;padding:12px 16px;border-radius:7px;text-decoration:none;font-weight:750}a.secondary{background:#eee;color:#111}footer{max-width:920px;margin:24px auto;padding:0 20px 25px;color:#555;font-size:13px}
+</style></head><body>
+<header><a href="/">⚽ FOOTBALL TALK</a></header>
+<div class="wrap"><main><div class="eyebrow">Latest football news</div><h1 id="title">Loading story…</h1><p id="byline"></p><img id="image" alt=""><p id="summary"></p><div class="source-note">Football Talk brings you a short news overview with source attribution. We do not reproduce another publisher's full article. For their complete reporting, use the source link below.</div><div class="actions"><a class="button" href="/news.html">More Football Talk news →</a><a class="button secondary" id="source" hidden target="_blank" rel="noopener noreferrer">Original report ↗</a></div></main></div><footer>Football Talk — Where fans have their say. © Football Talk</footer>
+<script>
+(async()=>{
+const params=new URLSearchParams(location.search),url=params.get('source')||'';
+const title=document.getElementById('title'),summary=document.getElementById('summary'),byline=document.getElementById('byline'),image=document.getElementById('image'),source=document.getElementById('source');
+let target;try{target=new URL(url);if(!['https:','http:'].includes(target.protocol))throw Error('Bad URL')}catch{title.textContent='Story not available';return}
+try{
+const response=await fetch('/api/news',{cache:'no-store'});if(!response.ok)throw Error('Unavailable');
+const data=await response.json(),items=Array.isArray(data.items)?data.items:[];
+const article=items.find(x=>(x.link||x.url||'')===target.href);
+if(!article)throw Error('Story moved');
+title.textContent=article.title||'Latest football update';
+summary.textContent=article.description||article.summary||'You can read the original report through the source link below.';
+byline.textContent=[article.source||'Original reporting',article.publishedAt||article.published_at||''].filter(Boolean).join(' · ');
+if(article.image && /^https:\/\//.test(article.image)){image.src=article.image;image.style.display='block';}
+source.href=target.href;source.hidden=false;document.title=(article.title||'Latest story')+' | Football Talk';
+}catch{title.textContent='This story has moved on';summary.textContent='Our live news feed refreshes throughout the day. Browse the latest stories on Football Talk.';}
+})();
+</script></body></html>
