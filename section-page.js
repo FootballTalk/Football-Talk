@@ -32,8 +32,8 @@
         const article=document.createElement('article');
         article.className='post-card';article.style.padding='16px';article.style.margin='12px 0';
         const link=document.createElement('a');
-        try{const url=new URL(item.link);if(url.protocol!=='https:')continue;link.href=url.href}catch{continue}
-        link.target='_blank';link.rel='noopener noreferrer';link.textContent=item.title||'Read football update';
+        try{const url=new URL(item.link);if(url.protocol!=='https:')continue;link.href=`/football-talk-story.html?source=${encodeURIComponent(url.href)}`}catch{continue}
+        link.textContent=item.title||'Read football update';
         const summary=document.createElement('p');summary.textContent=String(item.description||item.summary||'').slice(0,240);
         const source=document.createElement('small');source.textContent=item.source||'Football source';
         article.append(link,summary,source);feed.appendChild(article);
