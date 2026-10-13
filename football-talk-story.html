@@ -20,7 +20,9 @@ const content=document.getElementById('article-content');
 let hash=2166136261;for(const char of target.href){hash^=char.charCodeAt(0);hash=Math.imul(hash,16777619);}content.dataset.storyId='wire-'+(hash>>>0).toString(36);
 title.textContent=article.title||'Latest football update';
 summary.textContent=article.description||article.summary||'You can read the original report through the source link below.';
-byline.textContent=article.publishedAt||article.published_at||'';
+const outlet=article.source||article.publisher||target.hostname.replace(/^www\\./,'');
+const published=article.publishedAt||article.published_at||'';
+byline.textContent=[outlet,published].filter(Boolean).join(' · ');
 if(article.image && /^https:\/\//.test(article.image)){image.src=article.image;image.style.display='block';}
 source.href=target.href;source.hidden=false;document.title=(article.title||'Latest story')+' | Football Talk';
 }catch{title.textContent='This story has moved on';summary.textContent='Our live news feed refreshes throughout the day. Browse the latest stories on Football Talk.';}
