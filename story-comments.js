@@ -1,7 +1,10 @@
 (() => {
   if (window.__FT_STORY_COMMENTS__) return;
   window.__FT_STORY_COMMENTS__ = true;
-  const config = window.FT_CONFIG || {};
+  const config = window.FT_CONFIG || {
+    SUPABASE_URL: 'https://cwilgnubzfpmfvoldttm.supabase.co',
+    SUPABASE_ANON_KEY: 'sb_publishable_GdbObU6cF2eh3wSQ6pz47A_gTgBDjvH'
+  };
   const ready = Boolean(config.SUPABASE_URL && config.SUPABASE_ANON_KEY);
   const style = document.createElement('style');
   style.textContent = `
@@ -42,16 +45,37 @@
     if (text !== undefined) el.textContent = text;
     return el;
   }
+  const discussionPaths = new Set(['index.html','news.html','football-talk-story.html','football-talk-archive.html','fan-debate.html','fixtures.html','results.html','tables.html','tables-stats.html','top-scorers.html','match.html','match-centre.html','lineups.html','cups.html','european.html','womens-news.html','womens-transfers.html','womens-results.html','womens-tables.html','womens-tables-stats.html','womens-stats.html','womens-ref-watch.html','womens-match-centre.html','ref-watch.html','highlights.html','transfer-story.html','football-talk-analysis-coventry-newcastle-october-2026.html','football-talk-analysis-liverpool-man-city-october-2026.html','football-talk-analysis-premier-league-international-break.html','football-talk-club.html','football-talk-editorial-standards.html','football-talk-matchday-guide.html','football-talk-opinion-jordan-henderson-stole-weekend.html','football-talk-opinion-premier-league-stripped-titles.html','football-talk-ref-watch-explained.html','manchester-city-premier-league-verdict-2026.html','premier-league-table-tiebreakers-explained.html']);
+  function pageKey() {
+    const path = location.pathname.split('/').filter(Boolean).pop() || 'index.html';
+    const params = [...new URLSearchParams(location.search).entries()].sort(([a],[b]) => a.localeCompare(b));
+    return 'page:' + path + (params.length ? '?' + new URLSearchParams(params).toString() : '');
+  }
+  function pageIntro() {
+    const path = location.pathname.split('/').filter(Boolean).pop() || 'index.html';
+    if (/tables|stats|scorers/.test(path)) return 'Where do you think your club will finish? Use the standings or stats on this page to explain your view.';
+    if (/fixtures|results|lineups|cups|european/.test(path)) return 'Which fixture, result or team selection matters most to your club? Tell other fans why.';
+    if (/match/.test(path)) return 'What should fans take away from this match? Share your view and refer to the match details shown here.';
+    if (/news|transfer|debate|section/.test(path)) return 'What is your take on this update? Separate confirmed information from speculation and explain your view.';
+    if (/football-talk|premier-league-table/.test(path)) return 'What stood out to you in this Football Talk coverage? Add your perspective and keep it on the subject.';
+    return 'Join the Football Talk conversation. Share your view and keep it focused on the football.';
+  }
   function getTarget() {
+    const path = location.pathname.split('/').filter(Boolean).pop() || 'index.html';
+    const params = new URLSearchParams(location.search);
+    const view = (params.get('view') || '').toLowerCase();
+    if (!discussionPaths.has(path) && !(path === 'section.html' && ['latest','debate','transfers','matchday'].includes(view))) return null;
     const dynamic = document.getElementById('article-content');
     if (dynamic && dynamic.querySelector('h1')) {
       const title = dynamic.querySelector('h1').textContent.trim();
-      return { host: dynamic, id: dynamic.dataset.storyId || 'post:' + slug(title) };
+      return { host: dynamic, id: dynamic.dataset.storyId || 'post:' + slug(title), intro: pageIntro() };
     }
     const article = document.querySelector('main article.article');
     if (article && article.querySelector('h1')) {
-      return { host: article, id: location.pathname.split('/').pop() || 'index.html' };
+      return { host: article, id: article.dataset.storyId || pageKey(), intro: pageIntro() };
     }
+    const main = document.querySelector('main');
+    if (main && main.querySelector('h1')) return { host: main, id: pageKey(), intro: pageIntro() };
     return null;
   }
   function dateText(value) {
@@ -101,7 +125,7 @@
     section.setAttribute('aria-labelledby', 'ft-comments-title');
     const heading = createElement('h2', '', 'Have your say');
     heading.id = 'ft-comments-title';
-    section.append(heading, createElement('p', 'ft-comments-intro', 'Join the conversation. Keep it respectful and focused on the football.'));
+    section.append(heading, createElement('p', 'ft-comments-intro', target.intro));
     const form = createElement('form', 'ft-comment-form');
     form.setAttribute('aria-label', 'Post a comment');
     const nameLabel = createElement('label', '', 'Your name');
@@ -119,7 +143,7 @@
     const submit = createElement('button', '', 'Post comment');
     submit.type = 'submit';
     const privacyNote = createElement('p', 'ft-comment-privacy');
-    privacyNote.append(document.createTextNode('Your name and comment will be visible publicly. See our '));
+    privacyNote.append(document.createTextNode('Comments are published immediately and visible to everyone. Keep it on topic; do not share personal information, abuse or spam. See our '));
     const privacyLink = createElement('a', '', 'Privacy Policy');
     privacyLink.href = 'privacy.html';
     privacyNote.append(privacyLink, document.createTextNode('.'));
