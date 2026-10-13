@@ -143,7 +143,7 @@
     const submit = createElement('button', '', 'Post comment');
     submit.type = 'submit';
     const privacyNote = createElement('p', 'ft-comment-privacy');
-    privacyNote.append(document.createTextNode('Comments are published immediately and visible to everyone. Keep it on topic; do not share personal information, abuse or spam. See our '));
+    privacyNote.append(document.createTextNode('Comments are automatically screened for abusive or unsafe content before they are published. Screening can make mistakes, so please keep comments on topic. See our '));
     const privacyLink = createElement('a', '', 'Privacy Policy');
     privacyLink.href = 'privacy.html';
     privacyNote.append(privacyLink, document.createTextNode('.'));
@@ -169,11 +169,16 @@
       if (Date.now() - last < 30000) { status.textContent = 'Please wait a moment before posting another comment.'; return; }
       submit.disabled = true; status.textContent = 'Posting your comment…';
       try {
-        const response = await fetch(endpoint(), {
+        const response = await fetch('/api/moderate-comment', {
           method: 'POST',
-          headers: headers({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
-          body: JSON.stringify({ story_id: target.id, display_name: displayName, comment_text: commentText, approved: true })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ story_id: target.id, display_name: displayName, comment_text: commentText })
         });
+        const result = await response.json().catch(() => ({}));
+        if (response.status === 422) {
+          status.textContent = result.error || 'Please revise your comment to meet our community standards.';
+          return;
+        }
         if (!response.ok) throw new Error('submit failed');
         localStorage.setItem(cooldownKey, String(Date.now()));
         form.reset();
