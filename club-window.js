@@ -28,11 +28,11 @@
         <span class="ft-club-mark">FT</span>
         <span class="ft-club-copy"><strong>FOOTBALL TALK</strong><span id="ft-club-title">Official club website</span></span>
       </div>
-      <button class="ft-club-close" type="button" aria-label="Close club website">×</button>
+      <button class="ft-club-close" type="button" aria-label="Close source viewer">×</button>
     </div>
     <div class="ft-club-frame-wrap">
-      <iframe class="ft-club-frame" title="Official club website" referrerpolicy="strict-origin-when-cross-origin"></iframe>
-      <div class="ft-club-fallback">If the club blocks this in-app view, use <a class="ft-club-external" href="#" target="_blank" rel="noopener noreferrer">Open official site ↗</a></div>
+      <iframe class="ft-club-frame" title="External source" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      <div class="ft-club-fallback"><span class="ft-club-fallback-copy">If this site blocks the in-app view, open it directly:</span> <a class="ft-club-external" href="#" target="_blank" rel="noopener noreferrer">Open source ↗</a></div>
     </div>`;
   document.body.appendChild(modal);
 
@@ -41,8 +41,10 @@
   const title = modal.querySelector('#ft-club-title');
   const external = modal.querySelector('.ft-club-external');
 
-  function openViewer(url, clubName) {
-    title.textContent = clubName ? `${clubName} — Official Website` : 'Official club website';
+  function openViewer(url, label, isSource) {
+    title.textContent = isSource ? 'Source: ' + (label || new URL(url).hostname) : (label ? label + ' — Official Website' : 'Official club website');
+    external.textContent = isSource ? 'Open source ↗' : 'Open official site ↗';
+    modal.querySelector('.ft-club-fallback-copy').textContent = isSource ? 'If the publisher blocks the in-app view, open it directly:' : 'If the club blocks this in-app view, use';
     external.href = url;
     frame.src = url;
     modal.classList.add('open');
@@ -62,11 +64,15 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.classList.contains('open')) closeViewer(); });
 
   document.addEventListener('click', e => {
-    const link = e.target.closest('.team-link');
+    const link = e.target.closest('.team-link, .ft-source-link');
     if (!link || !link.href) return;
+    let parsed;
+    try { parsed = new URL(link.href, location.href); } catch { return; }
+    if (parsed.protocol !== 'https:' || parsed.origin === location.origin) return;
     e.preventDefault();
     e.stopImmediatePropagation();
+    const isSource = link.matches('.ft-source-link');
     const clubName = link.querySelector('span:not(.external-mark)')?.textContent?.trim() || '';
-    openViewer(link.href, clubName);
+    openViewer(link.href, isSource ? (link.dataset.ftSourceLabel || parsed.hostname) : clubName, isSource);
   }, true);
 })();
