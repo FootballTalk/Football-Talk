@@ -1,0 +1,8 @@
+(()=>{if(window.__FT_FAN_ENGAGEMENT__)return;window.__FT_FAN_ENGAGEMENT__=true;
+ const path=location.pathname.split('/').filter(Boolean).pop()||'index.html';
+ const pages=new Set(['index.html','news.html','football-talk-story.html','football-talk-archive.html','fan-debate.html','fixtures.html','results.html','tables.html','tables-stats.html','top-scorers.html','match.html','match-centre.html','lineups.html','cups.html','european.html','womens-news.html','womens-transfers.html','womens-results.html','womens-tables.html','womens-tables-stats.html','womens-stats.html','womens-ref-watch.html','womens-match-centre.html','ref-watch.html','highlights.html','transfer-story.html','football-talk-analysis-coventry-newcastle-october-2026.html','football-talk-analysis-liverpool-man-city-october-2026.html','football-talk-analysis-premier-league-international-break.html','football-talk-club.html','football-talk-editorial-standards.html','football-talk-matchday-guide.html','football-talk-opinion-jordan-henderson-stole-weekend.html','football-talk-opinion-premier-league-stripped-titles.html','football-talk-ref-watch-explained.html','manchester-city-premier-league-verdict-2026.html','premier-league-table-tiebreakers-explained.html']);
+ const view=(new URLSearchParams(location.search).get('view')||'').toLowerCase();
+ const eligible=pages.has(path)||(path==='section.html'&&['latest','debate','transfers','matchday'].includes(view));
+ if(!eligible||document.querySelector('script[src*="story-comments.js"]')||window.__FT_STORY_COMMENTS__)return;
+ const script=document.createElement('script');script.src='story-comments.js?v=20261013-discussion-1';script.dataset.ftStoryComments='1';document.body.appendChild(script);
+})();
