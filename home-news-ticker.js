@@ -20,7 +20,6 @@
     const more=ticker.querySelector('#ftnt-more');
     const liveStatuses=new Set(['1H','2H','HT','ET','P','LIVE','INT','BT']);
     const doneStatuses=new Set(['FT','AET','PEN']);
-    const resultsWindowMs=4*60*60*1000;
     let mode='';
     let lastNewsLoad=0;
 
@@ -35,6 +34,14 @@
       const senior=!/\b(u ?1[56789]|u ?2[013]|under ?(1[56789]|2[013])|youth|reserves?|academy)\b/.test(name);
       if(england&&(id===39||id===47||name==='premier league'))return'Premier League';
       if(england&&(id===40||/^(efl )?championship$/.test(name)))return'EFL Championship';
+      if(id===179||/\bscottish premiership\b/.test(name))return'Scottish Premiership';
+      if(id===45||/^fa cup$/.test(name))return'FA Cup';
+      if(id===48||/\b(carabao|efl|league) cup\b/.test(name))return'Carabao Cup';
+      if(id===2||/\buefa champions league\b/.test(name))return'UEFA Champions League';
+      if(id===3||/\buefa europa league\b/.test(name))return'UEFA Europa League';
+      if(id===848||/\buefa (europa )?conference league\b/.test(name))return'UEFA Conference League';
+      if(/\buefa women s champions league\b/.test(name))return"UEFA Women's Champions League";
+      if(england&&/\b(women s super league|wsl)\b/.test(name))return"Women's Super League";
       if(!senior||/\bclub world cup\b/.test(name))return null;
       if(/\b(fifa )?world cup\b/.test(name))return /qualif/.test(name)?'FIFA World Cup Qualifying':'FIFA World Cup';
       if(/\bworld cup (qualification|qualifying)\b/.test(name)||/\bwc qualification\b/.test(name))return'FIFA World Cup Qualifying';
@@ -91,9 +98,9 @@
         if(!games.length){await loadNews(false);return;}
         const started=games.some(f=>liveStatuses.has(String(f.status||'').toUpperCase())||doneStatuses.has(String(f.status||'').toUpperCase()));
         const allFinished=games.every(f=>doneStatuses.has(String(f.status||'').toUpperCase()));
-        const latestKickoff=Math.max(...games.map(f=>new Date(f.date||0).getTime()).filter(Number.isFinite));
-        const resultsStillFresh=allFinished&&Number.isFinite(latestKickoff)&&Date.now()<=latestKickoff+resultsWindowMs;
-        if(started&&(!allFinished||resultsStillFresh))renderScores(games,allFinished);else await loadNews(mode!=='news');
+        // From the first kick-off until the final whistle of the last tracked game,
+        // matchday scores own the ticker. Once every game is finished, return to news.
+        if(started&&!allFinished)renderScores(games,false);else await loadNews(mode!=='news');
       }catch(_){await loadNews(mode!=='news');}
     };
 
