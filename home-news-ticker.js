@@ -20,6 +20,8 @@
     const more=ticker.querySelector('#ftnt-more');
     const liveStatuses=new Set(['1H','2H','HT','ET','P','LIVE','INT','BT']);
     const doneStatuses=new Set(['FT','AET','PEN']);
+    const MATCH_DURATION_ESTIMATE_MS=2*60*60*1000;
+    const FULL_TIME_RESULTS_MS=2*60*60*1000;
     let mode='';
     let lastNewsLoad=0;
 
@@ -43,6 +45,11 @@
       if(/\buefa women s champions league\b/.test(name))return"UEFA Women's Champions League";
       if(england&&/\b(women s super league|wsl)\b/.test(name))return"Women's Super League";
       if(!senior||/\bclub world cup\b/.test(name))return null;
+      if(id===10||/\b(international friendlies|international friendly|friendlies)\b/.test(name))return'International Friendly';
+      if(/\b(africa cup of nations|afcon)\b/.test(name))return'Africa Cup of Nations';
+      if(/\bcopa america\b/.test(name))return'Copa América';
+      if(/\b(afc )?asian cup\b/.test(name))return'AFC Asian Cup';
+      if(/\b(concacaf )?gold cup\b/.test(name))return'CONCACAF Gold Cup';
       if(/\b(fifa )?world cup\b/.test(name))return /qualif/.test(name)?'FIFA World Cup Qualifying':'FIFA World Cup';
       if(/\bworld cup (qualification|qualifying)\b/.test(name)||/\bwc qualification\b/.test(name))return'FIFA World Cup Qualifying';
       if(/\buefa nations league\b/.test(name))return'UEFA Nations League';
@@ -98,9 +105,12 @@
         if(!games.length){await loadNews(false);return;}
         const started=games.some(f=>liveStatuses.has(String(f.status||'').toUpperCase())||doneStatuses.has(String(f.status||'').toUpperCase()));
         const allFinished=games.every(f=>doneStatuses.has(String(f.status||'').toUpperCase()));
-        // From the first kick-off until the final whistle of the last tracked game,
-        // matchday scores own the ticker. Once every game is finished, return to news.
-        if(started&&!allFinished)renderScores(games,false);else await loadNews(mode!=='news');
+        const latestKickoff=Math.max(...games.map(f=>new Date(f.date).getTime()).filter(Number.isFinite));
+        const estimatedFinalWhistle=Number.isFinite(latestKickoff)?latestKickoff+MATCH_DURATION_ESTIMATE_MS:0;
+        const resultsStillFresh=allFinished&&estimatedFinalWhistle&&Date.now()<=estimatedFinalWhistle+FULL_TIME_RESULTS_MS;
+        // Scores take over from the first kick-off. After the last tracked match,
+        // the complete batch of full-time results remains for two more hours.
+        if(started&&(!allFinished||resultsStillFresh))renderScores(games,allFinished);else await loadNews(mode!=='news');
       }catch(_){await loadNews(mode!=='news');}
     };
 
