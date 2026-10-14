@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f7c600">
+  <meta name="description" content="Bring your grassroots football league into Football Talk for free. Share your fixtures and tables source and help us celebrate your clubs.">
+  <title>Bring Your League In | Football Talk Grassroots</title>
+  <link rel="icon" href="/pwa-icon.svg" type="image/svg+xml"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet"><link rel="stylesheet" href="/grassroots/grassroots.css">
+</head>
+<body>
+  <header class="masthead"><div class="wrap"><a class="brand" href="/grassroots/"><span>FT</span> FOOTBALL TALK GRASSROOTS</a><a class="back" href="/grassroots/">← Grassroots home</a></div></header>
+  <main>
+    <div class="hero"><div class="wrap"><p class="eyebrow">An invitation to league chairs and administrators</p><h1>BRING YOUR LEAGUE <em>IN.</em></h1><p class="lead">Help us give your fixtures, tables, clubs and matchday stories a home on Football Talk. Joining this introductory project is free.</p><div class="hero-actions"><a class="button" href="#league-form">Tell us about your league ↓</a></div></div></div>
+    <section class="content"><div class="wrap"><p class="eyebrow">How it works</p><h2>Start with the league. Build with the clubs.</h2><div class="grid"><div class="card"><h3>1. Share your source</h3><p>Send the public league page and, if you have them, direct fixtures and table links.</p></div><div class="card"><h3>2. Agree the coverage</h3><p>We’ll confirm the divisions, data source, attribution and what your league would like us to feature.</p></div><div class="card"><h3>3. Invite clubs</h3><p>Once the league area is ready, clubs can add approved news, match reports and short interviews over time.</p></div></div><p class="intro source-note">If your league uses FA Full-Time, an administrator can find official table, recent results and upcoming fixtures embed codes in <strong>Full-Time Admin → Media → Code Snippets</strong>. We can discuss those after your initial enquiry. Please do not send login details. A public link lets us review your league, but we’ll agree an approved display method before reproducing live data.</p></div></section>
+    <section class="content" id="league-form"><div class="wrap"><p class="eyebrow">Free introductory invitation</p><h2>Tell us about your league.</h2><p class="intro">Please complete the details below. A chairperson, secretary or authorised league administrator can submit the enquiry. We’ll contact you before any league information is featured.</p>
+      <form id="league-enquiry" class="club-form" novalidate>
+        <div class="form-grid"><label>League name <span>*</span><input name="leagueName" maxlength="120" autocomplete="organization" required></label><label>Your name <span>*</span><input name="contactName" maxlength="100" autocomplete="name" required></label><label>Your role <span>*</span><input name="role" maxlength="80" placeholder="e.g. league chair, secretary" required></label><label>Email address <span>*</span><input name="email" type="email" maxlength="254" autocomplete="email" required></label><label>Area or County FA <span>*</span><input name="area" maxlength="120" placeholder="e.g. Northamptonshire" required></label><label>Current season <span>*</span><input name="season" maxlength="30" placeholder="e.g. 2026/27" required></label><label>Where are your fixtures and tables managed? <span>*</span><select name="platform" required><option value="">Choose a source</option><option>FA Full-Time</option><option>League website or another provider</option><option>Not sure</option></select></label><label>Public league page link <span>*</span><input name="leagueUrl" type="url" maxlength="500" placeholder="https://..." required></label><label>Fixtures link (if different)<input name="fixturesUrl" type="url" maxlength="500" placeholder="https://..."></label><label>League table link (if different)<input name="tableUrl" type="url" maxlength="500" placeholder="https://..."></label></div>
+        <label>Divisions or clubs you’d like to start with<textarea name="divisions" rows="3" maxlength="1000" placeholder="Tell us which divisions or clubs to feature first."></textarea></label>
+        <label>Anything else we should know?<textarea name="message" rows="4" maxlength="2000" placeholder="For example, who updates results, or whether you can supply official Full-Time embed codes."></textarea></label>
+        <div class="trap" aria-hidden="true"><label>Leave this field blank<input name="website" tabindex="-1" autocomplete="off"></label></div>
+        <p class="form-note">We’ll use your details to discuss league coverage with you. Please don’t include children’s personal details or photos here. Read our <a href="/privacy.html">Privacy Policy</a>.</p>
+        <button class="button" type="submit">SEND LEAGUE ENQUIRY →</button><p id="form-status" class="form-status" role="status" aria-live="polite"></p>
+      </form>
+    </div></section>
+  </main>
+  <footer class="foot"><div class="wrap"><span>© Football Talk · Where fans have their say.</span><a href="/grassroots/">Grassroots home</a></div></footer>
+  <script defer src="/grassroots/league-enquiry.js"></script>
+</body></html>
