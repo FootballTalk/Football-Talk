@@ -17,8 +17,22 @@
   function failedState() {
     return [...feed.querySelectorAll('.empty-state')].some(el => /could not|unavailable|connect supabase|no published stories/i.test(el.textContent || ''));
   }
+  function isStale(card) {
+    const raw = card.dataset.publishedAt || card.querySelector('time[datetime]')?.getAttribute('datetime');
+    if (raw) {
+      const t = Date.parse(raw);
+      return !Number.isFinite(t) || t > Date.now() + 3600000 || Date.now() - t > 36 * 3600000;
+    }
+    const meta = (card.querySelector('.card-meta')?.textContent || '').trim();
+    const match = meta.match(/(\d{1,2})\s+([A-Za-z]{3,9})(?:\s+(\d{4}))?/);
+    if (!match) return true; // undated cards cannot be represented as breaking news
+    const year = match[3] || new Date().getFullYear();
+    const t = Date.parse(match[1] + ' ' + match[2] + ' ' + year);
+    return !Number.isFinite(t) || t > Date.now() + 86400000 || Date.now() - t > 36 * 3600000;
+  }
   function needsFallback() {
-    return !feed.querySelector('.post-card') || failedState();
+    const cards = [...feed.querySelectorAll('.post-card')];
+    return !cards.length || failedState() || cards.every(isStale);
   }
   function formatTime(item) {
     const raw = item.publishedAt || item.published_at || item.published;
@@ -88,7 +102,7 @@
   // Three-step resilience: live API -> recent local cache -> neutral refresh message.
   // Keep watching because the asynchronous primary loader can overwrite the fallback.
   const observer = new MutationObserver(() => {
-    if (failedState()) recover(true);
+    if (needsFallback()) recover(true);
   });
   observer.observe(feed, {childList:true, subtree:true});
   queueMicrotask(() => recover(true));
