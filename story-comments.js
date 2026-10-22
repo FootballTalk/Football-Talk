@@ -65,6 +65,7 @@
     const params = new URLSearchParams(location.search);
     const view = (params.get('view') || '').toLowerCase();
     if (!discussionPaths.has(path) && !(path === 'section.html' && ['latest','debate','transfers','matchday'].includes(view))) return null;
+    if (path === 'fan-voice.html') return null;
     const dynamic = document.getElementById('article-content');
     if (dynamic && dynamic.querySelector('h1')) {
       const title = dynamic.querySelector('h1').textContent.trim();
@@ -117,14 +118,14 @@
       empty.textContent = 'Comments could not be loaded right now. Please try again later.';
     }
   }
-  function mount() {
-    const target = getTarget();
+  function mountTarget(target) {
     if (!target || target.host.querySelector('.ft-comments')) return;
     const section = createElement('section', 'ft-comments');
     section.dataset.storyId = target.id;
-    section.setAttribute('aria-labelledby', 'ft-comments-title');
+    const headingId = 'ft-comments-title-' + slug(target.id);
+    section.setAttribute('aria-labelledby', headingId);
     const heading = createElement('h2', '', 'Have your say');
-    heading.id = 'ft-comments-title';
+    heading.id = headingId;
     section.append(heading, createElement('p', 'ft-comments-intro', target.intro));
     const form = createElement('form', 'ft-comment-form');
     form.setAttribute('aria-label', 'Post a comment');
@@ -185,6 +186,16 @@
         submit.disabled = false;
       }
     });
+  }
+  function mount() {
+    const path = location.pathname.split('/').filter(Boolean).pop() || 'index.html';
+    if (path === 'fan-voice.html') {
+      document.querySelectorAll('main article.ft-editorial[data-discussion-id]').forEach(article => {
+        mountTarget({ host: article, id: 'fan-voice:' + article.dataset.discussionId, intro: 'Join this specific debate. Share your opinion below and see what other fans think.' });
+      });
+      return;
+    }
+    mountTarget(getTarget());
   }
   function start() {
     mount();
