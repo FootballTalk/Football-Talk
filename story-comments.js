@@ -115,7 +115,11 @@
       });
     } catch {
       empty.hidden = false;
-      empty.textContent = 'Comments could not be loaded right now. Please try again later.';
+      empty.textContent = 'Comments could not be loaded right now. ';
+      const retry = createElement('button', '', 'Retry loading comments');
+      retry.type = 'button';
+      retry.addEventListener('click', () => { empty.textContent = 'Reloading comments…'; loadComments(id, list, empty); });
+      empty.append(retry);
     }
   }
   function mountTarget(target) {
@@ -178,8 +182,9 @@
         if (!response.ok) throw new Error('submit failed');
         localStorage.setItem(cooldownKey, String(Date.now()));
         form.reset();
-        status.textContent = 'Thanks — your comment is now live.';
+        status.textContent = 'Comment submitted. Refreshing the discussion…';
         await loadComments(target.id, list, empty);
+        status.textContent = 'Thanks for having your say. Your comment was submitted.';
       } catch {
         status.textContent = 'We could not post your comment just now. Please try again.';
       } finally {
