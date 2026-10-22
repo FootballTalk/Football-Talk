@@ -10,6 +10,8 @@
   ];
   const order=new Map(STAGES.map((s,i)=>[s.key,i]));
   let loading=false;
+  let lastSuccessfulUpdate=0;
+  const MAX_STORY_AGE_MS=7*24*60*60*1000;
 
   const styles=document.createElement('style');
   styles.textContent=`
@@ -83,7 +85,7 @@
   }
   function render(items){
     const seen=new Set();
-    const transfers=items.filter(i=>String(i.type||'').toUpperCase()==='TRANSFER'&&transferHeadline(i)).map(i=>({...i,_stage:stageFor(i)})).sort((a,b)=>dateValue(b)-dateValue(a)).filter(i=>{const k=clean(i.title).toLowerCase();if(!k||seen.has(k))return false;seen.add(k);return true}).slice(0,16);
+    const transfers=items.filter(i=>String(i.type||'').toUpperCase()==='TRANSFER'&&transferHeadline(i)&&dateValue(i)>0&&dateValue(i)<=Date.now()+3600000&&Date.now()-dateValue(i)<MAX_STORY_AGE_MS).map(i=>({...i,_stage:stageFor(i)})).sort((a,b)=>dateValue(b)-dateValue(a)).filter(i=>{const k=clean(i.title).toLowerCase();if(!k||seen.has(k))return false;seen.add(k);return true}).slice(0,16);
     grid.replaceChildren();
     if(!transfers.length){const e=document.createElement('div');e.className='ft-tc-empty';e.textContent='No live transfer updates are available right now.';grid.appendChild(e);return;}
     transfers.forEach(item=>{
@@ -95,7 +97,8 @@
       const desc=document.createElement('div');desc.className='ft-tc-desc';desc.textContent=clean(item.description||item.summary||'').slice(0,190);if(desc.textContent)a.appendChild(desc);
       const rail=document.createElement('div');rail.className='ft-tc-rail';STAGES.forEach((s,i)=>{const step=document.createElement('div');step.className=`ft-tc-step${i<current?' done':''}${i===current?' current':''}`;const label=document.createElement('small');label.textContent=s.label;step.appendChild(label);rail.appendChild(step)});a.appendChild(rail);addPublishedImage(a,item);grid.appendChild(a);
     });
-    updated.textContent=`UPDATED ${new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'}).format(new Date())}`;
+    lastSuccessfulUpdate=Date.now();
+    updated.textContent=`CHECKED ${new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'}).format(new Date())}`;
   }
 
   async function load(){
@@ -108,9 +111,9 @@
       const items=[];
       if(news.status==='fulfilled')items.push(...(news.value.items||[]));
       if(confirmed.status==='fulfilled')items.push(...(confirmed.value.items||[]));
-      if(!items.length)throw new Error('No transfer data');
+      if(news.status==='rejected' && confirmed.status==='rejected') throw new Error('Both transfer sources unavailable');
       render(items);
-    }catch(e){if(!grid.querySelector('.ft-tc-card'))grid.innerHTML='<div class="ft-tc-empty"><strong>Transfer updates are unavailable.</strong><br>Try again shortly or <a href="news.html">visit Football Talk News</a>.</div>'; updated.textContent='UPDATES UNAVAILABLE';}finally{loading=false}
+    }catch(e){if(!grid.querySelector('.ft-tc-card'))grid.innerHTML='<div class="ft-tc-empty"><strong>Live transfer sources could not be reached.</strong><br>We are retrying automatically. You can also <a href="news.html">browse Football Talk News</a>.</div>'; updated.textContent=lastSuccessfulUpdate?'LIVE REFRESH DELAYED':'RETRYING LIVE SOURCES';}finally{loading=false}
   }
   load();setInterval(load,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
 })();
