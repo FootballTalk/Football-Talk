@@ -2,25 +2,39 @@ import {getFotmobMatchDetails} from '../lib/fotmob.js';
 const numeric=v=>/^\d{1,12}$/.test(String(v||''));
 function pick(rows){return rows.filter(x=>x.name&&Number.isFinite(x.rating)&&x.rating>0&&x.rating<=10).sort((a,b)=>b.rating-a.rating)[0]||null;}
 function fotmobRatings(raw){
- const lu=raw?.content?.lineup||raw?.content?.lineups||{};
+ const content=raw?.content||{};
  const teams=raw?.header?.teams||[];
+ const teamNames=teams.map(t=>String(t?.name||'').trim().toLowerCase()).filter(Boolean);
  const out=[];
- function visit(node,team,depth=0){
-  if(!node||depth>7)return;
-  if(Array.isArray(node)){node.forEach(x=>visit(x,team,depth+1));return;}
+ const ratingValue=v=>{
+  if(v&&typeof v==='object')return ratingValue(v.num??v.rating??v.value??v.score);
+  if(v==null||v==='')return NaN;
+  const n=Number(String(v).replace(',','.'));
+  return Number.isFinite(n)?n:NaN;
+ };
+ function visit(node,team='',depth=0,playerContext=false){
+  if(!node||depth>12)return;
+  if(Array.isArray(node)){node.forEach(x=>visit(x,team,depth+1,playerContext));return;}
   if(typeof node!=='object')return;
-  const name=node.name||node.playerName||node.player?.name;
-  const rawRating=node.rating?.num??node.rating?.rating??node.rating??node.player?.rating?.num;
-  const rating=Number(rawRating);
-  const playerId=node.player?.id??node.playerId??node.id;
-  const isPlayer=playerId!=null && (node.shirtNumber!=null||node.positionId!=null||node.position!=null||node.player!=null||node.playerName!=null||node.isCaptain!=null||node.role!=null);
-  const teamNames=teams.map(t=>String(t?.name||'').trim().toLowerCase());
-  if(isPlayer&&name&&!teamNames.includes(String(name).trim().toLowerCase())&&Number.isFinite(rating)&&rating>0&&rating<=10)out.push({name,team:team||node.teamName||'',rating});
-  for(const [k,v] of Object.entries(node)){if(v&&typeof v==='object')visit(v,k==='homeTeam'?teams[0]?.name||team:k==='awayTeam'?teams[1]?.name||team:team,depth+1);}
+  const embedded=node.player&&typeof node.player==='object'?node.player:null;
+  const name=embedded?.name||node.playerName||node.name||'';
+  const id=embedded?.id??node.playerId??node.id;
+  const rating=ratingValue(node.rating??node.ratingProps??node.playerRating??embedded?.rating);
+  const hasPlayerMarkers=Boolean(embedded||node.playerId!=null||node.playerName||node.shirtNumber!=null||node.positionId!=null||node.position!=null||node.usualPlayingPositionId!=null||node.isCaptain!=null||node.role==='player'||playerContext);
+  if(id!=null&&hasPlayerMarkers&&name&&!teamNames.includes(String(name).trim().toLowerCase())&&rating>=1&&rating<=10)out.push({name,team:team||node.teamName||'',rating});
+  for(const [key,value] of Object.entries(node)){
+   if(!value||typeof value!=='object')continue;
+   const nextTeam=key==='homeTeam'?teams[0]?.name||team:key==='awayTeam'?teams[1]?.name||team:team;
+   const nextContext=playerContext||['players','starters','subs','substitutes','bench','startXI','startingXI'].includes(key);
+   visit(value,nextTeam,depth+1,nextContext);
+  }
  }
- visit(lu,'');
+ visit(content.lineup||content.lineups||{});
+ // Some FotMob match payloads expose player ratings separately from lineups.
+ visit(content.playerStats||content.playerRatings||{});
  return pick(out);
 }
+
 export default async function handler(req,res){
  if(req.method!=='GET')return res.status(405).json({error:'Method not allowed'});
  const id=String(req.query.id||''),provider=String(req.query.provider||'');
