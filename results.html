@@ -65,7 +65,7 @@
     const details=document.createElement('div');details.textContent='Loading match details…';
     const award=document.createElement('section');award.style.cssText='margin-top:20px;padding:16px;border-radius:12px;background:#171717;color:#fff;border-left:5px solid #f7c600';
     const awardTitle=document.createElement('strong');awardTitle.style.color='#f7c600';awardTitle.textContent='🏆 FOOTBALL TALK — OUR MAN OF THE MATCH';
-    const winner=document.createElement('p');winner.textContent='Awaiting player ratings';award.append(awardTitle,winner);
+    const winner=document.createElement('p');winner.textContent='Awaiting Football Talk’s decision';award.append(awardTitle,winner);
     detailDialog.append(close,title,details,award);detailDialog.showModal();
     const matchId=String(f.id),provider=currentProvider;
     const addLine=(label,value)=>{const p=document.createElement('p');const b=document.createElement('strong');b.textContent=label+': ';p.append(b,document.createTextNode(value));details.appendChild(p);};
@@ -87,7 +87,7 @@
     }).catch(()=>{if(detailDialog.open)details.textContent='Match statistics are temporarily unavailable.';});
     const checkAward=()=>fetch('/api/football-talk-motm?id='+encodeURIComponent(matchId)+'&provider='+encodeURIComponent(provider)).then(r=>r.json()).then(data=>{
       if(!detailDialog.open)return;
-      winner.textContent=data.winner?.name?(data.winner.name+(data.winner.team?' — '+data.winner.team:'')):'Awaiting player ratings';
+      winner.textContent=data.winner?.name?(data.winner.name+(data.winner.team?' — '+data.winner.team:'')):'Awaiting Football Talk’s decision';
     }).catch(()=>{});
     checkAward();
     refreshTimer=setInterval(checkAward,300000);
