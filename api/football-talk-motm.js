@@ -12,7 +12,10 @@ function fotmobRatings(raw){
   const name=node.name||node.playerName||node.player?.name;
   const rawRating=node.rating?.num??node.rating?.rating??node.rating??node.player?.rating?.num;
   const rating=Number(rawRating);
-  if(name&&Number.isFinite(rating)&&rating>0&&rating<=10)out.push({name,team:team||node.teamName||'',rating});
+  const playerId=node.player?.id??node.playerId??node.id;
+  const isPlayer=playerId!=null && (node.shirtNumber!=null||node.positionId!=null||node.position!=null||node.player!=null||node.playerName!=null||node.isCaptain!=null||node.role!=null);
+  const teamNames=teams.map(t=>String(t?.name||'').trim().toLowerCase());
+  if(isPlayer&&name&&!teamNames.includes(String(name).trim().toLowerCase())&&Number.isFinite(rating)&&rating>0&&rating<=10)out.push({name,team:team||node.teamName||'',rating});
   for(const [k,v] of Object.entries(node)){if(v&&typeof v==='object')visit(v,k==='homeTeam'?teams[0]?.name||team:k==='awayTeam'?teams[1]?.name||team:team,depth+1);}
  }
  visit(lu,'');
