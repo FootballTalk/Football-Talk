@@ -64,8 +64,43 @@
     const title=document.createElement('h2');title.textContent=f.home+' '+(f.homeGoals??'-')+'–'+(f.awayGoals??'-')+' '+f.away;
     const details=document.createElement('div');details.textContent='Loading match details…';
     const award=document.createElement('section');award.style.cssText='margin-top:20px;padding:16px;border-radius:12px;background:#171717;color:#fff;border-left:5px solid #f7c600';
-    const awardTitle=document.createElement('strong');awardTitle.style.color='#f7c600';awardTitle.textContent='🏆 FOOTBALL TALK — OUR MAN OF THE MATCH';
-    const winner=document.createElement('p');winner.textContent='Awaiting Football Talk’s decision';award.append(awardTitle,winner);
+    const awardTitle=document.createElement('strong');awardTitle.style.color='#f7c600';awardTitle.textContent='🏆 WHO WAS YOUR MAN OF THE MATCH?';
+    const prompt=document.createElement('p');prompt.textContent='Have your say! Tell Football Talk which player stood out today.';
+    const form=document.createElement('form');form.style.cssText='display:flex;flex-wrap:wrap;gap:9px';
+    const playerInput=document.createElement('input');playerInput.type='text';playerInput.required=true;playerInput.maxLength=80;playerInput.placeholder='Enter the player’s name';playerInput.setAttribute('aria-label','Your Man of the Match');playerInput.style.cssText='flex:1;min-width:160px;padding:11px;font-size:16px;border-radius:6px;border:1px solid #aaa;color:#111;background:#fff';
+    const voteButton=document.createElement('button');voteButton.type='submit';voteButton.textContent='Submit your pick';voteButton.style.cssText='padding:11px 15px;border:0;border-radius:6px;background:#f7c600;color:#111;font-weight:800;cursor:pointer';
+    const voteStatus=document.createElement('p');voteStatus.setAttribute('aria-live','polite');voteStatus.style.cssText='font-size:14px;min-height:20px';
+    const recent=document.createElement('div');recent.style.cssText='font-size:14px;color:#eee';
+    form.append(playerInput,voteButton);award.append(awardTitle,prompt,form,voteStatus,recent);
+    const voteKey='ft-motm-'+String(f.id);
+    const supaUrl='https://cwilgnubzfpmfvoldttm.supabase.co/rest/v1/story_comments';
+    const supaKey='sb_publishable_GdbObU6cF2eh3wSQ6pz47A_gTgBDjvH';
+    const voteHeaders={apikey:supaKey,Authorization:'Bearer '+supaKey};
+    const showVotes=async()=>{
+      try{
+        const response=await fetch(supaUrl+'?story_id=eq.'+encodeURIComponent(voteKey)+'&approved=eq.true&select=comment_text,created_at&order=created_at.desc&limit=12',{headers:voteHeaders});
+        if(!response.ok)throw Error();
+        const rows=await response.json();
+        recent.replaceChildren();
+        const h=document.createElement('strong');h.textContent='Fans’ recent picks';recent.appendChild(h);
+        if(!rows.length){const p=document.createElement('p');p.textContent='Be the first to nominate a player.';recent.appendChild(p);}
+        rows.forEach(row=>{const p=document.createElement('p');p.style.margin='7px 0';p.textContent='⚽ '+row.comment_text;recent.appendChild(p);});
+      }catch{recent.textContent='Fan nominations are temporarily unavailable.';}
+    };
+    form.addEventListener('submit',async event=>{
+      event.preventDefault();
+      const name=playerInput.value.trim().replace(/\\s+/g,' ');
+      if(name.length<2||name.length>80){voteStatus.textContent='Please enter a player’s name.';return;}
+      if(localStorage.getItem(voteKey)){voteStatus.textContent='You have already nominated a player for this match.';return;}
+      voteButton.disabled=true;voteStatus.textContent='Submitting your nomination…';
+      try{
+        const response=await fetch(supaUrl,{method:'POST',headers:{...voteHeaders,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({story_id:voteKey,display_name:'Football Talk fan',comment_text:name,approved:true})});
+        if(!response.ok)throw Error();
+        localStorage.setItem(voteKey,'1');playerInput.value='';voteStatus.textContent='Thanks! Your Man of the Match nomination has been recorded.';await showVotes();
+      }catch{voteStatus.textContent='Could not submit your nomination. Please try again.';voteButton.disabled=false;}
+    });
+    if(localStorage.getItem(voteKey)){voteButton.disabled=true;voteStatus.textContent='You have already nominated a player for this match.';}
+    showVotes();
     detailDialog.append(close,title,details,award);detailDialog.showModal();
     const matchId=String(f.id),provider=currentProvider;
     const addLine=(label,value)=>{const p=document.createElement('p');const b=document.createElement('strong');b.textContent=label+': ';p.append(b,document.createTextNode(value));details.appendChild(p);};
@@ -85,12 +120,7 @@
         addLine(label,rows.length?rows.map(fmt).join('; '):'None recorded or not available');
       }
     }).catch(()=>{if(detailDialog.open)details.textContent='Match statistics are temporarily unavailable.';});
-    const checkAward=()=>fetch('/api/football-talk-motm?id='+encodeURIComponent(matchId)+'&provider='+encodeURIComponent(provider)).then(r=>r.json()).then(data=>{
-      if(!detailDialog.open)return;
-      winner.textContent=data.winner?.name?(data.winner.name+(data.winner.team?' — '+data.winner.team:'')):'Awaiting Football Talk’s decision';
-    }).catch(()=>{});
-    checkAward();
-    refreshTimer=setInterval(checkAward,300000);
+
   }
 
   function render(){
