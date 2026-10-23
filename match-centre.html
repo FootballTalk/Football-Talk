@@ -376,7 +376,7 @@
               .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
             if (!games.length) {
               box.innerHTML =
-                "<p>No selected competition fixtures are listed today. Use All fixtures for upcoming matches.</p>";
+                "<p>No selected competition fixtures are listed today. <a href=\"fixtures.html\">Browse all fixtures</a> for upcoming matches.</p>";
               return;
             }
             box.innerHTML = games
@@ -415,7 +415,8 @@
           } catch (e) {
             if (!box.querySelector(".game"))
               box.innerHTML =
-                "<p>Match data is temporarily unavailable. Fixtures remain available from the links below.</p>";
+                "<p role=\"alert\">Match data is temporarily unavailable. <a href=\"fixtures.html\">Browse all fixtures</a> or try again.</p><button type=\"button\" id=\"retry-match-centre\">Retry match data</button>";
+            box.querySelector("#retry-match-centre")?.addEventListener("click", loadGames);
           } finally {
             loading = false;
           }
