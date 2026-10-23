@@ -1,1 +1,4 @@
 .ft-grassroots-entry{background:#101014;padding:20px 18px;border-bottom:1px solid #34343a}.ft-grassroots-entry a{display:block;max-width:1180px;margin:auto;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.28);overflow:hidden}.ft-grassroots-entry a:hover,.ft-grassroots-entry a:focus-visible{outline:3px solid #f7c600;outline-offset:3px}.ft-grassroots-entry img{display:block;width:100%;height:auto}.ft-grassroots-entry p{max-width:1180px;margin:9px auto 0;color:#d2d2d6;font-size:13px;text-align:center;font-weight:700}@media(max-width:600px){.ft-grassroots-entry{padding:15px 12px}.ft-grassroots-entry p{font-size:12px}}
+
+/* Keep grassroots pages available by direct URL while the section is being populated. */
+.ft-grassroots-entry{display:none!important}
