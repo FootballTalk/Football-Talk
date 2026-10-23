@@ -250,7 +250,7 @@
       rebuildFilter();
       render();
     }catch(error){
-      if(!silent){content.innerHTML=`<div class="error">Fixtures could not be loaded right now. ${String(error.message||'Please try again shortly.')}</div>`;}
+      if(!silent){content.innerHTML='<div class="error" role="alert"><p>Fixtures are temporarily unavailable. Please try again in a moment.</p><button type="button" id="retry-fixtures">Retry fixtures</button></div>';content.querySelector('#retry-fixtures')?.addEventListener('click',()=>loadDate());}
     }
   }
 
