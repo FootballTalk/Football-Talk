@@ -9,8 +9,10 @@ export default async function handler(req,res){
  try{
   let matches=[];
   if(provider==='FotMob'||!process.env.API_FOOTBALL_KEY){
-   const games=await getFotmobTeamMatches(home);
-   matches=games.filter(f=>String(f.homeId)===away||String(f.awayId)===away).filter(f=>finished.has(String(f.status||'').toUpperCase())).map(shape);
+   const histories=await Promise.allSettled([getFotmobTeamMatches(home),getFotmobTeamMatches(away)]);
+   const games=histories.flatMap(result=>result.status==='fulfilled'?result.value:[]);
+   const seen=new Set();
+   matches=games.filter(f=>[String(f.homeId),String(f.awayId)].includes(home)&&[String(f.homeId),String(f.awayId)].includes(away)).filter(f=>finished.has(String(f.status||'').toUpperCase())).filter(f=>{const key=String(f.id);if(seen.has(key))return false;seen.add(key);return true;}).map(shape);
   }else{
    const url=new URL('https://v3.football.api-sports.io/fixtures/headtohead');
    url.searchParams.set('h2h',home+'-'+away);url.searchParams.set('last','20');
