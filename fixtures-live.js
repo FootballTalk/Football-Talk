@@ -12,6 +12,7 @@
   const picker = document.getElementById('date-picker');
   let selectedDate = londonDateKey(new Date());
   let latestLeagues = [];
+  let currentProvider = 'API-Football';
   let refreshTimer = null;
 
   function londonDateKey(value) {
@@ -184,8 +185,40 @@
     return node;
   }
 
+  let h2hDialog=null;
+  function openHeadToHead(fixture){
+    if(!h2hDialog){
+      h2hDialog=document.createElement('dialog');
+      h2hDialog.className='ft-h2h-dialog';
+      h2hDialog.style.cssText='width:min(94vw,600px);max-height:85vh;overflow:auto;border:2px solid #f7c600;border-radius:16px;padding:24px;background:#fff;color:#111;box-shadow:0 15px 65px #0008';
+      h2hDialog.addEventListener('click',e=>{if(e.target===h2hDialog)h2hDialog.close();});
+      document.body.appendChild(h2hDialog);
+    }
+    h2hDialog.replaceChildren();
+    const close=document.createElement('button');close.type='button';close.textContent='✕ Close';close.style.cssText='float:right;padding:8px;cursor:pointer';close.addEventListener('click',()=>h2hDialog.close());
+    const title=document.createElement('h2');title.textContent=fixture.home+' v '+fixture.away;
+    const heading=document.createElement('p');heading.textContent='Previous meetings · Football Talk';
+    const body=document.createElement('div');body.textContent='Loading previous meetings…';body.setAttribute('aria-live','polite');
+    h2hDialog.append(close,title,heading,body);h2hDialog.showModal();
+    const params=new URLSearchParams({homeId:String(fixture.homeId),awayId:String(fixture.awayId),provider:currentProvider});
+    fetch('/api/head-to-head?'+params,{cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('unavailable');return r.json();}).then(data=>{
+      if(!h2hDialog.open)return;
+      const games=Array.isArray(data.matches)?data.matches:[];
+      body.replaceChildren();
+      if(!games.length){body.textContent='No previous meetings are available from our football-data provider.';return;}
+      const recent=games.slice(0,5);let homeWins=0,awayWins=0,draws=0,homeGoals=0,awayGoals=0;
+      for(const g of games){const homeIsHome=String(g.homeId)===String(fixture.homeId);const hg=Number(homeIsHome?g.homeGoals:g.awayGoals),ag=Number(homeIsHome?g.awayGoals:g.homeGoals);homeGoals+=hg;awayGoals+=ag;if(hg>ag)homeWins++;else if(ag>hg)awayWins++;else draws++;}
+      const summary=document.createElement('p');summary.textContent=`Last ${games.length} available meetings: ${fixture.home} ${homeWins} wins · ${draws} draws · ${fixture.away} ${awayWins} wins. Goals: ${homeGoals}–${awayGoals}.`;body.appendChild(summary);
+      const label=document.createElement('h3');label.textContent='Last five meetings';body.appendChild(label);
+      const list=document.createElement('ul');list.style.cssText='list-style:none;padding:0';
+      for(const g of recent){const li=document.createElement('li');li.style.cssText='padding:10px 0;border-bottom:1px solid #ddd';const date=new Date(g.date);li.textContent=`${Number.isNaN(date.getTime())?'':date.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+' · '}${g.home} ${g.homeGoals}–${g.awayGoals} ${g.away}`;list.appendChild(li);}body.appendChild(list);
+      const note=document.createElement('small');note.textContent='Statistics cover available recorded meetings, not necessarily all historical matches.';body.appendChild(note);
+    }).catch(()=>{if(h2hDialog.open)body.textContent='Previous meetings could not be loaded. Please close this panel and try again.';});
+  }
+
   function fixtureRow(fixture) {
     const row=document.createElement('div');row.className='fixture';row.dataset.fixtureId=fixture.id||'';
+    if(fixture.homeId&&fixture.awayId){row.tabIndex=0;row.setAttribute('role','button');row.setAttribute('aria-label',`View previous meetings: ${fixture.home} versus ${fixture.away}`);row.style.cursor='pointer';row.addEventListener('click',()=>openHeadToHead(fixture));row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openHeadToHead(fixture);}});}
     const status=displayStatus(fixture);
     if(status.className)row.classList.add(status.className);
     const score=document.createElement('div');score.className=`scorebox ${status.className}`.trim();
@@ -247,6 +280,7 @@
       const data=await response.json();
       if(!response.ok) throw new Error(data.detail||data.error||'Unable to load fixtures');
       latestLeagues=Array.isArray(data.leagues)?data.leagues:[];
+      currentProvider=data.provider||'API-Football';
       rebuildFilter();
       render();
     }catch(error){
