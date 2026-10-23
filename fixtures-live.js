@@ -205,7 +205,7 @@
       if(!h2hDialog.open)return;
       const games=Array.isArray(data.matches)?data.matches:[];
       body.replaceChildren();
-      if(!games.length){body.textContent='No previous meetings are available from our football-data provider.';return;}
+      if(!games.length){body.textContent='Our data provider has not returned historical meetings for these clubs. This does not mean they have never played each other.';return;}
       const recent=games.slice(0,5);let homeWins=0,awayWins=0,draws=0,homeGoals=0,awayGoals=0;
       for(const g of games){const homeIsHome=String(g.homeId)===String(fixture.homeId);const hg=Number(homeIsHome?g.homeGoals:g.awayGoals),ag=Number(homeIsHome?g.awayGoals:g.homeGoals);homeGoals+=hg;awayGoals+=ag;if(hg>ag)homeWins++;else if(ag>hg)awayWins++;else draws++;}
       const summary=document.createElement('p');summary.textContent=`Last ${games.length} available meetings: ${fixture.home} ${homeWins} wins · ${draws} draws · ${fixture.away} ${awayWins} wins. Goals: ${homeGoals}–${awayGoals}.`;body.appendChild(summary);
