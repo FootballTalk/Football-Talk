@@ -115,10 +115,7 @@
       const stats=data.stats||[];
       const possession=stats.map(s=>{const entry=Object.entries(s.stats||{}).find(([k])=>/ball possession|possession/i.test(k));return entry?(s.team||'Team')+' '+entry[1]:null;}).filter(Boolean);
       addLine('Possession',possession.length?possession.join(' · '):'Not available');
-      for(const [label,re] of [['Yellow cards',/yellow/i],['Red cards',/red/i]]){
-        const rows=cards.filter(e=>re.test(String(e.detail||'')+' '+String(e.type||'')));
-        addLine(label,rows.length?rows.map(fmt).join('; '):'None recorded or not available');
-      }
+
     }).catch(()=>{if(detailDialog.open)details.textContent='Match statistics are temporarily unavailable.';});
 
   }
