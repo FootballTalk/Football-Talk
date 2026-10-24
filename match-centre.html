@@ -373,7 +373,17 @@
                 })),
               )
               .filter((f) => f.date && londonDate(new Date(f.date)) === today)
-              .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+              .sort((a, b) => {
+                const priority = (game) => {
+                  const status = String(game.status || "NS").toUpperCase();
+                  if (liveCodes.has(status)) return 0;
+                  if (["FT", "AET", "PEN"].includes(status)) return 2;
+                  return 1;
+                };
+                return priority(a) - priority(b) ||
+                  (a.timestamp || Date.parse(a.date) / 1000 || 0) -
+                  (b.timestamp || Date.parse(b.date) / 1000 || 0);
+              });
             if (!games.length) {
               box.innerHTML =
                 "<p>No selected competition fixtures are listed today. <a href=\"fixtures.html\">Browse all fixtures</a> for upcoming matches.</p>";
