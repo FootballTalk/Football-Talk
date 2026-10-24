@@ -16,7 +16,7 @@
   const live = new Set(['1H','2H','HT','ET','BT','P','LIVE','INT']);
   const finished = new Set(['FT','AET','PEN']);
   const normal = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g,'');
-  const team = s => { const n = normal(s); return ({manutd:'manchesterunited',manunited:'manchesterunited',mancity:'manchestercity',spurs:'tottenham',tottenhamhotspur:'tottenham',wolverhamptonwanderers:'wolves',brightonhovealbion:'brighton',brightonandhovealbion:'brighton',nottmforest:'nottinghamforest',charltonathletic:'charlton',norwichcity:'norwich',derbycounty:'derby',leedsunited:'leeds',westhamunited:'westham',newcastleunited:'newcastle'})[n] || n; };
+  const team = s => { const raw = String(s || ''); const women = /(?:\(W\)|Women)$/i.test(raw.trim()); const n = normal(raw.replace(/\s*(?:\(W\)|Women)$/i,'')); return (women ? 'women:' : '') + (({manutd:'manchesterunited',manunited:'manchesterunited',mancity:'manchestercity',spurs:'tottenham',tottenhamhotspur:'tottenham',wolverhamptonwanderers:'wolves',brightonhovealbion:'brighton',brightonandhovealbion:'brighton',nottmforest:'nottinghamforest',charltonathletic:'charlton',norwichcity:'norwich',derbycounty:'derby',leedsunited:'leeds',westhamunited:'westham',newcastleunited:'newcastle'})[n] || n); };
   async function json(url) {
     const r = await fetch(url, {cache:'no-store',signal:AbortSignal.timeout(15000)});
     if (!r.ok) throw Error('Unavailable');
