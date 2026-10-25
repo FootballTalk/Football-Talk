@@ -13,8 +13,8 @@
  html body .nav.open{max-height:65dvh;overflow:auto;top:100%!important;z-index:500}
  body{padding-bottom:env(safe-area-inset-bottom,0px)}
  html body #ft-assistant{right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));max-width:calc(100% - 24px)}
- html body .fta-launch{width:50px;height:50px;padding:4px;justify-content:center;border-radius:50%;gap:0}
- html body .fta-launch-text{display:none}
+ html body .fta-launch{width:auto;height:54px;padding:4px 14px 4px 6px;justify-content:center;border-radius:999px;gap:8px}
+ html body .fta-launch-text{display:flex}
  html body .ft-page-controls .fta-launch{flex:0 0 44px!important;width:44px!important;max-width:44px!important;min-width:44px!important;height:44px!important;min-height:44px!important;padding:3px!important;background:#f7c600;border:2px solid #111;border-radius:50%;box-shadow:none}
  html body .ft-page-controls .fta-launch-mark{width:32px;height:32px;font-size:12px}
  html body .fta-launch-mark{width:36px;height:36px}
