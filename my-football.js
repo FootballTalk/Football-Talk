@@ -57,7 +57,8 @@
     };
     const league=(tables||[]).find(l=>(l.standings||[]).some(r=>normal(r.team)===normal(club)));
     const row=league?.standings.find(r=>normal(r.team)===normal(club));
-    const form=String(row?.form||'').toUpperCase().replace(/[^WDL]/g,'').slice(-5).split('').join(' · ');
+    const recentForm=flatten(2).filter(yours).filter(f=>finished.has(f.status)&&f.homeGoals!=null&&f.awayGoals!=null).sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,5).reverse().map(f=>{const home=normal(f.home)===normal(club);const us=Number(home?f.homeGoals:f.awayGoals),them=Number(home?f.awayGoals:f.homeGoals);return us===them?'D':us>them?'W':'L'}).join('');
+    const form=String(row?.form||recentForm).toUpperCase().replace(/[^WDL]/g,'').slice(-5).split('').join(' · ');
     const table=row?`<a class="ft-mf-item" href="tables.html"><strong>${esc(league.name)} · Position ${esc(row.rank)}</strong><small style="display:block;margin-top:6px;color:#bbb">${esc(row.points)} points · ${esc(row.played)} played${form?' · Form: '+esc(form):''}</small></a>`:`<p class="ft-mf-empty">League position temporarily unavailable.</p>`;
     const seen=new Set();
     const news=(data[0].status==='fulfilled'?data[0].value.items||[]:[]).filter(i=>{
