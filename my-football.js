@@ -10,7 +10,7 @@
   latest.insertAdjacentElement(latest.matches('.hero') ? 'afterend' : 'beforebegin',box);
   const select=box.querySelector('#ft-mf-select'),title=box.querySelector('#ft-mf-title'),sub=box.querySelector('#ft-mf-sub'),content=box.querySelector('#ft-mf-content');
 
-  const aliases={'man utd':'manchester united','man united':'manchester united','man city':'manchester city','spurs':'tottenham hotspur','wolves':'wolverhampton wanderers','brighton & hove albion':'brighton','brighton and hove albion':'brighton','nottm forest':'nottingham forest','qpr':'queens park rangers','west brom':'west bromwich albion','leeds':'leeds united'};
+  const aliases={'afc bournemouth':'bournemouth','man utd':'manchester united','man united':'manchester united','man city':'manchester city','spurs':'tottenham hotspur','wolves':'wolverhampton wanderers','brighton & hove albion':'brighton','brighton and hove albion':'brighton','nottm forest':'nottingham forest','qpr':'queens park rangers','west brom':'west bromwich albion','leeds':'leeds united'};
   const normal=v=>{const t=String(v||'').toLowerCase().trim();return aliases[t]||t};
   const storage={get(){try{return localStorage.getItem(KEY)||''}catch{return''}},set(v){try{v?localStorage.setItem(KEY,v):localStorage.removeItem(KEY)}catch{}}};
   const dateLabel=v=>new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(v));
@@ -30,7 +30,7 @@
   tableRequest.catch(()=>{});
   function mentions(item,club){
     const text=`${item.title||''} ${item.description||item.summary||''}`.toLowerCase();
-    const names=[club,...Object.keys(aliases).filter(a=>aliases[a]===normal(club))];
+    const names=[club,normal(club),...Object.keys(aliases).filter(a=>aliases[a]===normal(club))];
     return names.some(n=>new RegExp('(^|[^a-z])'+n.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'([^a-z]|$)').test(text));
   }
   let requestId=0;
