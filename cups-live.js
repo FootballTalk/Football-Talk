@@ -41,7 +41,7 @@
 
   function row(f) {
     const d=display(f), channel=tvChannel(f);
-    const el=document.createElement('div'); el.className=`fixture${d.live?' fixture-live':''}`; el.dataset.fixtureId=f.id||'';
+    const el=document.createElement(/^\d+$/.test(String(f.id||''))?'a':'div'); el.className=`fixture${d.live?' fixture-live':''}`; el.dataset.fixtureId=f.id||'';if(el.tagName==='A'){el.href='match.html?id='+encodeURIComponent(f.id);el.style.textDecoration='none';el.setAttribute('aria-label',`${f.home} versus ${f.away}: match details`);}
     if (channel) { el.style.gridTemplateRows='auto auto'; }
     const home=document.createElement('div'); home.className='team home'; home.textContent=f.home||'';
     const box=document.createElement('div'); box.className=`time${d.live?' is-live':''}${d.finished?' is-finished':''}`;
