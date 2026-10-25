@@ -13,15 +13,18 @@
     const path = (location.pathname.split('/').pop() || '').toLowerCase();
     const params = new URLSearchParams(location.search);
     const view = (params.get('view') || '').toLowerCase();
-    if (path === 'section.html' && view === 'transfers') return 'section.html?view=transfers';
+    if (!path || path === 'index.html') return './';
+    if (path === 'section.html' && view === 'transfers') return 'news.html';
+    if (path === 'football-talk-story.html' || path === 'transfer-story.html' || path === 'football-talk-archive.html' || /^football-talk-(analysis|opinion)-/.test(path) || path === 'fan-voice.html') return 'news.html';
+    if (path === 'section.html' && view === 'stats') return 'tables-stats.html';
     if (path === 'section.html' && ['latest', 'debate'].includes(view)) return 'news.html';
     if (path === 'section.html' && view === 'matchday') return 'match-centre.html';
-    if (['match.html', 'match-centre.html', 'fixtures.html', 'lineups.html', 'cups.html', 'european.html'].includes(path)) return 'match-centre.html';
-    if (['tables.html', 'tables-stats.html'].includes(path) || location.pathname.includes('/api/stats-zone') || location.pathname.includes('/api/top-scorers')) return 'tables-stats.html';
+    if (['match.html', 'match-centre.html', 'fixtures.html', 'results.html', 'lineups.html', 'cups.html', 'european.html'].includes(path)) return 'match-centre.html';
+    if (['tables.html', 'tables-stats.html', 'top-scorers.html'].includes(path) || location.pathname.includes('/api/stats-zone') || location.pathname.includes('/api/top-scorers')) return 'tables-stats.html';
     if (path === 'business-directory.html') return 'more.html';
-    if (path === 'football-talk-club.html') return 'football-talk-club.html';
-    if (['members.html', 'account.html'].includes(path) || path.startsWith('members-')) return 'members.html';
-    if (['more.html', 'super-six.html', 'quiz.html', 'tv-guide.html', 'advertise.html'].includes(path)) return 'more.html';
+    if (path === 'football-talk-club.html') return 'more.html';
+    if (['members.html', 'account.html'].includes(path) || path.startsWith('members-')) return 'more.html';
+    if (['more.html', 'super-six.html', 'quiz.html', 'tv-guide.html', 'advertise.html', 'social-channels.html', 'directory.html', 'highlights.html'].includes(path)) return 'more.html';
     return path || 'index.html';
   }
 
@@ -59,7 +62,7 @@
             : text === 'Top Scorers'
               ? main === 'leaders' && stat === 'goals'
               : location.pathname.includes('/api/stats-zone') && !main && !stat;
-      if (active) link.classList.add('context-active');
+      if (active) { link.classList.add('context-active'); link.setAttribute('aria-current', 'page'); }
       bar.appendChild(link);
     });
     womensTabs.insertAdjacentElement('afterend', bar);
@@ -72,7 +75,7 @@
     style.textContent = `
       .ft-persistent-tabs{position:sticky!important;top:var(--ft-tabs-top,76px)!important;z-index:175!important;display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;padding:0 10px!important;background:#0b0b0e!important;border-bottom:1px solid #2b2b31!important}
       .ft-persistent-tabs a{position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;color:#fff!important;padding:14px 8px 16px!important;font-size:12px!important;font-weight:900!important;text-decoration:none!important;white-space:nowrap!important}
-      .ft-persistent-tabs a.active-tab{color:#f7c600!important}
+      .ft-persistent-tabs a.active-tab{background:#f7c600!important;color:#111!important;border-radius:6px 6px 0 0;box-shadow:inset 0 -4px 0 #111!important}
       .ft-persistent-tabs a.active-tab:after{content:'';position:absolute;left:10px;right:10px;bottom:0;height:5px;background:#f7c600}
       .section-tools{display:flex!important;gap:8px!important;overflow-x:auto!important;padding:9px 12px!important;background:#fff!important;border-bottom:1px solid #d7d7db!important;position:sticky!important;top:calc(var(--ft-tabs-top,76px) + 47px)!important;z-index:173!important}
       .section-tools a{flex:0 0 auto!important;padding:9px 13px!important;border-radius:999px!important;background:#111!important;color:#fff!important;font-size:12px!important;font-weight:900!important;text-decoration:none!important;white-space:nowrap!important}
@@ -117,6 +120,11 @@
     setOffset();
     window.addEventListener('resize', setOffset, { passive: true });
     addTools(mainTabs, mainKey);
+    const selected = mainTabs.querySelector('[aria-current="page"]');
+    if (selected && mainTabs.scrollWidth > mainTabs.clientWidth) {
+      const tab = selected.getBoundingClientRect(), bar = mainTabs.getBoundingClientRect();
+      if (tab.left < bar.left || tab.right > bar.right) mainTabs.scrollLeft += tab.left - bar.left - 10;
+    }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build, { once: true });
