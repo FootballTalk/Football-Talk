@@ -185,31 +185,10 @@
     return node;
   }
 
-  let matchDialog=null;
-  function openHeadToHead(fixture){
-    if(!fixture.id)return;
-    if(!matchDialog){
-      matchDialog=document.createElement('dialog');
-      matchDialog.className='ft-match-dialog';
-      matchDialog.style.cssText='width:min(96vw,1000px);height:min(90dvh,950px);max-height:90dvh;overflow:hidden;border:2px solid #f7c600;border-radius:14px;padding:0;background:#fff;color:#111;box-shadow:0 15px 65px #0008';
-      matchDialog.addEventListener('close',()=>{const frame=matchDialog.querySelector('iframe');if(frame)frame.src='about:blank';});
-      document.body.appendChild(matchDialog);
-    }
-    matchDialog.replaceChildren();
-    const bar=document.createElement('div');bar.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;background:#111;color:#fff';
-    const title=document.createElement('strong');title.textContent=fixture.home+' v '+fixture.away;
-    const close=document.createElement('button');close.type='button';close.textContent='✕ Close';close.style.cssText='padding:9px 14px;cursor:pointer;border-radius:7px';close.addEventListener('click',()=>matchDialog.close());
-    bar.append(title,close);
-    const frame=document.createElement('iframe');frame.title='Football Talk match information: '+fixture.home+' versus '+fixture.away;
-    frame.style.cssText='display:block;width:100%;height:calc(100% - 56px);border:0;background:#fff';
-    frame.src='match.html?id='+encodeURIComponent(fixture.id);
-    matchDialog.append(bar,frame);
-    matchDialog.showModal();
-  }
-
   function fixtureRow(fixture) {
-    const row=document.createElement('div');row.className='fixture';row.dataset.fixtureId=fixture.id||'';
-    if(fixture.homeId&&fixture.awayId){row.tabIndex=0;row.setAttribute('role','button');row.setAttribute('aria-label',`View previous meetings: ${fixture.home} versus ${fixture.away}`);row.style.cursor='pointer';row.addEventListener('click',()=>openHeadToHead(fixture));row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openHeadToHead(fixture);}});}
+    const hasId=/^\d+$/.test(String(fixture.id||''));const row=document.createElement(hasId?'a':'div');row.className='fixture';row.dataset.fixtureId=fixture.id||'';
+    if(hasId){row.href='match.html?id='+encodeURIComponent(fixture.id);row.setAttribute('aria-label',`Match details: ${fixture.home} versus ${fixture.away}`);row.style.textDecoration='none';}
+
     const status=displayStatus(fixture);
     if(status.className)row.classList.add(status.className);
     const score=document.createElement('div');score.className=`scorebox ${status.className}`.trim();

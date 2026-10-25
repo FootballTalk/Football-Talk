@@ -1,3 +1,4 @@
+(()=>{if(document.getElementById('ft-match-link-focus'))return;const style=document.createElement('style');style.id='ft-match-link-focus';style.textContent='a.today-match:focus-visible,a.ftnt-score:focus-visible,a.ftss-game:focus-visible,a.ft-ln-game:focus-visible,#pl-kickoff-countdown a:focus-visible{outline:3px solid #f7c600;outline-offset:2px}#ft-home-news-ticker:focus-within .ftnt-track{animation-play-state:paused!important}';document.head.appendChild(style)})();
 (() => {
   const hero = document.querySelector('main > .hero');
   if (!hero || document.getElementById('ft-today')) return;
@@ -40,7 +41,7 @@
       const status = active ? (f.status === 'HT' ? 'HALF TIME' : f.elapsed ? `LIVE · ${f.elapsed}′` : 'LIVE') : done ? ({FT:'FULL TIME',AET:'AFTER EXTRA TIME',PEN:'AFTER PENALTIES'})[f.status] : ({PST:'Postponed',CANC:'Cancelled',ABD:'Abandoned',SUSP:'Suspended'}[f.status] || (f.tvOnly ? f.time : clock(f.date)));
       const score = (active || done) && f.homeGoals != null && f.awayGoals != null ? ` · ${f.homeGoals}–${f.awayGoals}` : '';
       const channel = f.tv?.channel && f.tv.channel !== 'TV details confirmed' ? f.tv.channel : tv.status === 'rejected' ? 'UK TV listings temporarily unavailable' : 'UK TV coverage not listed';
-      return `<a class="today-match ${active?'is-live':''}" href="match-centre.html"><strong>${esc(status)}</strong><span><b>${esc(f.home)} v ${esc(f.away)}${esc(score)}</b><small>${esc(f.competition || '')}</small><small class="today-channel">${esc(channel)}</small></span></a>`;
+      return `<a class="today-match ${active?'is-live':''}" href="${/^\d+$/.test(String(f.id||''))?'match.html?id='+encodeURIComponent(f.id):'tv-guide.html'}"><strong>${esc(status)}</strong><span><b>${esc(f.home)} v ${esc(f.away)}${esc(score)}</b><small>${esc(f.competition || '')}</small><small class="today-channel">${esc(channel)}</small></span></a>`;
     }).join('');
     if (matches.length > 6) $('today-games').insertAdjacentHTML('beforeend','<a class="today-more" href="match-centre.html">See all today’s matches →</a>');
   }
