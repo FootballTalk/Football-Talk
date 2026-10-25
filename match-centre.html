@@ -223,7 +223,7 @@
         }
       }
     </style>
-  </head>
+  <link rel="stylesheet" href="/information-labels.css?v=20261025-1"></head>
   <body>
     <header class="site-header">
       <a class="brand" href="./"
@@ -394,12 +394,12 @@
                 const st = String(g.status || "NS").toUpperCase(),
                   live = liveCodes.has(st),
                   ft = ["FT", "AET", "PEN"].includes(st);
-                const time = live
-                  ? g.elapsed
-                    ? g.elapsed + "′"
+                const time = ["PST","CANC","ABD","SUSP","TBD"].includes(st) ? ({PST:"POSTPONED",CANC:"CANCELLED",ABD:"ABANDONED",SUSP:"SUSPENDED",TBD:"TIME TBC"})[st] : live
+                  ? st === "HT" ? "HALF TIME" : g.elapsed
+                    ? "LIVE · " + g.elapsed + "′"
                     : "LIVE"
                   : ft
-                    ? "FT"
+                    ? "FULL TIME"
                     : new Intl.DateTimeFormat("en-GB", {
                         timeZone: "Europe/London",
                         hour: "2-digit",

@@ -4,9 +4,9 @@
 
   const STAGES=[
     {key:'RUMOUR',label:'RUMOUR',icon:'👀'},
-    {key:'TALKS',label:'TALKS',icon:'💬'},
-    {key:'ITS_A_GO',label:"IT'S A GO",icon:'🚨'},
-    {key:'OFFICIAL',label:'OFFICIAL',icon:'✅'}
+    {key:'TALKS',label:'REPORTED TALKS',icon:'💬'},
+    {key:'ITS_A_GO',label:'REPORTED AGREEMENT',icon:'🚨'},
+    {key:'OFFICIAL',label:'REPORTED SIGNING',icon:'✅'}
   ];
   const order=new Map(STAGES.map((s,i)=>[s.key,i]));
   let loading=false;
@@ -24,7 +24,7 @@
 
   const tracker=document.createElement('div');
   tracker.id='ft-transfer-tracker';
-  tracker.innerHTML=`<div class="ft-tc-shell"><div class="ft-tc-head"><div><span class="go-pill">TRANSFER TRACKER</span><h3>Where every deal stands</h3><p>Rumour → talks → IT'S A GO → official. Football Talk shows the current stage so you can instantly see how far a move has progressed.</p></div><div id="ft-tc-updated" class="ft-tc-updated">UPDATING…</div></div><div class="ft-tc-legend">${STAGES.map(s=>`<span>${s.icon} ${s.label}</span>`).join('')}</div><div id="ft-tc-grid" class="ft-tc-grid"><div class="ft-tc-empty">Loading the latest transfer moves…</div></div></div>`;
+  tracker.innerHTML=`<div class="ft-tc-shell"><div class="ft-tc-head"><div><span class="go-pill">TRANSFER TRACKER</span><h3>Where every deal stands</h3><p>These labels describe published reports, not independent Football Talk verification. Rumours, talks and agreements do not mean a signing is complete.</p></div><div id="ft-tc-updated" class="ft-tc-updated">UPDATING…</div></div><div class="ft-tc-legend">${STAGES.map(s=>`<span>${s.icon} ${s.label}</span>`).join('')}</div><div id="ft-tc-grid" class="ft-tc-grid"><div class="ft-tc-empty">Loading the latest transfer moves…</div></div></div>`;
   const oldLive=root.querySelector('.transfer-live');
   if(oldLive)oldLive.before(tracker);else root.appendChild(tracker);
   const grid=document.getElementById('ft-tc-grid');
@@ -38,9 +38,9 @@
   function suspiciousOfficial(item){const t=clean(item.title).toLowerCase();return /\b(rumou?r|rumou?rs|to sign|could sign|may sign|might sign|wants to sign|target|targets|targeting|eyes|eyeing|linked with|interested in)\b/.test(t)}
   function stageFor(item){
     const s=String(item.stage||'').toUpperCase();
-    if(s==='ROMANO_CONFIRMED')return'ITS_A_GO';
+    if(s==='ROMANO_CONFIRMED'||s==='ITS_A_GO')return'ITS_A_GO';
     if(s==='OFFICIAL')return suspiciousOfficial(item)?'RUMOUR':'OFFICIAL';
-    if(s==='DEVELOPING')return'TALKS';
+    if(s==='DEVELOPING'||s==='TALKS')return'TALKS';
     return'RUMOUR';
   }
   function stageClass(s){return s==='ITS_A_GO'?'go':s==='OFFICIAL'?'official':''}
@@ -62,7 +62,7 @@
     const q=new URLSearchParams();
     q.set('title',clean(item.title));
     q.set('summary',clean(item.description||item.summary||''));
-    q.set('stage',item._stage||'RUMOUR');
+    q.set('stage',item._stage||'RUMOUR');q.set('publishedAt',new Date(dateValue(item)).toISOString());if(item.source)q.set('publisher',clean(item.source));
     const image=publishedImageUrl(item.image);if(image)q.set('image',image);
     if(item.link)q.set('source',item.link);
     return `transfer-story.html?${q.toString()}`;
@@ -95,10 +95,11 @@
       const head=document.createElement('div');head.className='ft-tc-card-head';
       const copy=document.createElement('div');const badge=document.createElement('span');badge.className=`ft-tc-stage ${stageClass(item._stage)}`;badge.textContent=`${STAGES[current].icon} ${STAGES[current].label}`;const title=document.createElement('div');title.className='ft-tc-title';title.textContent=clean(item.title);copy.append(badge,title);head.appendChild(copy);a.appendChild(head);
       const desc=document.createElement('div');desc.className='ft-tc-desc';desc.textContent=clean(item.description||item.summary||'').slice(0,190);if(desc.textContent)a.appendChild(desc);
+      const meta=document.createElement('div');meta.className='ft-tc-desc ft-info-meta';meta.textContent=`Source: ${clean(item.source)||'Source not supplied'} · Published ${new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(dateValue(item)))} UK`;a.appendChild(meta);
       const rail=document.createElement('div');rail.className='ft-tc-rail';STAGES.forEach((s,i)=>{const step=document.createElement('div');step.className=`ft-tc-step${i<current?' done':''}${i===current?' current':''}`;const label=document.createElement('small');label.textContent=s.label;step.appendChild(label);rail.appendChild(step)});a.appendChild(rail);addPublishedImage(a,item);grid.appendChild(a);
     });
     lastSuccessfulUpdate=Date.now();
-    updated.textContent=`CHECKED ${new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'}).format(new Date())}`;
+    updated.textContent=`FEED CHECKED ${new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'}).format(new Date())}`;
   }
 
   async function load(){

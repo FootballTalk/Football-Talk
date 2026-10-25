@@ -37,7 +37,7 @@
     const message = !matches.length ? (fixtures.status === 'rejected' ? 'Today’s games are temporarily unavailable. Please try the Match Centre.' : 'No games are currently listed for today.') : '';
     $('today-games').innerHTML = message ? `<p>${message}</p>` : matches.slice(0,6).map(f => {
       const active = live.has(f.status), done = finished.has(f.status);
-      const status = active ? (f.status === 'HT' ? 'HT' : f.elapsed ? `${f.elapsed}′` : 'LIVE') : done ? f.status : ({PST:'Postponed',CANC:'Cancelled',ABD:'Abandoned',SUSP:'Suspended'}[f.status] || (f.tvOnly ? f.time : clock(f.date)));
+      const status = active ? (f.status === 'HT' ? 'HALF TIME' : f.elapsed ? `LIVE · ${f.elapsed}′` : 'LIVE') : done ? ({FT:'FULL TIME',AET:'AFTER EXTRA TIME',PEN:'AFTER PENALTIES'})[f.status] : ({PST:'Postponed',CANC:'Cancelled',ABD:'Abandoned',SUSP:'Suspended'}[f.status] || (f.tvOnly ? f.time : clock(f.date)));
       const score = (active || done) && f.homeGoals != null && f.awayGoals != null ? ` · ${f.homeGoals}–${f.awayGoals}` : '';
       const channel = f.tv?.channel && f.tv.channel !== 'TV details confirmed' ? f.tv.channel : tv.status === 'rejected' ? 'UK TV listings temporarily unavailable' : 'UK TV coverage not listed';
       return `<a class="today-match ${active?'is-live':''}" href="match-centre.html"><strong>${esc(status)}</strong><span><b>${esc(f.home)} v ${esc(f.away)}${esc(score)}</b><small>${esc(f.competition || '')}</small><small class="today-channel">${esc(channel)}</small></span></a>`;

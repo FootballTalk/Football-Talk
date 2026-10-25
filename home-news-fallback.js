@@ -39,7 +39,7 @@
     if (!raw) return '';
     const date = new Date(typeof raw === 'number' ? raw : String(raw));
     if (Number.isNaN(date.getTime())) return '';
-    return date.toLocaleString('en-GB', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
+    return date.toLocaleString('en-GB', {timeZone:'Europe/London',day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit',hour12:false});
   }
   function usefulItems(items) {
     return (items || []).filter(item => { const raw=item.publishedAt||item.published_at||item.published; const time=Date.parse(String(raw||'')); return clean(item.title) && Number(item.relevance ?? 1)>0 && Number.isFinite(time) && Date.now()-time>=0 && Date.now()-time<36*60*60*1000; }).slice(0, 12);
@@ -64,14 +64,14 @@
     feed.innerHTML = useful.map(item => {
       const title = esc(clean(item.title));
       const description = esc(clean(item.description || item.summary || '').slice(0, 260));
-      const source = 'Football Talk';
+      const source = esc(item.source || 'Source not supplied');
       const time = esc(formatTime(item));
       const link = clean(item.link || item.url || '');
       const type = clean(item.type || 'NEWS');
       const stage = clean(item.stage || '');
-      const label = type === 'TRANSFER' ? (stage === 'OFFICIAL' ? 'DEAL DONE' : stage === 'DEVELOPING' ? 'TRANSFER UPDATE' : 'TRANSFER') : 'LATEST NEWS';
+      const label = type === 'TRANSFER' ? (stage === 'OFFICIAL' ? 'REPORTED SIGNING' : stage === 'DEVELOPING' ? 'TRANSFER UPDATE' : 'TRANSFER') : 'LATEST NEWS';
       const image = clean(item.image || '');
-      return `<article class="post-card home-api-fallback">${image ? `<img src="${esc(image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}<div class="post-card-body"><span class="tag">${esc(label)}</span><p class="card-meta">${source}${time ? ` · ${time}` : ''}</p><h3>${title}</h3>${description ? `<p>${description}</p>` : ''}${link ? `<a class="read-story" href="/football-talk-story.html?source=${encodeURIComponent(link)}">Read on Football Talk →</a>` : ''}</div></article>`;
+      return `<article class="post-card home-api-fallback">${image ? `<img src="${esc(image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}<div class="post-card-body"><span class="tag">${esc(label)}</span><p class="card-meta">${source}${time ? ` · Published ${time}` : ''}</p><h3>${title}</h3>${description ? `<p>${description}</p>` : ''}${link ? `<a class="read-story" href="/football-talk-story.html?source=${encodeURIComponent(link)}">Read on Football Talk →</a>` : ''}</div></article>`;
     }).join('');
     return true;
   }

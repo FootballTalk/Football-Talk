@@ -62,8 +62,8 @@
     };
     const newsPrefix = item => {
       if(clean(item.type)!=='TRANSFER') return 'NEWS';
-      if(item.stage==='OFFICIAL') return 'DEAL DONE';
-      if(item.stage==='ITS_A_GO') return "IT'S A GO!";
+      if(item.stage==='OFFICIAL') return 'REPORTED SIGNING';
+      if(item.stage==='ITS_A_GO') return "REPORTED AGREEMENT";
       if(item.stage==='DEVELOPING') return 'TRANSFER UPDATE';
       return 'TRANSFER GOSSIP';
     };

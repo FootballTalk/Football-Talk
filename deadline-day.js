@@ -58,8 +58,8 @@
   const countdown=document.getElementById('ddl-countdown');
 
   const stageLabel=item=>{
-    if(item.stage==='OFFICIAL') return 'DONE DEAL';
-    if(item.stage==='ITS_A_GO') return "IT'S A GO!";
+    if(item.stage==='OFFICIAL') return 'REPORTED SIGNING';
+    if(item.stage==='ITS_A_GO') return "REPORTED AGREEMENT";
     if(item.stage==='DEVELOPING') return 'BREAKING';
     return 'RUMOUR';
   };
