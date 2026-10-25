@@ -25,3 +25,6 @@ function initFootballTalkNav(){
  const menu=document.querySelector('.menu-button');if(menu&&nav&&!menu.dataset.mainNavBound){menu.dataset.mainNavBound='1';menu.setAttribute('aria-expanded','false');menu.addEventListener('click',()=>{nav.classList.toggle('open');menu.setAttribute('aria-expanded',nav.classList.contains('open')?'true':'false')});nav.addEventListener('click',e=>{if(e.target.closest('a')){nav.classList.remove('open');menu.setAttribute('aria-expanded','false')}})}
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initFootballTalkNav,{once:true});else initFootballTalkNav();
+
+// Shared mobile pull-to-refresh, loaded once per page.
+if (!document.querySelector('script[data-ft-pull-refresh]')) { const refresh = document.createElement('script'); refresh.src = '/pull-refresh.js?v=20261025-1'; refresh.dataset.ftPullRefresh = '1'; document.body.appendChild(refresh); }
