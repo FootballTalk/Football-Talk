@@ -14,9 +14,6 @@
    const games=document.querySelector('main.hub > .today');
    const sponsor=document.querySelector('main.hub > a[data-ft-partner]');
    if(games&&sponsor)moveAfter(sponsor,games);
-   const launch=document.querySelector('#ft-assistant .fta-launch');
-   const controls=document.querySelector('.ft-page-controls-inner');
-   if(launch&&controls){if(!originalPositions.has(launch)){const marker=document.createComment('Original assistant position');launch.before(marker);originalPositions.set(launch,marker)}controls.appendChild(launch)}
    const tabs=document.querySelector('.ft-persistent-tabs,.quick-nav');
    const active=tabs?.querySelector('[aria-current="page"],.active-tab');
    if(tabs&&active&&tabs.scrollWidth>tabs.clientWidth){const a=active.getBoundingClientRect(),t=tabs.getBoundingClientRect();if(a.left<t.left||a.right>t.right)tabs.scrollLeft+=a.left-t.left-10}
