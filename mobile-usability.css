@@ -1,0 +1,71 @@
+@media(max-width:900px){
+ html{scroll-padding-top:112px!important}
+ html body .ft-page-controls{position:sticky!important;top:0!important;z-index:10000}
+ html body .ft-page-controls-inner{min-height:52px;padding:4px 8px!important;gap:6px!important}
+ html body .ft-page-controls button{min-height:44px!important;font-size:11px!important;padding:8px 10px!important}
+ html body .site-header{position:relative!important;top:auto!important;z-index:180;padding:10px 12px!important;min-height:68px}
+ html body .site-header .menu-button{min-width:44px;min-height:44px;padding:6px}
+ html body .ft-persistent-tabs,html body .quick-nav{top:54px!important;z-index:175!important;max-width:100%;scroll-padding-inline:8px;overscroll-behavior-x:contain}
+ html body .ft-persistent-tabs a,html body .quick-nav a{min-height:44px!important;min-width:90px!important;font-size:12px!important;padding:10px 12px!important}
+ html body .section-tools{position:relative!important;top:auto!important;z-index:170!important;padding:5px 8px!important;max-width:100%;overscroll-behavior-x:contain}
+ html body .section-tools a{display:flex;align-items:center;min-height:44px!important;padding:9px 12px!important;font-size:12px!important}
+ html body .section-tools-label{display:none!important}
+ html body .nav.open{max-height:65dvh;overflow:auto;top:100%!important;z-index:500}
+ body{padding-bottom:env(safe-area-inset-bottom,0px)}
+ html body #ft-assistant{right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));max-width:calc(100% - 24px)}
+ html body .fta-launch{width:50px;height:50px;padding:4px;justify-content:center;border-radius:50%;gap:0}
+ html body .fta-launch-text{display:none}
+ html body .ft-page-controls .fta-launch{flex:0 0 44px!important;width:44px!important;max-width:44px!important;min-width:44px!important;height:44px!important;min-height:44px!important;padding:3px!important;background:#f7c600;border:2px solid #111;border-radius:50%;box-shadow:none}
+ html body .ft-page-controls .fta-launch-mark{width:32px;height:32px;font-size:12px}
+ html body .fta-launch-mark{width:36px;height:36px}
+ html body .fta-panel{width:min(390px,calc(100vw - 24px));height:min(570px,calc(100dvh - 120px));max-height:calc(100dvh - 120px)}
+ html body .fta-close{min-width:44px;min-height:44px;font-size:28px}
+ html body .fta-chip,html body .fta-link{min-height:44px;display:inline-flex;align-items:center;padding:10px 12px}
+ html body .fta-form{padding:10px;flex-shrink:0}
+ html body .fta-messages{min-height:0;overscroll-behavior:contain}
+ html body #ft-today{width:calc(100% - 24px);margin:12px;padding:15px}
+ #ft-today .today-heading{gap:8px;padding-bottom:12px;margin-bottom:14px}
+ #ft-today .today-heading h2{font-size:25px}
+ #ft-today .today-heading>a{display:flex;align-items:center;min-height:44px;max-width:98px;line-height:1.4}
+ #ft-today .today-more{display:inline-flex;min-height:44px;align-items:center;margin-top:4px}
+ #ft-today .today-match{grid-template-columns:68px minmax(0,1fr);padding:10px 0;gap:8px}
+ #ft-today .today-match b{font-size:13px}
+ #ft-today .today-match small{font-size:11px}
+ #today-options button{min-height:44px!important;font-size:13px!important}
+ html body #ft-my-football{width:100%;padding:0 12px;margin:10px 0 12px}
+ #ft-my-football .ft-mf-shell{padding:15px;border-radius:12px}
+ #ft-my-football .ft-mf-select{min-width:0;width:100%;min-height:46px;font-size:16px}
+ #ft-my-football .ft-mf-actions a{min-height:44px;display:flex;align-items:center}
+ main#top{display:flex;flex-direction:column;min-width:0}
+ main#top>.hero{order:0;min-height:0!important;padding:16px 16px!important}
+ main#top>.hero h1{font-size:30px!important;line-height:1.1!important;margin:0 0 4px!important}
+ main#top>.hero .eyebrow,main#top>.hero .hero-text{display:none}
+ main#top>.hero .hero-tagline{font-size:17px!important;line-height:1.3!important;margin:0!important}
+ main#top>#ft-today{order:1}
+ main#top>#ft-my-football{order:2}
+ main#top>#ft-partner-banner{order:3;max-width:100%}
+ main#top>#ft-home-news-ticker{order:4}
+ main#top>#ft-home-news-row,main#top>#ft-breaking-rotator{order:5}
+ main#top>section,main#top>div,main#top>a,main#top>aside{order:10}
+ main#top>section[aria-labelledby="ft-original-voice"]{margin:14px 12px!important;padding:18px!important;max-width:calc(100% - 24px)}
+ .hub .hub-hero{padding:16px!important;margin-bottom:14px!important;border-radius:14px!important}
+ .hub .hub-hero h1{font-size:30px!important;margin:5px 0 8px!important}
+ .hub .hub-hero p{font-size:14px;line-height:1.5}
+ .hub .hub-hero .ey{font-size:11px;margin:0!important}
+ .hub .hub-hero>p:last-child{margin:8px 0 0!important}
+ .hub .today{padding:16px!important;min-width:0}
+ .hub .today-head{flex-wrap:wrap;gap:8px}
+ .hub .today-head h2{font-size:24px}
+ .hub .today-head>a{display:inline-flex;align-items:center;min-height:44px}
+ .hub .game-main{grid-template-columns:58px minmax(0,1fr) auto;gap:8px;padding:12px 10px}
+ .hub .game-main .teams{font-size:14px;overflow-wrap:anywhere}
+ .hub .game-main .score{font-size:19px;white-space:nowrap}
+ .hub .game-main .time{font-size:11px;overflow-wrap:anywhere}
+ .hub .game,.hub .games{min-width:0}
+ .hub .match-alert-menu label{min-height:44px}
+ .hub .match-alert-save,.hub .match-alert-off{min-height:44px}
+ .hub .goal-alert-notice{bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+ .ft-newsletter-row input,.ft-newsletter-row button{font-size:16px!important;min-height:44px}
+ a:focus-visible,button:focus-visible,select:focus-visible{outline:3px solid #b88e00;outline-offset:2px}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}}
