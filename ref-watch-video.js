@@ -1,45 +1,24 @@
 (() => {
-  const host = document.getElementById('ref-watch-video');
-  if (!host) return;
-
-  const esc = (v='') => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-
-  fetch('/api/ref-watch-video', { cache: 'no-store' })
-    .then(r => r.ok ? r.json() : Promise.reject(new Error('Video unavailable')))
-    .then(data => {
-      if (!data.available || !data.embedUrl) {
-        host.hidden = false;
-        host.innerHTML = `
-          <div class="ref-video-head">
-            <span class="ref-badge">LATEST REF WATCH • SKY SPORTS</span>
-            <h2>Dermot Gallagher — Ref Watch</h2>
-            <p>Sky Sports has not exposed an embeddable player for this edition.</p>
-          </div>
-          <div class="ref-video-credit">
-            <strong>Video: Sky Sports</strong>
-            <span>No dead player: Football Talk will automatically show the official player here when Sky exposes an embeddable version.</span>
-          </div>`;
-        return;
-      }
-
-      host.hidden = false;
-      host.innerHTML = `
-        <div class="ref-video-head">
-          <span class="ref-badge">OFFICIAL SKY SPORTS VIDEO</span>
-          <h2>Watch Ref Watch</h2>
-          <p>${esc(data.title || 'Dermot Gallagher reviews the weekend\'s biggest refereeing decisions.')}</p>
-        </div>
-        <div class="ref-video-frame">
-          <iframe src="${esc(data.embedUrl)}" title="${esc(data.title || 'Sky Sports Ref Watch')}" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
-        </div>
-        <div class="ref-video-credit">
-          <strong>Video: Sky Sports</strong>
-          <span>Streamed directly from Sky Sports. Football Talk does not host or re-upload this footage.</span>
-          ${data.articleUrl ? `<a href="${esc(data.articleUrl)}" target="_blank" rel="noopener">View on Sky Sports ↗</a>` : ''}
-        </div>`;
-    })
-    .catch(() => {
-      host.hidden = false;
-      host.innerHTML = `<div class="ref-video-head"><span class="ref-badge">REF WATCH • SKY SPORTS</span><h2>Player temporarily unavailable</h2><p>Football Talk will retry the official Sky Sports player automatically.</p></div>`;
-    });
+  const host=document.getElementById('ref-watch-video');
+  if(!host) return;
+  const esc=(v='')=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const label=iso=>new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'long',year:'numeric',timeZone:'Europe/London'}).format(new Date(iso));
+  async function refresh() {
+    try {
+      const response=await fetch('/api/ref-watch-video',{cache:'no-store'});
+      if(!response.ok) throw new Error('unavailable');
+      const data=await response.json();
+      if(!data.available) throw new Error('unavailable');
+      const url=new URL(data.articleUrl);
+      if(url.protocol!=='https:'||url.hostname!=='www.skysports.com') throw new Error('invalid source');
+      const message=data.status==='awaiting-edition'?"This week's edition is awaiting publication. Previous coverage is dated below.":data.status==='source-unavailable'?'Sky Sports has dated this edition, but its coverage is temporarily unavailable. We will check again automatically.':'The latest weekly refereeing and VAR coverage from Sky Sports.';
+      host.innerHTML=`<div class="ref-video-head"><span class="ref-badge">REF WATCH • SKY SPORTS</span><h2>${esc(data.title)}</h2><p><strong>Edition: ${esc(label(data.publishedAt))}</strong></p><p role="status">${esc(message)}</p></div><div class="ref-watch-cta"><a class="ref-watch-button" href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">VIEW THIS EDITION ON SKY SPORTS ↗</a></div><div class="ref-video-credit"><strong>Coverage: Sky Sports</strong><span>Checked ${esc(label(data.checkedAt))}. Checks for new editions automatically every 30 minutes.</span></div>`;
+    } catch {
+      const status=host.querySelector('[role="status"]');
+      if(status) status.textContent='Unable to check the latest edition right now. Please try again shortly.';
+    }
+  }
+  refresh();
+  setInterval(()=>{if(!document.hidden) refresh();},30*60*1000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden) refresh();});
 })();

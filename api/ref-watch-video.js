@@ -1,139 +1,40 @@
-const SKY_AUTHOR = 'https://www.skysports.com/author/dermot-gallagher-648';
-const SKY_ORIGIN = 'https://www.skysports.com';
-const FALLBACK_ARTICLE = 'https://www.skysports.com/watch/video/13590388/ref-watch-was-elliot-andersons-handball-vs-sunderland-in-a-natural-position-or-deliberate';
-
-function clean(text = '') {
-  return String(text)
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+const SKY = 'https://www.skysports.com';
+const INDEXES = [
+  `${SKY}/football`, `${SKY}/premier-league`,
+  `${SKY}/author/dermot-gallagher-648`,
+  'https://www.skysports.com/rss/12040'
+];
+// Verified current edition; discovery replaces it as soon as a newer edition appears.
+const VERIFIED = `${SKY}/football/live-blog/13576553/ref-watch-and-premier-league-weekend-reaction-live-dermot-gallagher-assesses-the-big-refereeing-decisions`;
+function clean(v='') { return v.replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim(); }
+function candidates(html) {
+  return [...html.matchAll(/(?:href=["']|<link>)([^"'<>\s]+)/gi)].map(m=>{
+    try { const u=new URL(m[1],SKY); return u.hostname==='www.skysports.com' && /\/(?:football\/(?:news|video|live-blog)|watch\/video)\//.test(u.pathname) && /ref-watch/i.test(u.pathname) ? u.href : ''; } catch { return ''; }
+  }).filter(Boolean);
 }
-
-function absoluteSkyUrl(href = '') {
-  if (!href) return '';
-  try {
-    const url = new URL(href, SKY_ORIGIN);
-    return url.hostname.endsWith('skysports.com') ? url.toString() : '';
-  } catch {
-    return '';
-  }
+function metadata(html,url) {
+  const title=clean((html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)||[])[1]||'');
+  const raw=(html.match(/["']datePublished["']\s*:\s*["']([^"']+)/i)||html.match(/<time[^>]*datetime=["']([^"']+)/i)||html.match(/(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+(\d{1,2}\s+\w+\s+\d{4}\s+\d{2}:\d{2})/i)||[])[1];
+  const published=Date.parse(raw||'');
+  if(!/ref watch/i.test(title)||!Number.isFinite(published)||published>Date.now()+3600000) return null;
+  const widget=(html.match(/(?:https:\/\/www\.skysports\.com)?\/iframe\/widget\/video\/([A-Za-z0-9_-]{16,})/i)||[])[1];
+  return {title,articleUrl:url,publishedAt:new Date(published).toISOString(),published,
+    sourceUnavailable:/Sorry, this blog is currently unavailable/i.test(clean(html)),
+    embedUrl:widget?`${SKY}/iframe/widget/video/${widget}`:null};
 }
-
-function articleCandidates(html = '') {
-  const results = [];
-  const seen = new Set();
-  const hrefRe = /href=["']([^"']+)["']/gi;
-  for (const match of html.matchAll(hrefRe)) {
-    const href = absoluteSkyUrl(match[1]);
-    if (!href || seen.has(href)) continue;
-    if (!/\/football\/(?:video|news|live-blog)\//i.test(href)) continue;
-    seen.add(href);
-    results.push(href);
-    if (results.length >= 30) break;
-  }
-  return results;
+async function get(url) {
+  const r=await fetch(url,{signal:AbortSignal.timeout(5000),headers:{'User-Agent':'Mozilla/5.0 (compatible; FootballTalk/1.0)','Accept-Language':'en-GB'}});
+  if(!r.ok) throw new Error(`Sky ${r.status}`);
+  return r.text();
 }
-
-function extractSkyWidget(html = '') {
-  const patterns = [
-    /https:\/\/www\.skysports\.com\/iframe\/widget\/video\/([A-Za-z0-9_-]{16,})/i,
-    /\/iframe\/widget\/video\/([A-Za-z0-9_-]{16,})/i,
-    /iframe\/widget\/video\/([A-Za-z0-9_-]{16,})/i
-  ];
-  for (const pattern of patterns) {
-    const m = html.match(pattern);
-    if (m) return `https://www.skysports.com/iframe/widget/video/${m[1]}`;
-  }
-  return '';
-}
-
-function articleVideoId(url = '') {
-  const m = String(url).match(/\/watch\/video\/(\d+)/i);
-  return m ? m[1] : '';
-}
-
-function officialEmbedFromArticle(url = '') {
-  const id = articleVideoId(url);
-  return id ? `https://www.skysports.com/embed/video/${id}` : '';
-}
-
-function pageTitle(html = '') {
-  const og = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i) ||
-             html.match(/<meta\s+content=["']([^"']+)["']\s+property=["']og:title["']/i);
-  if (og) return clean(og[1]);
-  const title = html.match(/<title>([\s\S]*?)<\/title>/i);
-  return title ? clean(title[1]).replace(/\s*\|\s*Sky Sports.*$/i, '') : 'Ref Watch';
-}
-
-function looksLikeRefWatch(html = '') {
-  const text = clean(html).toLowerCase();
-  return text.includes('ref watch') && text.includes('dermot gallagher');
-}
-
-async function getText(url) {
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; FootballTalk/1.0; +https://www.footballtalk.uk)',
-      'Accept-Language': 'en-GB,en;q=0.9'
-    }
-  });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return response.text();
-}
-
-module.exports = async function handler(req, res) {
-  try {
-    // Sky can block server-side requests to the author index. Treat discovery as optional
-    // so the known latest edition still renders through Sky's own official embed endpoint.
-    try {
-      const authorHtml = await getText(SKY_AUTHOR);
-      const candidates = articleCandidates(authorHtml);
-
-      for (const href of candidates) {
-        try {
-          const html = await getText(href);
-          if (!looksLikeRefWatch(html)) continue;
-          const embedUrl = extractSkyWidget(html) || officialEmbedFromArticle(href);
-          if (!embedUrl) continue;
-          const title = pageTitle(html);
-          res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=21600');
-          return res.status(200).json({
-            available: true,
-            provider: 'Sky Sports',
-            title,
-            embedUrl,
-            articleUrl: href,
-            rights: 'Video is streamed from Sky Sports. Football Talk does not host or re-upload the footage.'
-          });
-        } catch {}
-      }
-    } catch {}
-
-    // Keep the most recent verified Ref Watch edition on the page if the author-page scan misses it.
-    try {
-      const html = await getText(FALLBACK_ARTICLE);
-      const embedUrl = extractSkyWidget(html) || officialEmbedFromArticle(FALLBACK_ARTICLE);
-      if (embedUrl) {
-        res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=21600');
-        return res.status(200).json({
-          available: true,
-          provider: 'Sky Sports',
-          title: pageTitle(html),
-          embedUrl,
-          articleUrl: FALLBACK_ARTICLE,
-          rights: 'Video is streamed from Sky Sports. Football Talk does not host or re-upload the footage.'
-        });
-      }
-    } catch {}
-
-    res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=3600');
-    return res.status(200).json({ available: false, provider: 'Sky Sports' });
-  } catch {
-    return res.status(200).json({ available: false, provider: 'Sky Sports' });
-  }
+module.exports=async function handler(req,res) {
+  res.setHeader('Cache-Control','s-maxage=1800, stale-while-revalidate=300');
+  const indexes=await Promise.allSettled(INDEXES.map(get));
+  const urls=[...new Set([VERIFIED,...indexes.filter(r=>r.status==='fulfilled').flatMap(r=>candidates(r.value))])].slice(0,24);
+  const results=await Promise.allSettled(urls.map(async url=>metadata(await get(url),url)));
+  const latest=results.filter(r=>r.status==='fulfilled'&&r.value).map(r=>r.value).sort((a,b)=>b.published-a.published)[0];
+  const london=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const monday=new Date(`${london}T00:00:00Z`); monday.setUTCDate(monday.getUTCDate()-(monday.getUTCDay()+6)%7);
+  const current=latest && latest.published>=monday.getTime();
+  return res.status(200).json({available:!!latest,provider:'Sky Sports',checkedAt:new Date().toISOString(),editionWeek:monday.toISOString().slice(0,10),status:!latest?'unavailable':!current?'awaiting-edition':latest.sourceUnavailable?'source-unavailable':'current',...(latest||{})});
 };
