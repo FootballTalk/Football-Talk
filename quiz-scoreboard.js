@@ -1,6 +1,8 @@
 (() => {
   if(!/quiz\.html$/i.test(location.pathname)) return;
 
+  const totalQuestions=()=>document.querySelectorAll('.question').length;
+  let completing=false;
   const esc=(v='')=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   const makeId=()=>`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
   const londonDateKey=()=>{
@@ -43,7 +45,7 @@
     const r=await fetch(url,{headers,cache:'no-store'});
     if(!r.ok) throw new Error('scoreboard unavailable');
     const rows=await r.json();
-    return rows.map(row=>{try{return JSON.parse(row.answer)}catch{return null}}).filter(x=>x&&x.kind==='quiz-score'&&Number.isInteger(x.score)&&x.score>=0&&x.score<=5);
+    return rows.map(row=>{try{return JSON.parse(row.answer)}catch{return null}}).filter(x=>x&&x.kind==='quiz-score'&&Number.isInteger(x.score)&&x.score>=0&&x.score<=totalQuestions());
   }
 
   async function saveScore(score){
@@ -62,7 +64,7 @@
     const result=document.getElementById('result');
     if(!result) return null;
     let box=document.getElementById('quiz-scoreboard');
-    if(!box){box=document.createElement('section');box.id='quiz-scoreboard';box.className='quiz-scoreboard';box.innerHTML='<h3>Today’s Scoreboard</h3><p class="qs-sub">See how everyone else got on with today’s five questions.</p><div class="quiz-score-loading">Loading today’s scores…</div>';result.insertAdjacentElement('afterend',box)}
+    if(!box){box=document.createElement('section');box.id='quiz-scoreboard';box.className='quiz-scoreboard';box.innerHTML=`<h3>Today’s Scoreboard</h3><p class="qs-sub">See how everyone else got on with today’s ${totalQuestions()} questions.</p><div class="quiz-score-loading">Loading today’s scores…</div>`;result.insertAdjacentElement('afterend',box)}
     return box;
   }
 
@@ -70,24 +72,25 @@
     const box=mount();if(!box)return;
     try{
       const rows=await requestRows();
-      const counts=[0,0,0,0,0,0];rows.forEach(r=>counts[r.score]++);
-      const lines=[5,4,3,2,1,0].map(score=>`<tr${score===myScore?' class="mine"':''}><td>${score}/5${score===myScore?' — YOU':''}</td><td>${counts[score]}</td></tr>`).join('');
-      box.innerHTML=`<h3>Today’s Scoreboard</h3><p class="qs-sub">See how everyone else got on with today’s five questions.</p><table class="quiz-score-table"><thead><tr><th>Score</th><th>Players</th></tr></thead><tbody>${lines}</tbody></table><p class="quiz-score-total">${rows.length} ${rows.length===1?'person has':'people have'} played today.</p><p class="quiz-score-note">Anonymous totals only — no names or personal details are collected.</p>`;
+      const counts=Array(totalQuestions()+1).fill(0);rows.forEach(r=>counts[r.score]++);
+      const lines=Array.from({length:totalQuestions()+1},(_,i)=>totalQuestions()-i).map(score=>`<tr${score===myScore?' class="mine"':''}><td>${score}/${totalQuestions()}${score===myScore?' — YOU':''}</td><td>${counts[score]}</td></tr>`).join('');
+      box.innerHTML=`<h3>Today’s Scoreboard</h3><p class="qs-sub">See how everyone else got on with today’s ${totalQuestions()} questions.</p><table class="quiz-score-table"><thead><tr><th>Score</th><th>Players</th></tr></thead><tbody>${lines}</tbody></table><p class="quiz-score-total">${rows.length} ${rows.length===1?'person has':'people have'} played today.</p><p class="quiz-score-note">Anonymous totals only — no names or personal details are collected.</p>`;
     }catch(_){box.innerHTML='<h3>Today’s Scoreboard</h3><p class="qs-sub">The shared scores are temporarily unavailable. Your quiz result is still saved normally.</p>'}
   }
 
   async function handleCompleted(){
     const result=document.getElementById('result');
-    if(!result||!result.classList.contains('show')) return;
+    if(completing||!result||!result.classList.contains('show')) return;
     const strong=result.querySelector('strong');
-    const m=(strong?.textContent||'').match(/^([0-5])\/5$/);if(!m)return;
+    const m=(strong?.textContent||'').match(/^(\d+)\/(\d+)$/);if(!m||Number(m[2])!==totalQuestions()||Number(m[1])>totalQuestions())return;
     const score=Number(m[1]);
+    completing=true;
     mount();
     try{await saveScore(score)}catch(_){}
-    await refresh(score);
+    try{await refresh(score)}finally{completing=false}
   }
 
   addStyles();
   const result=document.getElementById('result');
-  if(result){new MutationObserver(handleCompleted).observe(result,{attributes:true,childList:true,subtree:true});handleCompleted()}
+  if(result){new MutationObserver(handleCompleted).observe(result,{attributes:true,childList:true,subtree:true});if(result.classList.contains('show'))handleCompleted();else refresh() }
 })();
