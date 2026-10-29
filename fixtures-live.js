@@ -159,7 +159,7 @@
       const minute=fixture.elapsed?`${fixture.elapsed}'`:'';
       return{main:score,sub:status==='HT'?'HT':`LIVE${minute?` · ${minute}`:''}`,className:'live'};
     }
-    if(status==='PEN')return{main:score,sub:'PEN',note:penaltyOutcome(fixture),className:'finished'};
+    if(status==='PEN')return{main:score,sub:fixture.penaltyHome!=null&&fixture.penaltyAway!=null?`PEN ${fixture.penaltyHome}-${fixture.penaltyAway}`:'PEN',note:penaltyOutcome(fixture),className:'finished'};
     if(FINISHED_STATUSES.has(status))return{main:score,sub:status==='FT'?'FT':status,className:'finished'};
     if(status==='PST')return{main:'P-P',sub:'POSTPONED',className:''};
     if(status==='CANC')return{main:'—',sub:'CANCELLED',className:''};
