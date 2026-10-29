@@ -28,10 +28,10 @@
       if (f.status === 'HT') return { main: score, sub: 'HT', live: true, finished: false };
       if (f.status === 'INT') return { main: score, sub: 'INTERVAL', live: true, finished: false };
       if (f.status === 'ET') { const minute=f.elapsed?`${f.elapsed}'`:''; return {main:score,sub:`ET${minute?` · ${minute}`:''}`,live:true,finished:false}; }
-      if (f.status === 'P') return { main: score, sub: 'PENALTIES', live: true, finished: false };
+      if (f.status === 'P') return { main: score, sub: f.penaltyHome!=null&&f.penaltyAway!=null?`PENS ${f.penaltyHome}-${f.penaltyAway}`:'PENALTIES', live: true, finished: false };
       const minute=f.elapsed?`${f.elapsed}'`:''; return {main:score,sub:`LIVE${minute?` · ${minute}`:''}`,live:true,finished:false};
     }
-    if (FINISHED.has(f.status)) return { main:score, sub:f.status==='FT'?'FT':f.status, live:false, finished:true };
+    if (FINISHED.has(f.status)) return { main:score, sub:f.status==='PEN'&&f.penaltyHome!=null&&f.penaltyAway!=null?`PENS ${f.penaltyHome}-${f.penaltyAway}`:f.status==='FT'?'FT':f.status, live:false, finished:true };
     if (f.status==='PST') return {main:'POSTPONED',sub:'',live:false,finished:false};
     if (f.status==='CANC') return {main:'CANCELLED',sub:'',live:false,finished:false};
     if (f.status==='ABD') return {main:'ABANDONED',sub:'',live:false,finished:false};
