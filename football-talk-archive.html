@@ -40,4 +40,4 @@ body{background:#f3f3f3}.archive-wrap{max-width:1180px;margin:auto;padding:30px 
 (()=>{const search=document.getElementById('archive-search'),category=document.getElementById('archive-category'),cards=[...document.querySelectorAll('.archive-card')],status=document.getElementById('archive-status'),empty=document.getElementById('archive-empty');function filter(){const term=search.value.trim().toLowerCase(),type=category.value;let shown=0;for(const card of cards){const matchesType=type==='all'||card.dataset.category===type;const matchesText=!term||(card.dataset.search+' '+card.textContent).toLowerCase().includes(term);const visible=matchesType&&matchesText;card.hidden=!visible;if(visible)shown++;}status.textContent='Showing '+shown+' of '+cards.length+' articles';empty.hidden=shown!==0;}search.addEventListener('input',filter);category.addEventListener('change',filter);})();
 </script>
 <script src="nav-tabs.js?v=20261001-womens-2"></script>
-</body></html>
+<script defer src="/ft-assistant.js?v=20261104-ask-ft-1"></script></body></html>

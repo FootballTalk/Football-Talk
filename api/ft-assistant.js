@@ -1,24 +1,21 @@
-const WINDOW_MS=60_000;
-const MAX_PER_WINDOW=8;
+import {readFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {createHash} from 'node:crypto';
+import {answerQuestion} from '../lib/ask-ft.js';
 const buckets=new Map();
-
-function ipOf(req){return String(req.headers['x-forwarded-for']||req.socket?.remoteAddress||'unknown').split(',')[0].trim()}
-function allowed(ip){const now=Date.now();const b=buckets.get(ip)||{start:now,count:0};if(now-b.start>WINDOW_MS){b.start=now;b.count=0}b.count++;buckets.set(ip,b);return b.count<=MAX_PER_WINDOW}
-
+function allowed(req){const now=Date.now(),ip=String(req.headers['x-forwarded-for']||req.socket?.remoteAddress||'unknown').split(',')[0];const key=createHash('sha256').update(ip).digest('hex');let b=buckets.get(key);if(!b||now-b.at>60000){b={at:now,count:0};buckets.set(key,b)};if(buckets.size>2000)for(const [k,v]of buckets)if(now-v.at>60000)buckets.delete(k);return ++b.count<=15}
+function config(){const s=readFileSync(join(process.cwd(),'config.js'),'utf8');return {url:s.match(/SUPABASE_URL:\s*'([^']+)'/)?.[1],key:s.match(/SUPABASE_ANON_KEY:\s*'([^']+)'/)?.[1]}}
+async function record(answer){try{const c=config();const r=await fetch(c.url+'/rest/v1/rpc/ft_ask_record',{method:'POST',headers:{apikey:c.key,Authorization:'Bearer '+c.key,'Content-Type':'application/json'},body:JSON.stringify({p_topic:answer.topic,p_club:answer.club||'',p_intent:answer.intent,p_answered:answer.answered}),signal:AbortSignal.timeout(2500)});if(!r.ok)throw Error('metrics unavailable');return true}catch{return false}}
 export default async function handler(req,res){
-  if(req.method!=='POST') return res.status(405).json({error:'Method not allowed'});
-  if(!allowed(ipOf(req))) return res.status(429).json({error:'Too many questions — please try again in a minute.'});
-  const question=String(req.body?.question||'').trim().slice(0,500);
-  if(!question) return res.status(400).json({error:'Ask a football question.'});
-  if(!process.env.OPENAI_API_KEY) return res.status(503).json({error:'FT Assistant is being connected. Please try again shortly.'});
-
-  const instructions=`You are FT Assistant, the football-only assistant for FootballTalk.uk, a UK football platform. Answer only association football/soccer questions. Be concise, conversational and useful to UK football fans. For current, recent, live, fixture, result, table, transfer, injury, lineup, manager, competition or other time-sensitive questions, use web search before answering. Prefer official competition/club sources and reputable football reporting. Never invent a score, transfer, quote or fixture. If reliable current information cannot be established, say so. For non-football requests politely say you only cover football. Do not claim to be ChatGPT or OpenAI; identify as FT Assistant when relevant. Keep most answers under 130 words. Plain text only.`;
-  try{
-    const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${process.env.OPENAI_API_KEY}`},body:JSON.stringify({model:'gpt-5.6-luna',instructions,input:question,tools:[{type:'web_search'}],max_output_tokens:450})});
-    const data=await r.json();
-    if(!r.ok) throw new Error(data?.error?.message||'AI request failed');
-    let text=data.output_text;
-    if(!text&&Array.isArray(data.output)) text=data.output.flatMap(x=>x.content||[]).filter(x=>x.type==='output_text').map(x=>x.text).join('\n');
-    return res.status(200).json({answer:(text||'I could not get a reliable football answer just then. Please try again.').trim()});
-  }catch(e){console.error('FT Assistant:',e);return res.status(502).json({error:'FT Assistant could not answer that just now. Please try again.'})}
+ res.setHeader('Cache-Control','no-store');
+ if(req.method==='GET')return res.status(200).json({name:'Ask FT',mode:'Football Talk content and live feeds',paidAI:false});
+ if(req.method!=='POST'){res.setHeader('Allow','GET, POST');return res.status(405).json({error:'Method not allowed'})}
+ if(req.headers.origin&&!['https://www.footballtalk.uk','https://footballtalk.uk'].includes(req.headers.origin))return res.status(403).json({error:'Please use Ask FT on Football Talk.'});
+ if(!allowed(req))return res.status(429).json({error:'You’ve asked a lot of questions. Please wait a minute and try again.'});
+ let body=req.body;try{if(typeof body==='string')body=JSON.parse(body)}catch{return res.status(400).json({error:'Invalid request'})}
+ if(typeof body?.question!=='string'||!body.question.trim()||body.question.length>500)return res.status(400).json({error:'Enter a question of 1–500 characters.'});
+ const context=body.context&&typeof body.context==='object'?{club:body.context.club,intent:body.context.intent}:{};
+ const answer=await answerQuestion(body.question.trim(),context);
+ const metricsRecorded=await record(answer);
+ return res.status(200).json({...answer,metricsRecorded});
 }
