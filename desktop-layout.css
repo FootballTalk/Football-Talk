@@ -1,0 +1,45 @@
+/* Shared desktop shell for every public Football Talk page.
+   Mobile layouts and component-specific widths (photos, forms, dialogs) stay local. */
+@media (min-width:901px){
+ body.ft-fluid-desktop{--ft-page-gutter:clamp(20px,2vw,64px)}
+ body.ft-fluid-desktop>main:not(#top),
+ body.ft-fluid-desktop>.wrap,
+ body.ft-fluid-desktop>.members-shell>.members-main,
+ body.ft-fluid-desktop .members-main,
+ body.ft-fluid-desktop .ref-wrap,
+ body.ft-fluid-desktop .ref-video-shell,
+ body.ft-fluid-desktop .shop-wrap,
+ body.ft-fluid-desktop .shop-hero-inner,
+ body.ft-fluid-desktop>.hero,
+ body.ft-fluid-desktop .hero-inner,
+ body.ft-fluid-desktop .topin{
+  box-sizing:border-box;
+  width:calc(100% - 2 * var(--ft-page-gutter));
+  max-width:none!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+ }
+ body.ft-fluid-desktop #section-page-content>.section{
+  max-width:none!important;
+  padding-left:24px;
+  padding-right:24px;
+ }
+ body.ft-fluid-desktop .footer-grid,
+ body.ft-fluid-desktop .footer-bottom,
+ body.ft-fluid-desktop .ft-trust-footer-inner{max-width:none}
+ /* Reading pages use the wider panel, with comfortable paragraph lengths. */
+ body.ft-fluid-desktop .article-wrap>p,
+ body.ft-fluid-desktop .article-wrap>ul,
+ body.ft-fluid-desktop .policy-wrap>p,
+ body.ft-fluid-desktop .policy-wrap>ul,
+ body.ft-fluid-desktop .ft-editorial>p,
+ body.ft-fluid-desktop .ft-story-body>p{max-width:85ch}
+ /* Grassroots has full-width bands with an inner shell rather than one page card. */
+ body.ft-fluid-desktop.ft-fluid-bands>main{width:100%;max-width:none!important}
+ body.ft-fluid-desktop.ft-fluid-bands .wrap{
+  width:calc(100% - 2 * var(--ft-page-gutter));max-width:none!important;
+ }
+ /* The editorial-only pages also constrain their header and footer. */
+ body.ft-fluid-desktop>header:not(.site-header):not(.masthead),
+ body.ft-fluid-desktop>footer:not(.site-footer):not(.ft-trust-footer){max-width:none}
+}
