@@ -5,7 +5,7 @@
   const section = document.createElement('section');
   section.id = 'ft-today';
   section.setAttribute('aria-labelledby', 'ft-today-title');
-  section.innerHTML = `<header class="today-heading"><div><p class="today-kicker">YOUR DAILY FOOTBALL FIX</p><h2 id="ft-today-title">Today in Football</h2><p id="today-date"></p></div><a href="match-centre.html">Match Centre →</a></header><div class="today-grid"><div class="today-games"><h3>Today’s games & UK TV</h3><p class="today-note">Selected matches · Kick-off times are UK local time. Coverage may require a subscription.</p><div id="today-games">Loading today’s games…</div><a class="today-more" href="tv-guide.html">Full UK TV guide →</a></div><div><h3>Three key headlines</h3><div id="today-headlines">Loading the latest headlines…</div><div class="today-poll"><p class="today-kicker">WHERE FANS HAVE THEIR SAY</p><h3 id="today-question"></h3><div id="today-options"></div><p id="today-verdict" class="today-note" role="status"></p></div></div></div>`;
+  section.innerHTML = `<header class="today-heading"><div><p class="today-kicker">YOUR DAILY FOOTBALL FIX</p><h2 id="ft-today-title">Headlines & fan vote</h2><p id="today-date"></p></div><a href="match-centre.html">Match Centre →</a></header><div class="today-grid"><div><h3>Three key headlines</h3><div id="today-headlines">Loading the latest headlines…</div></div><div class="today-poll"><p class="today-kicker">WHERE FANS HAVE THEIR SAY</p><h3 id="today-question"></h3><div id="today-options"></div><p id="today-verdict" class="today-note" role="status"></p></div></div>`;
   hero.after(section);
   const $ = id => section.querySelector('#' + id);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -14,40 +14,13 @@
     return `${p.year}-${p.month}-${p.day}`;
   };
   const clock = value => new Intl.DateTimeFormat('en-GB', {timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(value));
-  const live = new Set(['1H','2H','HT','ET','BT','P','LIVE','INT']);
-  const finished = new Set(['FT','AET','PEN']);
   const normal = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g,'');
-  const team = s => { const raw = String(s || ''); const women = /(?:\(W\)|Women)$/i.test(raw.trim()); const n = normal(raw.replace(/\s*(?:\(W\)|Women)$/i,'')); return (women ? 'women:' : '') + (({manutd:'manchesterunited',manunited:'manchesterunited',mancity:'manchestercity',spurs:'tottenham',tottenhamhotspur:'tottenham',wolverhamptonwanderers:'wolves',brightonhovealbion:'brighton',brightonandhovealbion:'brighton',nottmforest:'nottinghamforest',charltonathletic:'charlton',norwichcity:'norwich',derbycounty:'derby',leedsunited:'leeds',westhamunited:'westham',newcastleunited:'newcastle'})[n] || n); };
   async function json(url) {
     const r = await fetch(url, {cache:'no-store',signal:AbortSignal.timeout(15000)});
     if (!r.ok) throw Error('Unavailable');
     const data = await r.json();
     if (data.error) throw Error(data.error);
     return data;
-  }
-  async function games(day) {
-    const [fixtures,tv] = await Promise.allSettled([json('/api/fixtures?date='+day),json('/api/tv-guide')]);
-    if (dateKey() !== day) return;
-    const listings = tv.status === 'fulfilled' ? (tv.value.matches || []).filter(m => m.date === day) : [];
-    const fs = fixtures.status === 'fulfilled' ? (fixtures.value.leagues || []).flatMap(l => (l.fixtures || []).map(f => ({...f,competition:l.name,leagueId:Number(l.id)}))).filter(f => f.date && dateFor(f.date) === day) : [];
-    const matches = fs.map(f => ({...f,tv:listings.find(t => team(t.home) === team(f.home) && team(t.away) === team(f.away))}));
-    // Keep TV-only fixtures visible if the scores feed omits a competition.
-    listings.forEach(t => { if (!matches.some(f => team(f.home) === team(t.home) && team(f.away) === team(t.away))) matches.push({...t,tv:t,tvOnly:true}); });
-    const priority = f => [39,40,179,45,48,2,3,9227,9294].includes(f.leagueId) || (f.tvOnly && /^(Premier League|Championship|Scottish Premiership|FA Cup|Carabao Cup|UEFA Champions League|UEFA Europa League|Women.*Super League)$/i.test(f.competition || '')) ? 3 : f.tv ? 2 : 0;
-    matches.sort((a,b) => (priority(b)-priority(a)) || (live.has(b.status)-live.has(a.status)) || (finished.has(a.status)-finished.has(b.status)) || String(a.time || clock(a.date)).localeCompare(String(b.time || clock(b.date))));
-    const message = !matches.length ? (fixtures.status === 'rejected' ? 'Today’s games are temporarily unavailable. Please try the Match Centre.' : 'No games are currently listed for today.') : '';
-    $('today-games').innerHTML = message ? `<p>${message}</p>` : matches.slice(0,6).map(f => {
-      const active = live.has(f.status), done = finished.has(f.status);
-      const status = active ? (f.status === 'HT' ? 'HALF TIME' : f.elapsed ? `LIVE · ${f.elapsed}′` : 'LIVE') : done ? ({FT:'FULL TIME',AET:'AFTER EXTRA TIME',PEN:'AFTER PENALTIES'})[f.status] : ({PST:'Postponed',CANC:'Cancelled',ABD:'Abandoned',SUSP:'Suspended'}[f.status] || (f.tvOnly ? f.time : clock(f.date)));
-      const score = (active || done) && f.homeGoals != null && f.awayGoals != null ? ` · ${f.homeGoals}–${f.awayGoals}` : '';
-      const channel = f.tv?.channel && f.tv.channel !== 'TV details confirmed' ? f.tv.channel : tv.status === 'rejected' ? 'UK TV listings temporarily unavailable' : 'UK TV coverage not listed';
-      return `<a class="today-match ${active?'is-live':''}" href="${/^\d+$/.test(String(f.id||''))?'match.html?id='+encodeURIComponent(f.id):'tv-guide.html'}"><strong>${esc(status)}</strong><span><b>${esc(f.home)} v ${esc(f.away)}${esc(score)}</b><small>${esc(f.competition || '')}</small><small class="today-channel">${esc(channel)}</small></span></a>`;
-    }).join('');
-    if (matches.length > 6) $('today-games').insertAdjacentHTML('beforeend','<a class="today-more" href="match-centre.html">See all today’s matches →</a>');
-  }
-  function dateFor(value) {
-    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(value)).map(p => [p.type,p.value]));
-    return `${parts.year}-${parts.month}-${parts.day}`;
   }
   async function headlines(day) {
     try {
@@ -113,8 +86,8 @@
     loading = true;
     const day = dateKey();
     $('today-date').textContent = new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'long',day:'numeric',month:'long'}).format(new Date());
-    if (pollDay !== day) { $('today-games').textContent = 'Loading today’s games…'; $('today-headlines').textContent = 'Loading the latest headlines…'; pollDay = day; chosen = readChoice(pollId()); counts = [0,0,0]; drawPoll(); }
-    await Promise.allSettled([games(day),headlines(day),totals().then(() => drawPoll()).catch(() => drawPoll('Fan vote results are temporarily unavailable.'))]);
+    if (pollDay !== day) { $('today-headlines').textContent = 'Loading the latest headlines…'; pollDay = day; chosen = readChoice(pollId()); counts = [0,0,0]; drawPoll(); }
+    await Promise.allSettled([headlines(day),totals().then(() => drawPoll()).catch(() => drawPoll('Fan vote results are temporarily unavailable.'))]);
     loading = false;
   }
   refresh();

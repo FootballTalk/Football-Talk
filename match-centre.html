@@ -249,11 +249,11 @@
         <div class="today-head">
           <div>
             <p class="ey" style="color: #111 !important">TODAY</p>
-            <h2>Today’s Games</h2>
+            <h2>Today in Football</h2>
           </div>
           <a href="fixtures.html">All fixtures →</a>
         </div>
-        <div id="games" class="games"><p>Loading matches…</p></div>
+        <p id="match-centre-date" style="color:#555;font-size:13px;line-height:1.5"></p><p style="color:#555;font-size:13px;line-height:1.5">Today’s fixtures across all available competitions, with UK TV coverage where listed. Kick-off times are UK local time. Coverage may require a subscription. <a href="tv-guide.html">Full UK TV guide →</a></p><div id="games" class="games"><p>Loading matches…</p></div>
       </section>
       <section class="feature-grid">
         <a class="feature" href="lineups.html"><b>TEAM NEWS</b><strong>Lineups</strong><p>Confirmed teams and matchday lineups for today’s action when they become available.</p></a>
@@ -293,104 +293,38 @@
           "INT",
           "BT",
         ]);
-        const normalLeagueName = (value) =>
-          String(value || "")
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, " ")
-            .replace(/\s+/g, " ")
-            .trim();
-        const isWorldCupName = (name) =>
-          /\bworld cup\b/.test(normalLeagueName(name)) &&
-          !/\bclub world cup\b/.test(normalLeagueName(name));
-        const isEurosName = (name) =>
-          /^(uefa )?(euro(pean)? championship|uefa euro|euro [0-9]{4}|euros?)\b/.test(
-            normalLeagueName(name),
-          );
-        const wantedLeague = (l) => {
-          const name = String(l?.name || "").trim();
-          const country = String(l?.country || "").trim();
-          const id = Number(l?.id || 0);
-          const england = /^(england|eng)$/i.test(country);
-          const scotland = /^(scotland|sco)$/i.test(country);
-          if (
-            (id === 39 || id === 47 || id === 938217) &&
-            /^premier league$/i.test(name) &&
-            (england || !country)
-          )
-            return true;
-          if (
-            (id === 40 || id === 938218) &&
-            /^(efl )?championship$/i.test(name) &&
-            (england || !country)
-          )
-            return true;
-          if (
-            (id === 179 || id === 937650) &&
-            /^(scottish )?premiership$/i.test(name) &&
-            (scotland || !country)
-          )
-            return true;
-          if (id === 45 && /^fa cup$/i.test(name) && (england || !country))
-            return true;
-          if (
-            (id === 48 || id === 938221) &&
-            /^(carabao cup|efl cup)$/i.test(name) &&
-            (england || !country)
-          )
-            return true;
-          if (
-            (id === 2 || id === 42) &&
-            /^(uefa )?champions league$/i.test(name)
-          )
-            return true;
-          if ((id === 3 || id === 73) && /^(uefa )?europa league$/i.test(name))
-            return true;
-          if (isWorldCupName(name) || isEurosName(name)) return true;
-          if (/^(international )?friendlies?( women)?$/i.test(name) || /^friendly international(s)?$/i.test(name))
-            return true;
-          return false;
+        const team = value => {
+          const raw=String(value||''),women=/(?:\(W\)|Women)$/i.test(raw.trim());
+          const n=raw.replace(/\s*(?:\(W\)|Women)$/i,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+          return (women?'women:':'')+(({manutd:'manchesterunited',manunited:'manchesterunited',mancity:'manchestercity',spurs:'tottenham',tottenhamhotspur:'tottenham',wolverhamptonwanderers:'wolves',brightonhovealbion:'brighton',brightonandhovealbion:'brighton',nottmforest:'nottinghamforest',charltonathletic:'charlton',norwichcity:'norwich',derbycounty:'derby',leedsunited:'leeds',westhamunited:'westham',newcastleunited:'newcastle'})[n]||n);
         };
+        const kickoff = g => g.tvOnly ? g.time : new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(g.date));
+        async function read(url){const r=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();if(d.error)throw new Error('Feed unavailable');return d;}
         let loading = false;
         async function loadGames() {
           if (loading) return;
           loading = true;
           const today = londonDate(new Date());
           try {
-            const r = await fetch(
-              "/api/fixtures?date=" +
-                encodeURIComponent(today) +
-                "&_=" +
-                Date.now(),
-              { cache: "no-store" },
-            );
-            if (!r.ok) throw new Error("HTTP " + r.status);
-            const data = await r.json();
-            const games = (data.leagues || [])
-              .filter(wantedLeague)
-              .flatMap((l) =>
-                (l.fixtures || []).map((f) => ({
-                  ...f,
-                  leagueName: f.leagueName || l.name,
-                })),
-              )
-              .filter((f) => f.date && londonDate(new Date(f.date)) === today)
-              .sort((a, b) => {
-                const priority = (game) => {
-                  const status = String(game.status || "NS").toUpperCase();
-                  if (liveCodes.has(status)) return 0;
-                  if (["FT", "AET", "PEN"].includes(status)) return 2;
-                  return 1;
-                };
-                return priority(a) - priority(b) ||
-                  (a.timestamp || Date.parse(a.date) / 1000 || 0) -
-                  (b.timestamp || Date.parse(b.date) / 1000 || 0);
-              });
+            document.getElementById('match-centre-date').textContent=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'long',day:'numeric',month:'long'}).format(new Date());
+            const [fixtures,tv]=await Promise.allSettled([read('/api/fixtures?date='+encodeURIComponent(today)+'&_='+Date.now()),read('/api/tv-guide')]);
+            const listings=tv.status==='fulfilled'?(tv.value.matches||[]).filter(t=>t.date===today):[];
+            if(fixtures.status==='rejected'&&!listings.length)throw new Error('Feeds unavailable');
+            const games=(fixtures.status==='fulfilled'?(fixtures.value.leagues||[]):[])
+              .flatMap(l=>(l.fixtures||[]).map(f=>({...f,leagueName:f.leagueName||l.name})))
+              .filter(f=>f.date&&londonDate(new Date(f.date))===today)
+              .map(f=>({...f,tv:listings.find(t=>team(t.home)===team(f.home)&&team(t.away)===team(f.away))}));
+            for(const t of listings)if(!games.some(f=>team(f.home)===team(t.home)&&team(f.away)===team(t.away)))games.push({...t,leagueName:t.competition,status:'NS',tv:t,tvOnly:true});
+            games.sort((a,b)=>{
+              const priority=g=>liveCodes.has(g.status)?0:['FT','AET','PEN'].includes(g.status)?2:1;
+              return priority(a)-priority(b)||kickoff(a).localeCompare(kickoff(b));
+            });
             if (!games.length) {
               box.innerHTML =
-                "<p>No selected competition fixtures are listed today. <a href=\"fixtures.html\">Browse all fixtures</a> for upcoming matches.</p>";
+                "<p>No fixtures are currently listed for today. <a href=\"fixtures.html\">Browse all fixtures</a> for upcoming matches.</p>";
               return;
             }
-            box.innerHTML = games
+            box.innerHTML = (fixtures.status==='rejected'?'<p role="status">Live scores are temporarily unavailable. Showing UK TV listings where available.</p>':'') + games
               .map((g) => {
                 const st = String(g.status || "NS").toUpperCase(),
                   live = liveCodes.has(st),
@@ -401,7 +335,7 @@
                     : "LIVE"
                   : ft
                     ? "FULL TIME"
-                    : new Intl.DateTimeFormat("en-GB", {
+                    : g.tvOnly ? g.time : new Intl.DateTimeFormat("en-GB", {
                         timeZone: "Europe/London",
                         hour: "2-digit",
                         minute: "2-digit",
@@ -412,7 +346,8 @@
                   (live || ft) && hasScore
                     ? g.homeGoals + " – " + g.awayGoals
                     : "—";
-                const alertControl = ft
+                const hasMatch = /^\d+$/.test(String(g.id||""));
+                const alertControl = ft || !hasMatch
                   ? ""
                   : `<button class="goal-alert" type="button" aria-label="Choose match alerts for ${esc(g.home)} versus ${esc(g.away)}" aria-pressed="false" aria-expanded="false" data-match-id="${esc(g.id)}" data-home="${esc(g.home)}" data-away="${esc(g.away)}" data-kickoff="${esc(g.date)}" data-home-goals="${hasScore ? esc(g.homeGoals) : ""}" data-away-goals="${hasScore ? esc(g.awayGoals) : ""}" data-status="${esc(st)}"><span aria-hidden="true">🔔</span></button>`;
                 const stateClass = live
@@ -420,7 +355,7 @@
                   : ft
                     ? " is-finished"
                     : "";
-                return `<article class="game${stateClass}"><a class="game-main" href="match.html?id=${encodeURIComponent(g.id)}"><div class="time ${live ? "live" : ""}">${esc(time)}</div><div><div class="teams">${esc(g.home)}<br>${esc(g.away)}</div><div class="league">${esc(g.leagueName)}</div></div><div class="score">${esc(score)}</div></a>${alertControl}</article>`;
+                return `<article class="game${stateClass}"><a class="game-main" href="${hasMatch?'match.html?id='+encodeURIComponent(g.id):'tv-guide.html'}"><div class="time ${live ? "live" : ""}">${esc(time)}</div><div><div class="teams">${esc(g.home)}<br>${esc(g.away)}</div><div class="league">${esc(g.leagueName)}</div><div class="league" style="margin-top:5px;color:#625000">${esc(g.tv?.channel&&g.tv.channel!=='TV details confirmed'?g.tv.channel:tv.status==='rejected'?'UK TV listings temporarily unavailable':'UK TV coverage not listed')}</div></div><div class="score">${esc(score)}</div></a>${alertControl}</article>`;
               })
               .join("");
           } catch (e) {
@@ -433,7 +368,7 @@
           }
         }
         loadGames();
-        setInterval(loadGames, 30000);
+        setInterval(() => { if (!document.hidden) loadGames(); }, 30000);
         document.addEventListener("visibilitychange", () => {
           if (!document.hidden) loadGames();
         });
