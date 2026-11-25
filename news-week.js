@@ -16,7 +16,7 @@
   function currentStories(input, now) {
     const seen = new Set();
     return input.filter(item => {
-      if (!item || !String(item.title || '').trim()) return false;
+      if (!item || item.relatedReport || !String(item.title || '').trim()) return false;
       const published = new Date(item.publishedAt || item.published).getTime();
       if (!Number.isFinite(published) || published > now || now - published >= WEEK) return false;
       try { if (new URL(item.link).protocol !== 'https:') return false; } catch (_) { return false; }
@@ -24,7 +24,7 @@
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    }).sort((a, b) => new Date(b.publishedAt || b.published) - new Date(a.publishedAt || a.published)).slice(0, 12);
+    }).sort((a, b) => (b.editorialPriority || 0) - (a.editorialPriority || 0) || new Date(b.publishedAt || b.published) - new Date(a.publishedAt || a.published)).slice(0, 12);
   }
 
   function render(failed = false) {
