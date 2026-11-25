@@ -172,6 +172,26 @@ function sameStory(a, b) {
   return combinedScore >= 0.68;
 }
 
+function editorialPriority(item, now) {
+  const age = now - item.published;
+  if (!(age >= 0 && age < 18 * 3600000)) return 0;
+  const t = item.title.toLowerCase();
+  if (/\b(quiz|gossip|rumours?|could|might|preview|prediction)\b/.test(t)) return -1;
+  if (item.stage === 'OFFICIAL' || /\b(overturned|reinstated|restored as|rescinded|deducted|relegated|promoted|sacked|appointed|resigns|resigned|points deduction|court ruling)\b/.test(t)) return 2;
+  return 0;
+}
+
+function rulingSubject(title) {
+  const words = normaliseTokens(title);
+  if (/\bred card\b/i.test(title) && /\b(overturned|rescinded)\b/i.test(title)) {
+    return words.filter(w=>!['red','card','overturned','rescinded'].includes(w));
+  }
+  if (/\b(reinstated|restored)\b/i.test(title) && /\b(winners|champions)\b/i.test(title)) {
+    return words.map(w=>w==='afcon'?'africa':w).filter(w=>!['reinstated','restored','winners','champions','court','ruling'].includes(w));
+  }
+  return [];
+}
+
 function relevanceScore(item) {
   const text = `${item.title} ${item.description}`.toLowerCase();
   let score = PRIORITY_TERMS.reduce((sum, term) => sum + (text.includes(term) ? 1 : 0), 0);
@@ -217,12 +237,21 @@ module.exports = async function handler(req, res) {
 
     deduped.sort((a, b) => b.published - a.published);
 
-    const items = deduped.slice(0, 60).map(item => ({
-      ...item,
+    const now = Date.now();
+    const seenRulings = [];
+    const items = deduped.slice(0, 60).map(item => {
+      const subject = rulingSubject(item.title);
+      const related = subject.length > 0 && seenRulings.some(previous =>
+        Math.abs(previous.published - item.published) < 86400000 &&
+        previous.kind === /red card/i.test(item.title) &&
+        new Set(subject.filter(w => previous.subject.includes(w))).size >= 2);
+      if (subject.length) seenRulings.push({subject, published:item.published, kind:/red card/i.test(item.title)});
+      return {
+      ...item, editorialPriority:editorialPriority(item, now), relatedReport:related,
       relevance: relevanceScore(item),
       publishedAt: item.published ? new Date(item.published).toISOString() : null,
       debatePrompt: debatePrompt(item.title, item.type)
-    }));
+    }; });
 
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
     res.status(200).json({ updatedAt: new Date().toISOString(), items });
