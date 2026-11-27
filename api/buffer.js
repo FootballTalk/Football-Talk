@@ -85,10 +85,10 @@ async function tiktokPhoto(){
  for(const i of await stories()){
   if(!eligible(i)||i.type!=='NEWS'||!i.source||String(i.title).length>180)continue;
   const id=storyKey(i);if(await done(cfg,id,'tiktok'))continue;
-  const imageUrl=SITE_URL+'api/tiktok-news-image?title='+encodeURIComponent(clean(i.title))+'&source='+encodeURIComponent(String(i.source));
+  const imageUrl=SITE_URL+'api/tiktok-news-image?title='+encodeURIComponent(clean(i.title))+'&branding=footballtalk-v2';
   const pre=await fetch(imageUrl,{cache:'no-store'});if(!pre.ok||!/^image\/jpeg/i.test(pre.headers.get('content-type')||''))continue;
   const reserve=await fetch(cfg.url+'/rest/v1/poll_responses',{method:'POST',headers:sbHeaders(cfg,{'Content-Type':'application/json',Prefer:'return=minimal'}),body:JSON.stringify({poll_id:slot,answer:JSON.stringify({storyId:id,status:'reserved',createdAt:new Date().toISOString()})})});if(!reserve.ok)throw new Error('TikTok slot reservation failed');
-  const p=await post(target.id,clean(i.title)+'\n\nSource: '+i.source+'\n\nWhat is your verdict? Have your say below.\nFootballTalk.uk\n#FootballTalk #FootballNews #WhereFansHaveTheirSay','tiktok',imageUrl);
+  const p=await post(target.id,clean(i.title)+'\n\nSourced by Football Talk\n\nWhat is your verdict? Have your say below.\nFootballTalk.uk\n#FootballTalk #FootballNews #WhereFansHaveTheirSay','tiktok',imageUrl);
   await remember(cfg,id,i,p,'tiktok');return {submitted:true,postId:p.id};
  }
  return {skipped:'No eligible fresh news'};
